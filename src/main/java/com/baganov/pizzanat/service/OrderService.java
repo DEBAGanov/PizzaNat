@@ -1,0 +1,245 @@
+package com.baganov.pizzanat.service;
+
+import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
+import com.baganov.pizzanat.model.dto.order.OrderDTO;
+import com.baganov.pizzanat.model.dto.order.OrderItemDTO;
+import com.baganov.pizzanat.model.dto.payment.PaymentUrlResponse;
+import com.baganov.pizzanat.model.entity.*;
+import com.baganov.pizzanat.repository.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+    private final OrderStatusRepository orderStatusRepository;
+    private final CartRepository cartRepository;
+    private final UserRepository userRepository;
+    private final DeliveryLocationRepository deliveryLocationRepository;
+    private final StorageService storageService;
+    private final NotificationService notificationService;
+    private final PaymentService paymentService;
+
+    @Transactional
+    @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
+    public OrderDTO createOrder(Integer userId, String sessionId, CreateOrderRequest request) {
+        User user = null;
+        if (userId != null) {
+            user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+        }
+
+        Cart cart = findCart(userId, sessionId);
+        if (cart == null || cart.getItems().isEmpty()) {
+            throw new IllegalArgumentException("Корзина пуста");
+        }
+
+        DeliveryLocation deliveryLocation = deliveryLocationRepository.findById(request.getDeliveryLocationId())
+                .orElseThrow(() -> new IllegalArgumentException("Пункт выдачи не найден"));
+
+        if (!deliveryLocation.isActive()) {
+            throw new IllegalArgumentException("Пункт выдачи недоступен");
+        }
+
+        OrderStatus createdStatus = orderStatusRepository.findByName("CREATED")
+                .orElseThrow(() -> new IllegalArgumentException("Статус заказа 'CREATED' не найден"));
+
+        Order order = Order.builder()
+                .user(user)
+                .status(createdStatus)
+                .deliveryLocation(deliveryLocation)
+                .totalAmount(cart.getTotalAmount())
+                .comment(request.getComment())
+                .contactName(request.getContactName())
+                .contactPhone(request.getContactPhone())
+                .build();
+
+        // Копирование товаров из корзины в заказ
+        for (CartItem cartItem : cart.getItems()) {
+            OrderItem orderItem = OrderItem.builder()
+                    .order(order)
+                    .product(cartItem.getProduct())
+                    .quantity(cartItem.getQuantity())
+                    .price(cartItem.getProduct().getDiscountedPrice())
+                    .build();
+            order.addItem(orderItem);
+        }
+
+        order = orderRepository.save(order);
+
+        // Очистка корзины после создания заказа
+        cart.getItems().clear();
+        cartRepository.save(cart);
+
+        log.info("Создан новый заказ #{} на сумму {}", order.getId(), order.getTotalAmount());
+
+        return mapToDTO(order);
+    }
+
+    /**
+     * Создает URL для оплаты заказа через платежную систему
+     *
+     * @param orderId идентификатор заказа
+     * @return объект с URL для оплаты
+     */
+    @Transactional(readOnly = true)
+    public PaymentUrlResponse createPaymentUrl(Integer orderId, Integer userId) {
+        Order order = findOrder(orderId, userId);
+
+        // Проверяем статус заказа - он должен быть в статусе "Создан"
+        if (!"CREATED".equals(order.getStatus().getName())) {
+            throw new IllegalStateException("Невозможно создать ссылку для оплаты заказа в текущем статусе");
+        }
+
+        String description = String.format("Оплата заказа №%d в PizzaNat", order.getId());
+
+        // Создаем URL для оплаты через платежный сервис
+        String paymentUrl = paymentService.createPaymentUrl(order.getId(), order.getTotalAmount(), description);
+
+        log.info("Создан URL для оплаты заказа #{}: {}", order.getId(), paymentUrl);
+
+        return new PaymentUrlResponse(paymentUrl);
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "orderDetails", key = "#orderId + '-' + #userId")
+    public OrderDTO getOrderById(Integer orderId, Integer userId) {
+        Order order = findOrder(orderId, userId);
+        return mapToDTO(order);
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "userOrders", key = "#userId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
+    public Page<OrderDTO> getUserOrders(Integer userId, Pageable pageable) {
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(this::mapToDTO);
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "allOrders", key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort")
+    public Page<OrderDTO> getAllOrders(Pageable pageable) {
+        return orderRepository.findAll(pageable)
+                .map(this::mapToDTO);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "userOrders", allEntries = true),
+            @CacheEvict(value = "orderDetails", allEntries = true),
+            @CacheEvict(value = "allOrders", allEntries = true)
+    })
+    public OrderDTO updateOrderStatus(Integer orderId, String statusName) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Заказ не найден"));
+
+        String oldStatusName = order.getStatus().getName();
+
+        OrderStatus newStatus = orderStatusRepository.findByName(statusName)
+                .orElseThrow(() -> new IllegalArgumentException("Статус заказа не найден"));
+
+        order.setStatus(newStatus);
+        order = orderRepository.save(order);
+
+        // Отправляем уведомление о смене статуса
+        notificationService.sendOrderStatusChangeNotification(order, oldStatusName, statusName);
+
+        log.info("Обновлен статус заказа #{} с {} на {}", orderId, oldStatusName, statusName);
+
+        return mapToDTO(order);
+    }
+
+    /**
+     * Обновляет статус заказа на "Оплачен"
+     *
+     * @param orderId идентификатор заказа
+     * @return обновленный заказ
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "userOrders", allEntries = true),
+            @CacheEvict(value = "orderDetails", allEntries = true),
+            @CacheEvict(value = "allOrders", allEntries = true)
+    })
+    public OrderDTO markOrderAsPaid(Integer orderId) {
+        // Обновляем статус заказа на "Оплачен"
+        return updateOrderStatus(orderId, "PAID");
+    }
+
+    private Order findOrder(Integer orderId, Integer userId) {
+        if (userId != null) {
+            return orderRepository.findByIdAndUserId(orderId, userId)
+                    .orElseThrow(() -> new IllegalArgumentException("Заказ не найден"));
+        } else {
+            return orderRepository.findById(orderId)
+                    .orElseThrow(() -> new IllegalArgumentException("Заказ не найден"));
+        }
+    }
+
+    private Cart findCart(Integer userId, String sessionId) {
+        if (userId != null) {
+            return cartRepository.findByUserId(userId).orElse(null);
+        } else if (sessionId != null) {
+            return cartRepository.findBySessionId(sessionId).orElse(null);
+        }
+        return null;
+    }
+
+    private OrderDTO mapToDTO(Order order) {
+        List<OrderItemDTO> itemDTOs = order.getItems().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+
+        return OrderDTO.builder()
+                .id(order.getId())
+                .status(order.getStatus().getName())
+                .statusDescription(order.getStatus().getDescription())
+                .deliveryLocationId(order.getDeliveryLocation().getId())
+                .deliveryLocationName(order.getDeliveryLocation().getName())
+                .deliveryLocationAddress(order.getDeliveryLocation().getAddress())
+                .totalAmount(order.getTotalAmount())
+                .comment(order.getComment())
+                .contactName(order.getContactName())
+                .contactPhone(order.getContactPhone())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .items(itemDTOs)
+                .build();
+    }
+
+    private OrderItemDTO mapToDTO(OrderItem item) {
+        String imageUrl = null;
+        if (item.getProduct().getImageUrl() != null && !item.getProduct().getImageUrl().isEmpty()) {
+            try {
+                imageUrl = storageService.getPresignedUrl(item.getProduct().getImageUrl(), 3600);
+            } catch (Exception e) {
+                log.error("Error getting presigned URL for product image", e);
+            }
+        }
+
+        BigDecimal subtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+
+        return OrderItemDTO.builder()
+                .id(item.getId())
+                .productId(item.getProduct().getId())
+                .productName(item.getProduct().getName())
+                .productImageUrl(imageUrl)
+                .quantity(item.getQuantity())
+                .price(item.getPrice())
+                .subtotal(subtotal)
+                .build();
+    }
+}

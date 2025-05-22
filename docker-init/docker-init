@@ -1,0 +1,90 @@
+#!/bin/bash
+set -e
+
+# Конфигурация
+MINIO_HOST="${MINIO_HOST:-minio:9000}"
+MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-accesskey}"
+MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-secretkey}"
+BUCKET_NAME="${BUCKET_NAME:-pizzanat}"
+IMAGES_DIR="/images"
+
+echo "Инициализация MinIO: ${MINIO_HOST}, бакет: ${BUCKET_NAME}"
+
+# Ждем, пока MinIO будет доступен
+echo "Ожидание запуска MinIO..."
+max_retries=30
+retry_count=0
+
+while ! curl -s --head http://${MINIO_HOST}/minio/health/live | grep "200 OK" > /dev/null 2>&1; do
+  retry_count=$((retry_count+1))
+  if [ $retry_count -ge $max_retries ]; then
+    echo "Превышено максимальное количество попыток подключения к MinIO"
+    exit 1
+  fi
+  echo "MinIO еще не готов - попытка $retry_count из $max_retries"
+  sleep 2
+done
+
+echo "MinIO запущен и готов"
+
+# Настраиваем клиент MinIO
+mc alias set myminio http://${MINIO_HOST} ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY}
+
+# Создаем бакет, если его нет
+mc mb --ignore-existing myminio/${BUCKET_NAME}
+
+# Устанавливаем публичный доступ на чтение
+mc anonymous set download myminio/${BUCKET_NAME}
+
+# Создаем структуру директорий
+mc mb --ignore-existing myminio/${BUCKET_NAME}/products
+mc mb --ignore-existing myminio/${BUCKET_NAME}/categories
+
+# Функция для обработки и загрузки изображения
+process_and_upload() {
+  local input_file=$1
+  local object_name=$2
+  local content_type=$3
+
+  # Оптимизация изображения, если установлен ImageMagick
+  if command -v convert > /dev/null; then
+    # Создаем временный файл
+    local temp_file="/tmp/$(basename $input_file)"
+    echo "Оптимизация изображения: $input_file -> $temp_file"
+
+    # Определяем размер для оптимизации на основе типа контента
+    local resize_opt="600x600"
+    if [[ $object_name == categories/* ]]; then
+      resize_opt="400x200"
+    fi
+
+    # Оптимизируем изображение
+    convert "$input_file" -resize $resize_opt -quality 85 "$temp_file"
+
+    # Загружаем оптимизированное изображение
+    mc cp --attr="content-type=$content_type" "$temp_file" myminio/${BUCKET_NAME}/$object_name
+
+    # Удаляем временный файл
+    rm "$temp_file"
+  else
+    # Загружаем оригинальное изображение без оптимизации
+    mc cp --attr="content-type=$content_type" "$input_file" myminio/${BUCKET_NAME}/$object_name
+  fi
+}
+
+# Загрузка изображений продуктов
+echo "Загрузка изображений в MinIO..."
+for file in ${IMAGES_DIR}/*.png; do
+  filename=$(basename $file)
+  objectname="products/${filename}"
+
+  # Проверяем существование файла в MinIO
+  if mc stat myminio/${BUCKET_NAME}/$objectname > /dev/null 2>&1; then
+    echo "Файл уже существует: $objectname, пропускаем"
+  else
+    echo "Загрузка нового файла: $filename -> $objectname"
+    process_and_upload "$file" "$objectname" "image/png"
+  fi
+done
+
+echo "Инициализация MinIO завершена успешно"
