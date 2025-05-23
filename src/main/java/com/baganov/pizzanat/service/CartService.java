@@ -32,7 +32,15 @@ public class CartService {
 
     @Transactional(readOnly = true)
     public CartDTO getCart(String sessionId, Integer userId) {
-        Cart cart = findOrCreateCart(sessionId, userId);
+        Cart cart = findExistingCart(sessionId, userId);
+        if (cart == null) {
+            // Возвращаем пустую корзину если её нет
+            return CartDTO.builder()
+                    .sessionId(sessionId)
+                    .totalAmount(BigDecimal.ZERO)
+                    .items(List.of())
+                    .build();
+        }
         return mapToDTO(cart);
     }
 
@@ -140,6 +148,15 @@ public class CartService {
 
         cartRepository.save(userCart);
         cartRepository.delete(anonymousCart);
+    }
+
+    private Cart findExistingCart(String sessionId, Integer userId) {
+        if (userId != null) {
+            return cartRepository.findByUserId(userId).orElse(null);
+        } else if (sessionId != null) {
+            return cartRepository.findBySessionId(sessionId).orElse(null);
+        }
+        return null;
     }
 
     private Cart findOrCreateCart(String sessionId, Integer userId) {

@@ -35,29 +35,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         final String requestURI = request.getRequestURI();
-        log.debug("Запрос к URI: {}, метод: {}", requestURI, request.getMethod());
+        log.debug("JwtAuthenticationFilter: Запрос к URI: {}, метод: {}", requestURI, request.getMethod());
 
         final String authHeader = request.getHeader("Authorization");
-        log.debug("Заголовок Authorization: {}", authHeader);
+        log.debug("JwtAuthenticationFilter: Заголовок Authorization: {}", authHeader);
 
         final String jwt;
         final String username;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.debug("Заголовок Authorization отсутствует или неверного формата, продолжаем без аутентификации");
+            log.debug("JwtAuthenticationFilter: Заголовок Authorization отсутствует или неверного формата для URI: {}",
+                    requestURI);
             filterChain.doFilter(request, response);
             return;
         }
 
         jwt = authHeader.substring(7);
+        log.debug("JwtAuthenticationFilter: Извлечен JWT токен для URI: {}", requestURI);
+
         try {
             username = jwtService.extractUsername(jwt);
-            log.debug("Извлечено имя пользователя из токена: {}", username);
+            log.debug("JwtAuthenticationFilter: Извлечено имя пользователя из токена: {} для URI: {}", username,
+                    requestURI);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = getUserDetailsService().loadUserByUsername(username);
-                log.debug("Загружены данные пользователя: {}, роли: {}", userDetails.getUsername(),
-                        userDetails.getAuthorities());
+                log.debug("JwtAuthenticationFilter: Загружены данные пользователя: {}, роли: {} для URI: {}",
+                        userDetails.getUsername(),
+                        userDetails.getAuthorities(), requestURI);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -67,13 +72,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.debug("Пользователь {} успешно аутентифицирован", username);
+                    log.debug("JwtAuthenticationFilter: Пользователь {} успешно аутентифицирован для URI: {}", username,
+                            requestURI);
                 } else {
-                    log.debug("Токен недействителен для пользователя {}", username);
+                    log.debug("JwtAuthenticationFilter: Токен недействителен для пользователя {} для URI: {}", username,
+                            requestURI);
                 }
+            } else if (username != null) {
+                log.debug("JwtAuthenticationFilter: Authentication уже установлен для пользователя {} URI: {}",
+                        username, requestURI);
             }
         } catch (Exception e) {
-            log.error("Ошибка при обработке JWT токена: {}", e.getMessage());
+            log.error("JwtAuthenticationFilter: Ошибка при обработке JWT токена для URI {}: {}", requestURI,
+                    e.getMessage());
         }
 
         filterChain.doFilter(request, response);

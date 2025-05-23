@@ -110,7 +110,7 @@ public class OrderIntegrationTest {
                                 .price(BigDecimal.valueOf(500))
                                 .discountedPrice(BigDecimal.valueOf(450))
                                 .category(category)
-                                .available(true)
+                                .isAvailable(true)
                                 .build());
 
                 testLocation = deliveryLocationRepository.save(DeliveryLocation.builder()

@@ -72,6 +72,11 @@ public class StorageService {
      */
     public String getPresignedUrl(String objectName, int expiryTime) {
         try {
+            // Для изображений продуктов и категорий используем публичные URL
+            if (objectName.startsWith("products/") || objectName.startsWith("categories/")) {
+                return getPublicUrl(objectName);
+            }
+
             String presignedUrl = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .bucket(bucket)
@@ -86,6 +91,19 @@ public class StorageService {
             log.error("Error generating presigned URL: {}", e.getMessage(), e);
             throw new RuntimeException("Error generating presigned URL", e);
         }
+    }
+
+    /**
+     * Получение публичного URL для файла (без подписи)
+     *
+     * @param objectName имя файла в хранилище
+     * @return публичный URL файла
+     */
+    public String getPublicUrl(String objectName) {
+        // Формируем публичный URL: http://localhost/bucket/objectName
+        String publicUrl = String.format("http://localhost/%s/%s", bucket, objectName);
+        log.debug("Generated public URL: {}", publicUrl);
+        return publicUrl;
     }
 
     /**

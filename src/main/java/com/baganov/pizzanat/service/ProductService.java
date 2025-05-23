@@ -6,11 +6,11 @@ import com.baganov.pizzanat.repository.CategoryRepository;
 import com.baganov.pizzanat.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ProductService {
 
     private final ProductRepository productRepository;
@@ -25,25 +26,27 @@ public class ProductService {
     private final StorageService storageService;
 
     @Cacheable(value = "products", key = "'product:' + #id")
+    @Transactional(readOnly = true)
     public ProductDTO getProductById(Integer id) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdWithCategory(id)
                 .orElseThrow(() -> new IllegalArgumentException("Продукт не найден с ID: " + id));
         return mapToDTO(product);
     }
 
-    @Cacheable(value = "products", key = "'products:page:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+    @Transactional(readOnly = true)
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
         return productRepository.findAllByIsAvailableTrue(pageable)
                 .map(this::mapToDTO);
     }
 
-    @Cacheable(value = "products", key = "'products:category:' + #categoryId + ':page:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+    @Transactional(readOnly = true)
     public Page<ProductDTO> getProductsByCategory(Integer categoryId, Pageable pageable) {
         return productRepository.findByCategoryIdAndIsAvailableTrue(categoryId, pageable)
                 .map(this::mapToDTO);
     }
 
     @Cacheable(value = "products", key = "'products:special'")
+    @Transactional(readOnly = true)
     public List<ProductDTO> getSpecialOffers() {
         return productRepository.findTop8ByIsAvailableTrueAndIsSpecialOfferTrueOrderByIdDesc()
                 .stream()
@@ -51,7 +54,7 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "products", key = "'products:search:' + #query + ':category:' + #categoryId + ':page:' + #pageable.pageNumber + ':' + #pageable.pageSize")
+    @Transactional(readOnly = true)
     public Page<ProductDTO> searchProducts(String query, Integer categoryId, Pageable pageable) {
         return productRepository.searchProducts(categoryId, query, pageable)
                 .map(this::mapToDTO);

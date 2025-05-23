@@ -77,7 +77,7 @@ class OrderServiceTest {
                                 .name("Тестовая пицца")
                                 .price(BigDecimal.valueOf(500))
                                 .discountedPrice(BigDecimal.valueOf(450))
-                                .available(true)
+                                .isAvailable(true)
                                 .build();
 
                 CartItem cartItem = CartItem.builder()

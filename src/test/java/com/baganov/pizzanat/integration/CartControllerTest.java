@@ -53,7 +53,7 @@ public class CartControllerTest extends BaseIntegrationTest {
                                 .description("Вкусная тестовая пицца")
                                 .price(BigDecimal.valueOf(500))
                                 .discountedPrice(BigDecimal.valueOf(450))
-                                .available(true)
+                                .isAvailable(true)
                                 .category(category)
                                 .build());
 

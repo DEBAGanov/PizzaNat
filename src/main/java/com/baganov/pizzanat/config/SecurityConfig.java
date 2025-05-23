@@ -1,7 +1,15 @@
+/**
+ * @file: SecurityConfig.java
+ * @description: Настройка безопасности приложения
+ * @dependencies: Spring Security
+ * @created: 2025-05-24
+ */
 package com.baganov.pizzanat.config;
 
 import com.baganov.pizzanat.security.JwtAuthenticationFilter;
+import com.baganov.pizzanat.security.GlobalJwtFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -24,6 +32,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
 import java.util.List;
@@ -51,22 +60,44 @@ public class SecurityConfig {
         this.passwordEncoder = passwordEncoder;
     }
 
-    private static final String[] PUBLIC_URLS = {
-            "/api/v1/auth/**",
-            "/api/v1/products/**",
-            "/api/v1/categories/**",
-            "/api/v1/delivery/locations",
-            "/v3/api-docs/**",
+    /**
+     * Массив URL-адресов, на которые можно делать запросы без аутентификации
+     */
+    private static final String[] AUTH_WHITELIST = {
+            // Swagger UI
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/webjars/**",
+            "/swagger-resources/**",
+            "/v3/api-docs/**",
+            "/swagger",
+            "/swagger-ui/index.html",
+            "/swagger-ui/custom-swagger-ui.html",
+            "/swagger-ui/*",
+            // Root and API help
             "/",
-            "/debug/**"
+            "/api-help",
+            // Auth endpoints
+            "/api/v1/auth/**",
+            // Public API
+            "/api/v1/public/**",
+            // Actuator
+            "/actuator/**",
+            // Health check
+            "/health",
+            "/api/health",
+            // Categories
+            "/api/v1/categories/**",
+            // Products
+            "/api/v1/products/**",
+            // Cart (доступна анонимным и аутентифицированным пользователям)
+            "/api/v1/cart/**",
+            // Orders (только для анонимных заказов)
+            "/api/v1/orders/anonymous/**",
     };
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        log.debug("Configuring security with public URLs: {}", Arrays.toString(PUBLIC_URLS));
+        log.debug("Configuring security with public URLs: {}", Arrays.toString(AUTH_WHITELIST));
         log.info("Режим без проверки JWT: {}", disableJwtAuth);
 
         if (disableJwtAuth) {
@@ -74,7 +105,7 @@ public class SecurityConfig {
                     .csrf(AbstractHttpConfigurer::disable)
                     .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers("/**").permitAll())
+                            .requestMatchers(AUTH_WHITELIST).permitAll())
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .build();
         } else {
@@ -82,7 +113,9 @@ public class SecurityConfig {
                     .csrf(AbstractHttpConfigurer::disable)
                     .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(PUBLIC_URLS).permitAll()
+                            .requestMatchers(AUTH_WHITELIST).permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/pizzas/**").permitAll()
                             .anyRequest().authenticated())
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authenticationProvider(authenticationProvider())
@@ -97,7 +130,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setMaxAge(3600L);
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -115,5 +148,15 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public FilterRegistrationBean<GlobalJwtFilter> globalJwtFilterRegistration(GlobalJwtFilter globalJwtFilter) {
+        FilterRegistrationBean<GlobalJwtFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(globalJwtFilter);
+        registration.addUrlPatterns("/*");
+        registration.setOrder(-100); // Выполняется до Spring Security (который имеет order 0)
+        registration.setName("globalJwtFilter");
+        return registration;
     }
 }

@@ -37,29 +37,31 @@ public class Cart {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<CartItem> items = new ArrayList<>();
 
-    @Column(name = "total_amount")
-    private BigDecimal totalAmount;
-
     public void addItem(CartItem item) {
+        if (items == null) {
+            items = new ArrayList<>();
+        }
         items.add(item);
         item.setCart(this);
     }
 
     public void removeItem(CartItem item) {
-        items.remove(item);
-        item.setCart(null);
+        if (items != null) {
+            items.remove(item);
+            item.setCart(null);
+        }
     }
 
     public BigDecimal getTotalAmount() {
+        if (items == null) {
+            return BigDecimal.ZERO;
+        }
         return items.stream()
-                .map(CartItem::getSubtotal)
+                .map(CartItem::getDiscountedSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
     }
 
     @PrePersist

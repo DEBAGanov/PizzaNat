@@ -2,7 +2,9 @@ package com.baganov.pizzanat.controller;
 
 import com.baganov.pizzanat.model.dto.cart.AddToCartRequest;
 import com.baganov.pizzanat.model.dto.cart.CartDTO;
+import com.baganov.pizzanat.model.dto.cart.UpdateCartItemRequest;
 import com.baganov.pizzanat.service.CartService;
+import com.baganov.pizzanat.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class CartController {
 
     private final CartService cartService;
+    private final UserService userService;
     private static final String SESSION_ID_COOKIE = "CART_SESSION_ID";
 
     @GetMapping
@@ -36,6 +39,9 @@ public class CartController {
 
         Integer userId = getUserId(authentication);
         String sessionId = getOrCreateSessionId(request);
+
+        log.debug("getCart: userId={}, sessionId={}, authentication={}", userId, sessionId,
+                authentication != null ? authentication.getName() : "null");
 
         CartDTO cart = cartService.getCart(sessionId, userId);
         return ResponseEntity.ok(cart);
@@ -51,6 +57,9 @@ public class CartController {
         Integer userId = getUserId(authentication);
         String sessionId = getOrCreateSessionId(request);
 
+        log.debug("addToCart: userId={}, sessionId={}, authentication={}", userId, sessionId,
+                authentication != null ? authentication.getName() : "null");
+
         CartDTO cart = cartService.addToCart(
                 sessionId,
                 userId,
@@ -64,14 +73,14 @@ public class CartController {
     @Operation(summary = "Обновление количества товара в корзине")
     public ResponseEntity<CartDTO> updateCartItem(
             @Parameter(description = "ID продукта", required = true) @PathVariable Integer productId,
-            @Parameter(description = "Новое количество") @RequestParam Integer quantity,
+            @Valid @RequestBody UpdateCartItemRequest updateRequest,
             HttpServletRequest request,
             Authentication authentication) {
 
         Integer userId = getUserId(authentication);
         String sessionId = getOrCreateSessionId(request);
 
-        CartDTO cart = cartService.updateCartItem(sessionId, userId, productId, quantity);
+        CartDTO cart = cartService.updateCartItem(sessionId, userId, productId, updateRequest.getQuantity());
         return ResponseEntity.ok(cart);
     }
 
@@ -124,13 +133,49 @@ public class CartController {
     }
 
     private Integer getUserId(Authentication authentication) {
+        log.debug("getUserId: authentication={}", authentication);
+        if (authentication != null) {
+            log.debug("getUserId: isAuthenticated={}, principal type={}, principal={}",
+                    authentication.isAuthenticated(),
+                    authentication.getPrincipal().getClass().getName(),
+                    authentication.getPrincipal());
+        }
+
         if (authentication != null && authentication.isAuthenticated()) {
             try {
-                return ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId();
+                log.debug("Authentication principal type: {}", authentication.getPrincipal().getClass().getName());
+
+                // Проверяем, является ли principal User объектом
+                if (authentication.getPrincipal() instanceof com.baganov.pizzanat.model.entity.User) {
+                    return ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId();
+                }
+
+                // Если это UserDetails, получаем username и ищем пользователя
+                if (authentication
+                        .getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+                    String username = ((org.springframework.security.core.userdetails.UserDetails) authentication
+                            .getPrincipal()).getUsername();
+                    log.debug("Principal is UserDetails with username: {}", username);
+
+                    // Получаем User по username
+                    try {
+                        com.baganov.pizzanat.model.entity.User user = userService.getUserByUsername(username);
+                        log.debug("Found user by username: {}, id: {}", username, user.getId());
+                        return user.getId();
+                    } catch (Exception e) {
+                        log.warn("Failed to find user by username: {}", username, e);
+                        return null;
+                    }
+                }
+
+                log.warn("Unknown principal type: {}", authentication.getPrincipal().getClass().getName());
+                return null;
             } catch (Exception e) {
                 log.warn("Failed to get user ID from authentication", e);
             }
         }
+        log.debug("getUserId returning null: authentication={}, isAuthenticated={}",
+                authentication != null, authentication != null ? authentication.isAuthenticated() : false);
         return null;
     }
 

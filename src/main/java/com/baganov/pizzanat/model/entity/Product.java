@@ -30,7 +30,7 @@ public class Product {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -56,9 +56,6 @@ public class Product {
 
     @Column(name = "discounted_price", nullable = false)
     private BigDecimal discountedPrice;
-
-    @Column(nullable = false)
-    private boolean available;
 
     public BigDecimal getDiscountedPrice() {
         if (discountPercent != null && discountPercent > 0) {

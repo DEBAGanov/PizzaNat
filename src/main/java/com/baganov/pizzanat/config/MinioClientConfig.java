@@ -32,16 +32,23 @@ public class MinioClientConfig {
     @Bean
     public UrlTransformer minioUrlTransformer() {
         if (s3PublicUrl != null && !s3PublicUrl.isEmpty()) {
-            log.info("Настройка проксирования MinIO URL: {} -> {}", s3Endpoint, s3PublicUrl);
+            // Убираем завершающий слэш из public URL, чтобы избежать двойных слэшей
+            String normalizedPublicUrl = s3PublicUrl.endsWith("/") ? s3PublicUrl.substring(0, s3PublicUrl.length() - 1)
+                    : s3PublicUrl;
+            log.info("Настройка проксирования MinIO URL: {} -> {}", s3Endpoint, normalizedPublicUrl);
             return url -> {
-                // Заменяем базовый URL и сохраняем путь и параметры запроса
-                String result = url.replace(s3Endpoint, s3PublicUrl);
+                // Более точная замена URL: заменяем endpoint на normalized public URL
+                String result = url.replace(s3Endpoint, normalizedPublicUrl);
+
+                // Дополнительная проверка и исправление двойных слэшей
+                result = result.replaceAll("([^:])/+", "$1/");
+
                 log.debug("Трансформирован URL: {} -> {}", url, result);
                 return result;
             };
         }
 
-        log.info("Проксирование MinIO URL отключено, s3.public-url не задан");
+        log.info("Проксирование MinIO URL отключено, URL используются без изменений");
         return url -> url; // без изменений
     }
 

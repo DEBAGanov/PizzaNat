@@ -8,17 +8,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Контроллер для корневого пути
+ * Контроллер для проверки состояния сервиса
  */
 @RestController
 public class HomeController {
 
     /**
-     * Обработчик для корневого пути
+     * Обработчик для проверки состояния API
      * 
      * @return информация о сервисе
      */
-    @GetMapping("/")
+    @GetMapping("/api/health")
     public ResponseEntity<Map<String, String>> home() {
         Map<String, String> response = new HashMap<>();
         response.put("name", "PizzaNat API");
