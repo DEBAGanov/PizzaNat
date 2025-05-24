@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:${POSTGRES_VERSION:-15-alpine}
     container_name: pizzanat-postgres
     restart: always
     environment:
@@ -16,14 +16,14 @@ services:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pizzanat_user -d pizzanat_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: ${HEALTH_CHECK_INTERVAL:-10s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+      retries: ${HEALTH_CHECK_RETRIES:-5}
     networks:
       - pizzanat-network
 
   redis:
-    image: redis:7-alpine
+    image: redis:${REDIS_VERSION:-7-alpine}
     container_name: pizzanat-redis
     restart: always
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-strong_redis_password_change_me}
@@ -33,30 +33,30 @@ services:
       - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: ${HEALTH_CHECK_INTERVAL:-10s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+      retries: ${HEALTH_CHECK_RETRIES:-5}
     networks:
       - pizzanat-network
 
   minio:
-    image: "minio/minio:latest"
+    image: "minio/minio:${MINIO_VERSION:-latest}"
     container_name: pizzanat-minio
     command: server --console-address ":9001" /data
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - "MINIO_ROOT_USER=accesskey"
-      - "MINIO_ROOT_PASSWORD=secretkey"
+      - "MINIO_ROOT_USER=${MINIO_ROOT_USER:-accesskey}"
+      - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-secretkey}"
       - "MINIO_SERVER_URL=http://localhost:9000"
     volumes:
       - minio-data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTH_CHECK_INTERVAL:-10s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
     networks:
       - pizzanat-network
 
@@ -76,8 +76,8 @@ services:
       "
     environment:
       - MINIO_HOST=minio:9000
-      - MINIO_ACCESS_KEY=accesskey
-      - MINIO_SECRET_KEY=secretkey
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-accesskey}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-secretkey}
       - BUCKET_NAME=pizzanat
     healthcheck:
       test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/ready"]
@@ -102,40 +102,44 @@ services:
       minio:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pizzanat_db
       SPRING_DATASOURCE_USERNAME: pizzanat_user
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-strong_redis_password_change_me}
-      S3_ACCESS_KEY: accesskey
-      S3_SECRET_KEY: secretkey
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-accesskey}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-secretkey}
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost/}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost}
       S3_BUCKET: pizzanat
-      JWT_SECRET: "YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg=="
+      JWT_SECRET: ${JWT_SECRET:-"YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg=="}
       SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.example.com}
       SPRING_MAIL_PORT: ${MAIL_PORT:-587}
       SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-mail@example.com}
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-mail_password}
       APP_NOTIFICATION_EMAIL_FROM: ${NOTIFICATION_EMAIL:-no-reply@pizzanat.com}
       APP_NOTIFICATION_EMAIL_ENABLED: ${NOTIFICATION_ENABLED:-false}
-      SERVER_PORT: 8080
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      PAYMENT_ROBOKASSA_MERCHANT_LOGIN: ${ROBOKASSA_MERCHANT_LOGIN:-your_merchant_login}
+      PAYMENT_ROBOKASSA_PASSWORD1: ${ROBOKASSA_PASSWORD1:-your_password1}
+      PAYMENT_ROBOKASSA_PASSWORD2: ${ROBOKASSA_PASSWORD2:-your_password2}
+      PAYMENT_ROBOKASSA_TEST_MODE: ${ROBOKASSA_TEST_MODE:-true}
     ports:
-      - "8080:8080"
+      - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      test: ["CMD", "nc", "-z", "localhost", "${SERVER_PORT:-8080}"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
+      retries: ${HEALTH_CHECK_RETRIES:-5}
       start_period: 60s
     networks:
       - pizzanat-network
 
   # Опционально: добавление прокси-сервера nginx для SSL и балансировки
   nginx:
-    image: nginx:alpine
+    image: nginx:${NGINX_VERSION:-alpine}
     container_name: pizzanat-nginx
     restart: always
     depends_on:

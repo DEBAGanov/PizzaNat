@@ -216,3 +216,37 @@
 - **До исправления**: `SignatureDoesNotMatch` ошибка при переходе по URL изображений
 - **После исправления**: Изображения открываются корректно в браузере (HTTP 200 OK, Content-Type: image/png)
 - **Проверено**: PNG изображения размером 800x780 пикселей загружаются без ошибок
+
+## [2025-05-23] - Настройка переменных окружения (.env файл)
+
+### Добавлено
+- **Шаблон .env файла**: Создан `env-template.txt` с полным набором переменных окружения
+- **Обновленный docker-compose.yml**: Добавлена поддержка переменных окружения из .env файла
+- **README-env.md**: Подробная инструкция по настройке и использованию переменных окружения
+- **Безопасность**: Добавлен .env в .gitignore для предотвращения случайного коммита
+
+### Переменные окружения
+- **Безопасность**: DB_PASSWORD, REDIS_PASSWORD, JWT_SECRET, MINIO_ROOT_USER/PASSWORD
+- **Приложение**: SPRING_PROFILES_ACTIVE, S3_PUBLIC_URL, SERVER_PORT
+- **Почта**: MAIL_HOST, MAIL_USERNAME, MAIL_PASSWORD, NOTIFICATION_ENABLED
+- **Платежи**: ROBOKASSA_MERCHANT_LOGIN, ROBOKASSA_PASSWORD1/2, ROBOKASSA_TEST_MODE
+- **Docker**: Версии образов (POSTGRES_VERSION, REDIS_VERSION, MINIO_VERSION, NGINX_VERSION)
+- **Мониторинг**: HEALTH_CHECK_INTERVAL, HEALTH_CHECK_TIMEOUT, HEALTH_CHECK_RETRIES
+
+### Преимущества
+- **Безопасность**: Секретные данные не хранятся в репозитории
+- **Гибкость**: Легкое переключение между окружениями (dev/prod)
+- **Удобство**: Централизованная настройка всех параметров
+- **Стандартизация**: Соответствие best practices Docker Compose
+
+### Инструкции по использованию
+```bash
+# Создание .env файла из шаблона
+cp env-template.txt .env
+
+# Редактирование под ваши потребности
+nano .env
+
+# Запуск с новыми переменными
+docker compose up -d
+```
