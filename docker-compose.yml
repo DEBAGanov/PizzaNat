@@ -1,26 +1,28 @@
 version: "3.8"
 
 services:
-  postgres:
-    image: postgres:${POSTGRES_VERSION:-15-alpine}
-    container_name: pizzanat-postgres
-    restart: always
-    environment:
-      POSTGRES_DB: pizzanat_db
-      POSTGRES_USER: pizzanat_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - postgres-data:/var/lib/postgresql/data/pgdata
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pizzanat_user -d pizzanat_db"]
-      interval: ${HEALTH_CHECK_INTERVAL:-10s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
-      retries: ${HEALTH_CHECK_RETRIES:-5}
-    networks:
-      - pizzanat-network
+  # postgres:
+  #   image: postgres:${POSTGRES_VERSION:-15-alpine}
+  #   container_name: pizzanat-postgres
+  #   restart: always
+  #   environment:
+  #     POSTGRES_DB: pizzanat_db
+  #     POSTGRES_USER: pizzanat_user
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
+  #     PGDATA: /var/lib/postgresql/data/pgdata
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data/pgdata
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U pizzanat_user -d pizzanat_db"]
+  #     interval: ${HEALTH_CHECK_INTERVAL:-10s}
+  #     timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+  #     retries: ${HEALTH_CHECK_RETRIES:-5}
+  #   networks:
+  #     - pizzanat-network
+  #   profiles:
+  #     - dev
 
   redis:
     image: redis:${REDIS_VERSION:-7-alpine}
@@ -95,17 +97,17 @@ services:
     container_name: pizzanat-app
     restart: on-failure
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       minio:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pizzanat_db
-      SPRING_DATASOURCE_USERNAME: pizzanat_user
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
+      # Конфигурация БД
+      SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.95.235.22:5432/default_db}
+      SPRING_DATASOURCE_USERNAME: ${TIMEWEB_DB_USER:-gen_user}
+      SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-strong_password_change_me}
+      # Остальные настройки
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-strong_redis_password_change_me}
