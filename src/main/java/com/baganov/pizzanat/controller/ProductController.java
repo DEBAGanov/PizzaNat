@@ -48,7 +48,7 @@ public class ProductController {
         return productService.getProductsByCategory(categoryId, pageable);
     }
 
-    @GetMapping("/special")
+    @GetMapping("/special-offers")
     @Operation(summary = "Получить специальные предложения")
     public List<ProductDto> getSpecialOffers() {
         return productService.getSpecialOffers();

@@ -60,11 +60,12 @@ public class ProductControllerTest extends BaseIntegrationTest {
 
                 // Создаем продукт со скидкой (специальное предложение)
                 Product specialOffer = productRepository.save(Product.builder()
-                                .name("Специальное предложение")
+                                .name("Тестовая акционная пицца")
                                 .description("Пицца со скидкой")
                                 .price(BigDecimal.valueOf(600))
                                 .discountedPrice(BigDecimal.valueOf(500))
                                 .isAvailable(true)
+                                .isSpecialOffer(true)
                                 .category(category)
                                 .build());
 
@@ -112,7 +113,8 @@ public class ProductControllerTest extends BaseIntegrationTest {
                                 .andDo(print())
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$").isArray())
-                                .andExpect(jsonPath("$[0].id").value(specialOfferId));
+                                .andExpect(jsonPath("$[0].id").value(specialOfferId))
+                                .andExpect(jsonPath("$[0].isSpecialOffer").value(true));
         }
 
         @Test

@@ -41,6 +41,7 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 
         Page<Product> findByCategoryId(Integer categoryId, Pageable pageable);
 
+        @Query("SELECT p FROM Product p JOIN FETCH p.category WHERE p.isAvailable = true AND p.isSpecialOffer = true")
         List<Product> findByIsSpecialOfferTrue();
 
         Page<Product> findByCategoryIdAndNameContainingIgnoreCase(Integer categoryId, String name, Pageable pageable);

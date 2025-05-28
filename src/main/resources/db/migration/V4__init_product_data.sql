@@ -108,7 +108,7 @@ BEGIN
         ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром', 499.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
         ('Пицца Пепперони', 'Острая пицца с пепперони и сыром', 599.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
         ('Гавайская пицца', 'Пицца с ветчиной и ананасами', 549.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
-        ('Сырная пицца', 'Пицца с четырьмя видами сыра', 579.00, 460, pizza_category_id, 'products/pizza_chees.png', true, false, null),
+        ('Сырная пицца', 'Пицца с четырьмя видами сыра', 579.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
         ('Пицца 5 сыров', 'Пицца с пятью сортами сыра', 649.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
         ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов', 649.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
         ('Пицца Марио', 'Фирменная пицца с беконом и грибами', 599.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
