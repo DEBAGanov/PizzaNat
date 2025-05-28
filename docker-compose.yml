@@ -102,11 +102,17 @@ services:
       minio:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       # Конфигурация БД
       SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.95.235.22:5432/default_db}
       SPRING_DATASOURCE_USERNAME: ${TIMEWEB_DB_USER:-gen_user}
       SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-strong_password_change_me}
+      # Конфигурация Timeweb S3
+      TIMEWEB_S3_ACCESS_KEY: ${TIMEWEB_S3_ACCESS_KEY:-AJK63DSBOEBQD3IVTLOT}
+      TIMEWEB_S3_SECRET_KEY: ${TIMEWEB_S3_SECRET_KEY:-eOkZ8nzUkylhcsgPRQVJdr8qmvblxvaq7zoEcNpk}
+      TIMEWEB_S3_ENDPOINT: ${TIMEWEB_S3_ENDPOINT:-https://s3.twcstorage.ru}
+      TIMEWEB_S3_BUCKET: ${TIMEWEB_S3_BUCKET:-f9c8e17a-pizzanat-products}
+      TIMEWEB_S3_PUBLIC_URL: ${TIMEWEB_S3_PUBLIC_URL:-https://s3.twcstorage.ru/f9c8e17a-pizzanat-products}
       # Остальные настройки
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379

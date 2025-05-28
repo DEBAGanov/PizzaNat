@@ -6,8 +6,8 @@
  */
 package com.baganov.pizzanat.integration;
 
-import com.baganov.pizzanat.model.entity.Order;
-import com.baganov.pizzanat.model.entity.OrderStatus;
+import com.baganov.pizzanat.entity.Order;
+import com.baganov.pizzanat.entity.OrderStatus;
 import com.baganov.pizzanat.repository.OrderRepository;
 import com.baganov.pizzanat.repository.OrderStatusRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ public class PaymentControllerTest extends BaseIntegrationTest {
                 .orElseGet(() -> orderStatusRepository.save(OrderStatus.builder()
                         .name("AWAITING_PAYMENT")
                         .description("Ожидает оплаты")
-                        .active(true)
+                        .isActive(true)
                         .build()));
 
         // Создаем тестовый заказ с минимально необходимыми полями

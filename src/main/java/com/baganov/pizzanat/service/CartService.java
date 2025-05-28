@@ -2,10 +2,10 @@ package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.model.dto.cart.CartDTO;
 import com.baganov.pizzanat.model.dto.cart.CartItemDTO;
-import com.baganov.pizzanat.model.entity.Cart;
-import com.baganov.pizzanat.model.entity.CartItem;
-import com.baganov.pizzanat.model.entity.Product;
-import com.baganov.pizzanat.model.entity.User;
+import com.baganov.pizzanat.entity.Cart;
+import com.baganov.pizzanat.entity.CartItem;
+import com.baganov.pizzanat.entity.Product;
+import com.baganov.pizzanat.entity.User;
 import com.baganov.pizzanat.repository.CartRepository;
 import com.baganov.pizzanat.repository.ProductRepository;
 import com.baganov.pizzanat.repository.UserRepository;

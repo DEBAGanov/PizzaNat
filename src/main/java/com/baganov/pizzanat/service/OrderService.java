@@ -4,7 +4,7 @@ import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.dto.order.OrderItemDTO;
 import com.baganov.pizzanat.model.dto.payment.PaymentUrlResponse;
-import com.baganov.pizzanat.model.entity.*;
+import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,0 +1,1 @@
+ALTER TABLE order_statuses RENAME COLUMN active TO is_active;

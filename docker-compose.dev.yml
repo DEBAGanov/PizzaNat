@@ -3,7 +3,7 @@ version: "3.8"
 services:
   postgres:
     image: postgres:${POSTGRES_VERSION:-15-alpine}
-    container_name: pizzanat-postgres
+    container_name: pizzanat-postgres-dev
     restart: always
     environment:
       POSTGRES_DB: pizzanat_db
@@ -22,18 +22,90 @@ services:
     networks:
       - pizzanat-network
 
-  app:
-    depends_on:
-      postgres:
-        condition: service_healthy
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+
+  minio:
+    image: "minio/minio:${MINIO_VERSION:-latest}"
+    container_name: pizzanat-minio-dev
+    command: server --console-address ":9001" /data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
     environment:
+      - "MINIO_ROOT_USER=${MINIO_ROOT_USER:-accesskey}"
+      - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-secretkey}"
+      - "MINIO_SERVER_URL=http://localhost:9000"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: ${HEALTH_CHECK_INTERVAL:-10s}
+      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
+      retries: ${HEALTH_CHECK_RETRIES:-3}
+    networks:
+      - pizzanat-network
+
+  minio-init:
+    image: minio/mc
+    container_name: pizzanat-minio-init-dev
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./src/main/resources/images:/images
+      - ./init-scripts:/scripts
+    entrypoint: >
+      /bin/sh -c "
+        chmod +x /scripts/minio-init.sh &&
+        /scripts/minio-init.sh
+      "
+    environment:
+      - MINIO_HOST=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-accesskey}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-secretkey}
+      - BUCKET_NAME=pizzanat
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/ready"]
+      interval: 15s
+      timeout: 13s
+      retries: 5
+    restart: on-failure
+    networks:
+      - pizzanat-network
+
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pizzanat_db
       SPRING_DATASOURCE_USERNAME: pizzanat_user
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
-
-volumes:
-  postgres-data:
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-accesskey}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-secretkey}
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
+      S3_BUCKET: pizzanat
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
 networks:
   pizzanat-network:
-    name: pizzanat-network
+    name: pizzanat-network-dev
+
+volumes:
+  postgres-data:
+    name: pizzanat-postgres-data-dev
+  redis-data:
+    name: pizzanat-redis-data-dev
+  minio-data:
+    name: pizzanat-minio-data-dev

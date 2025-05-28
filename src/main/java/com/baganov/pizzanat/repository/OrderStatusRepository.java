@@ -1,6 +1,6 @@
 package com.baganov.pizzanat.repository;
 
-import com.baganov.pizzanat.model.entity.OrderStatus;
+import com.baganov.pizzanat.entity.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

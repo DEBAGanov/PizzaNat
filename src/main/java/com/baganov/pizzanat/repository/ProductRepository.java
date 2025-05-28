@@ -1,6 +1,6 @@
 package com.baganov.pizzanat.repository;
 
-import com.baganov.pizzanat.model.entity.Product;
+import com.baganov.pizzanat.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -38,4 +38,14 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
         boolean existsByName(String name);
 
         boolean existsByImageUrl(String imageUrl);
+
+        Page<Product> findByCategoryId(Integer categoryId, Pageable pageable);
+
+        List<Product> findByIsSpecialOfferTrue();
+
+        Page<Product> findByCategoryIdAndNameContainingIgnoreCase(Integer categoryId, String name, Pageable pageable);
+
+        Page<Product> findByNameContainingIgnoreCase(String name, Pageable pageable);
+
+        Optional<Product> findByName(String name);
 }

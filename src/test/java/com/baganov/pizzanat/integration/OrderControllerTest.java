@@ -8,10 +8,10 @@ package com.baganov.pizzanat.integration;
 
 import com.baganov.pizzanat.model.dto.cart.AddToCartRequest;
 import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
-import com.baganov.pizzanat.model.entity.Category;
-import com.baganov.pizzanat.model.entity.DeliveryLocation;
-import com.baganov.pizzanat.model.entity.OrderStatus;
-import com.baganov.pizzanat.model.entity.Product;
+import com.baganov.pizzanat.entity.Category;
+import com.baganov.pizzanat.entity.DeliveryLocation;
+import com.baganov.pizzanat.entity.OrderStatus;
+import com.baganov.pizzanat.entity.Product;
 import com.baganov.pizzanat.repository.CategoryRepository;
 import com.baganov.pizzanat.repository.DeliveryLocationRepository;
 import com.baganov.pizzanat.repository.OrderStatusRepository;
@@ -86,7 +86,7 @@ public class OrderControllerTest extends BaseIntegrationTest {
                         orderStatusRepository.save(OrderStatus.builder()
                                         .name("CREATED")
                                         .description("Заказ создан")
-                                        .active(true)
+                                        .isActive(true)
                                         .build());
                 }
         }

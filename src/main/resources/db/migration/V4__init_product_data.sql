@@ -1,18 +1,99 @@
-
 -- Добавляем UNIQUE ограничения для поля name в таблицах
-ALTER TABLE categories ADD CONSTRAINT categories_name_unique UNIQUE (name);
-ALTER TABLE products ADD CONSTRAINT products_name_unique UNIQUE (name);
-ALTER TABLE delivery_locations ADD CONSTRAINT delivery_locations_name_unique UNIQUE (name);
+ALTER TABLE categories
+ADD CONSTRAINT categories_name_unique UNIQUE (name);
+
+ALTER TABLE products
+ADD CONSTRAINT products_name_unique UNIQUE (name);
+
+ALTER TABLE delivery_locations
+ADD CONSTRAINT delivery_locations_name_unique UNIQUE (name);
 
 -- Создание категории "Пиццы"
-INSERT INTO categories (name, description, image_url, display_order, is_active)
-VALUES ('Пиццы', 'Вкусные и ароматные пиццы', 'categories/pizza.png', 1, true)
-ON CONFLICT (name) DO NOTHING;
+INSERT INTO
+    categories (
+        name,
+        description,
+        image_url,
+        display_order,
+        is_active
+    )
+VALUES (
+        'Пиццы',
+        'Вкусные и ароматные пиццы',
+        'categories/pizza.png',
+        1,
+        true
+    ) ON CONFLICT (name) DO NOTHING;
 
 -- Создание категории "<Бургеры>"
-INSERT INTO categories (name, description, image_url, display_order, is_active)
-VALUES ('Бургеры', 'Свежие и аппетитные бургеры', 'categories/pizza.png', 2, true)
-ON CONFLICT (name) DO NOTHING;
+INSERT INTO
+    categories (
+        name,
+        description,
+        image_url,
+        display_order,
+        is_active
+    )
+VALUES (
+        'Бургеры',
+        'Свежие и аппетитные бургеры',
+        'categories/burghers.png',
+        2,
+        true
+    ) ON CONFLICT (name) DO NOTHING;
+
+-- Создание категории "Напитки"
+INSERT INTO
+    categories (
+        name,
+        description,
+        image_url,
+        display_order,
+        is_active
+    )
+VALUES (
+        'Напитки',
+        'Вкусные и ароматные напитки',
+        'categories/drinks.png',
+        3,
+        true
+    ) ON CONFLICT (name) DO NOTHING;
+
+-- Создание категории "Десерты"
+
+INSERT INTO
+    categories (
+        name,
+        description,
+        image_url,
+        display_order,
+        is_active
+    )
+VALUES (
+        'Десерты',
+        'Вкусные и ароматные десерты',
+        'categories/desserts.png',
+        4,
+        true
+    ) ON CONFLICT (name) DO NOTHING;
+
+-- Создание категории "Закуски"
+
+INSERT INTO
+    categories (
+        name,
+        description,
+        image_url,
+        display_order,
+        is_active
+    )
+VALUES (
+        'Закуски',
+        'Вкусные и ароматные закуски',
+        'categories/snacks.png',
+        5,
+        true
+    ) ON CONFLICT (name) DO NOTHING;
 
 -- Определяем ID категории "Пиццы"
 DO $$
@@ -44,8 +125,25 @@ END
 $$;
 
 -- Добавление пунктов выдачи
-INSERT INTO delivery_locations (name, address, latitude, longitude, is_active)
-VALUES
-    ('Пункт выдачи #1', 'ул. Ленина, 10', 55.7558, 37.6173, true),
-    ('Пункт выдачи #2', 'ул. Пушкина, 15', 55.7539, 37.6208, true)
-ON CONFLICT (name) DO NOTHING;
+INSERT INTO
+    delivery_locations (
+        name,
+        address,
+        latitude,
+        longitude,
+        is_active
+    )
+VALUES (
+        'Пункт выдачи #1',
+        'ул. Ленина, 10',
+        55.7558,
+        37.6173,
+        true
+    ),
+    (
+        'Пункт выдачи #2',
+        'ул. Пушкина, 15',
+        55.7539,
+        37.6208,
+        true
+    ) ON CONFLICT (name) DO NOTHING;

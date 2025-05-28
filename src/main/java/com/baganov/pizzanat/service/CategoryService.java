@@ -1,7 +1,7 @@
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.model.dto.product.CategoryDTO;
-import com.baganov.pizzanat.model.entity.Category;
+import com.baganov.pizzanat.entity.Category;
 import com.baganov.pizzanat.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

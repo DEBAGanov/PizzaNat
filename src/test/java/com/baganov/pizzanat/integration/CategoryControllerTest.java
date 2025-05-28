@@ -6,7 +6,7 @@
  */
 package com.baganov.pizzanat.integration;
 
-import com.baganov.pizzanat.model.entity.Category;
+import com.baganov.pizzanat.entity.Category;
 import com.baganov.pizzanat.repository.CategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

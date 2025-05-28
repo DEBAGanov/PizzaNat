@@ -146,8 +146,8 @@ public class CartController {
                 log.debug("Authentication principal type: {}", authentication.getPrincipal().getClass().getName());
 
                 // Проверяем, является ли principal User объектом
-                if (authentication.getPrincipal() instanceof com.baganov.pizzanat.model.entity.User) {
-                    return ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId();
+                if (authentication.getPrincipal() instanceof com.baganov.pizzanat.entity.User) {
+                    return ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId();
                 }
 
                 // Если это UserDetails, получаем username и ищем пользователя
@@ -159,7 +159,7 @@ public class CartController {
 
                     // Получаем User по username
                     try {
-                        com.baganov.pizzanat.model.entity.User user = userService.getUserByUsername(username);
+                        com.baganov.pizzanat.entity.User user = userService.getUserByUsername(username);
                         log.debug("Found user by username: {}, id: {}", username, user.getId());
                         return user.getId();
                     } catch (Exception e) {

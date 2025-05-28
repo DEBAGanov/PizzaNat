@@ -36,7 +36,7 @@ public class OrderController {
             Authentication authentication) {
 
         Integer userId = authentication != null
-                ? ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId()
+                ? ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId()
                 : null;
 
         String sessionId = null;
@@ -64,7 +64,7 @@ public class OrderController {
             Authentication authentication) {
 
         Integer userId = authentication != null
-                ? ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId()
+                ? ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId()
                 : null;
 
         OrderDTO order = orderService.getOrderById(orderId, userId);
@@ -78,7 +78,7 @@ public class OrderController {
             Authentication authentication) {
 
         Integer userId = authentication != null
-                ? ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId()
+                ? ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId()
                 : null;
 
         PaymentUrlResponse paymentUrlResponse = orderService.createPaymentUrl(orderId, userId);
@@ -96,7 +96,7 @@ public class OrderController {
             return ResponseEntity.status(401).build();
         }
 
-        Integer userId = ((com.baganov.pizzanat.model.entity.User) authentication.getPrincipal()).getId();
+        Integer userId = ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId();
 
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<OrderDTO> orders = orderService.getUserOrders(userId, pageRequest);

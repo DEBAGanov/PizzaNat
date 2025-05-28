@@ -8,7 +8,7 @@ package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
-import com.baganov.pizzanat.model.entity.*;
+import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,14 +96,14 @@ class OrderServiceTest {
                                 .id(1)
                                 .name("CREATED")
                                 .description("Заказ создан")
-                                .active(true)
+                                .isActive(true)
                                 .build();
 
                 processingStatus = OrderStatus.builder()
                                 .id(2)
                                 .name("PROCESSING")
                                 .description("Заказ обрабатывается")
-                                .active(true)
+                                .isActive(true)
                                 .build();
 
                 testLocation = DeliveryLocation.builder()

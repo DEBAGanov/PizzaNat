@@ -13,7 +13,7 @@ import com.baganov.pizzanat.config.TestS3Config;
 import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.dto.order.UpdateOrderStatusRequest;
-import com.baganov.pizzanat.model.entity.*;
+import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -126,7 +126,7 @@ public class OrderIntegrationTest {
                         orderStatusRepository.save(OrderStatus.builder()
                                         .name("CREATED")
                                         .description("Заказ создан")
-                                        .active(true)
+                                        .isActive(true)
                                         .build());
                 }
 
@@ -134,7 +134,7 @@ public class OrderIntegrationTest {
                         orderStatusRepository.save(OrderStatus.builder()
                                         .name("PROCESSING")
                                         .description("Заказ в обработке")
-                                        .active(true)
+                                        .isActive(true)
                                         .build());
                 }
 

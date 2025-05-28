@@ -1,4 +1,4 @@
-package com.baganov.pizzanat.model.entity;
+package com.baganov.pizzanat.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -26,8 +26,8 @@ public class OrderStatus {
     @Column(nullable = false)
     private String description;
 
-    @Column(nullable = false)
-    private boolean active;
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

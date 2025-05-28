@@ -1,6 +1,6 @@
 package com.baganov.pizzanat.service;
 
-import com.baganov.pizzanat.model.entity.Product;
+import com.baganov.pizzanat.entity.Product;
 import com.baganov.pizzanat.repository.ProductRepository;
 import com.baganov.pizzanat.util.ImageUploader;
 import io.minio.ListObjectsArgs;
@@ -56,76 +56,61 @@ public class InitService {
     }
 
     /**
-     * Инициализирует изображения продуктов при запуске приложения
+     * Инициализирует данные при запуске приложения
      */
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void onApplicationStartup() {
+        // Сначала синхронизируем данные о продуктах
+        imageUploader.syncProductData();
+
+        // Затем проверяем состояние изображений в S3
         try {
             initializeProductImages();
         } catch (Exception e) {
-            log.error("Ошибка при инициализации изображений продуктов", e);
+            log.error("Ошибка при проверке изображений продуктов в S3: {}", e.getMessage(), e);
+            if (e.getCause() != null) {
+                log.error("Причина ошибки: {}", e.getCause().getMessage());
+            }
         }
-
-        // Инициализация данных о продуктах в любом случае
-        imageUploader.syncProductData();
     }
 
     /**
-     * Пытается синхронизировать изображения продуктов с повторными попытками
+     * Проверяет состояние изображений продуктов в S3
      */
     @Retryable(value = { ConnectException.class }, maxAttempts = 3, backoff = @Backoff(delay = 2000, multiplier = 1.5))
     private void initializeProductImages() throws Exception {
-        log.info("Начало синхронизации изображений продуктов");
+        log.info("Проверка состояния изображений продуктов в S3");
 
-        // Получаем список всех объектов в директории products
-        Iterable<Result<Item>> results = minioClient.listObjects(
-                ListObjectsArgs.builder()
-                        .bucket(bucket)
-                        .prefix("products/")
-                        .recursive(true)
-                        .build());
+        try {
+            // Получаем список всех объектов в директории products
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(bucket)
+                            .prefix("products/")
+                            .recursive(true)
+                            .build());
 
-        for (Result<Item> result : results) {
-            Item item = result.get();
-            String objectName = item.objectName();
-
-            // Извлекаем имя продукта из имени файла
-            Matcher matcher = PRODUCT_NAME_PATTERN.matcher(objectName);
-            if (matcher.find()) {
-                String productKey = matcher.group(1);
-                String productName = PRODUCT_NAMES.getOrDefault(productKey, "Пицца " + productKey);
-
-                // Проверяем, существует ли продукт с таким изображением
-                boolean exists = productRepository.existsByImageUrl(objectName);
-
-                if (!exists) {
-                    log.info("Добавление нового продукта: {}, изображение: {}", productName, objectName);
-
-                    // Создаем новый продукт если его нет
-                    Product product = new Product();
-                    product.setName(productName);
-                    product.setDescription("Вкусная " + productName.toLowerCase());
-                    product.setPrice(new BigDecimal("499.00"));
-                    product.setWeight(450); // Базовый вес в граммах
-                    product.setImageUrl(objectName);
-                    product.setAvailable(true);
-
-                    // Сохраняем продукт
-                    productRepository.save(product);
-                }
+            int count = 0;
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                String objectName = item.objectName();
+                log.info("Найден объект в S3: {}", objectName);
+                count++;
             }
-        }
 
-        log.info("Синхронизация изображений продуктов завершена");
+            log.info("Проверка завершена. Найдено {} объектов в директории products/", count);
+        } catch (Exception e) {
+            log.error("Ошибка при листинге объектов в S3: {}", e.getMessage());
+            throw e;
+        }
     }
 
     /**
-     * Метод восстановления после неудачных попыток инициализации
+     * Метод восстановления после неудачных попыток
      */
     @Recover
     private void recoverFromConnectionFailure(ConnectException e) {
-        log.error("Не удалось подключиться к MinIO после нескольких попыток. " +
-                "Изображения продуктов не будут синхронизированы.", e);
+        log.error("Не удалось подключиться к S3 после нескольких попыток: {}", e.getMessage());
     }
 }

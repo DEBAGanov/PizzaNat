@@ -1,6 +1,6 @@
 package com.baganov.pizzanat.repository;
 
-import com.baganov.pizzanat.model.entity.Cart;
+import com.baganov.pizzanat.entity.Cart;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

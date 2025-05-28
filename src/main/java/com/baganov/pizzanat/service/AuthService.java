@@ -3,7 +3,7 @@ package com.baganov.pizzanat.service;
 import com.baganov.pizzanat.model.dto.auth.AuthRequest;
 import com.baganov.pizzanat.model.dto.auth.AuthResponse;
 import com.baganov.pizzanat.model.dto.auth.RegisterRequest;
-import com.baganov.pizzanat.model.entity.User;
+import com.baganov.pizzanat.entity.User;
 import com.baganov.pizzanat.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

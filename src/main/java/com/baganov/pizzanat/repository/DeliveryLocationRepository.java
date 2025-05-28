@@ -1,6 +1,6 @@
 package com.baganov.pizzanat.repository;
 
-import com.baganov.pizzanat.model.entity.DeliveryLocation;
+import com.baganov.pizzanat.entity.DeliveryLocation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

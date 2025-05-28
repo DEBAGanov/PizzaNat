@@ -1,7 +1,7 @@
 package com.baganov.pizzanat.service;
 
-import com.baganov.pizzanat.model.entity.Role;
-import com.baganov.pizzanat.model.entity.User;
+import com.baganov.pizzanat.entity.Role;
+import com.baganov.pizzanat.entity.User;
 import com.baganov.pizzanat.repository.RoleRepository;
 import com.baganov.pizzanat.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

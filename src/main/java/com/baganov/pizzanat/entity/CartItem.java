@@ -1,4 +1,4 @@
-package com.baganov.pizzanat.model.entity;
+package com.baganov.pizzanat.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
