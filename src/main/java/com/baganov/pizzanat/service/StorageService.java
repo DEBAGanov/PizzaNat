@@ -44,12 +44,6 @@ public class StorageService {
     @Value("${timeweb.s3.public-url:#{null}}")
     private String prodPublicUrl;
 
-    @Value("${minio.bucket}")
-    private String bucket;
-
-    @Value("${minio.public-url}")
-    private String publicUrl;
-
     private String getBucket() {
         String bucket = isProd() ? prodBucket : devBucket;
         log.debug("Using bucket: {} (isProd: {})", bucket, isProd());
@@ -57,11 +51,11 @@ public class StorageService {
     }
 
     public String getPublicUrl() {
-        return publicUrl;
+        return isProd() ? prodPublicUrl : devPublicUrl;
     }
 
     public String getFullPublicUrl(String objectName) {
-        return publicUrl + "/" + bucket + "/" + objectName;
+        return getPublicUrl() + "/" + getBucket() + "/" + objectName;
     }
 
     private boolean isProd() {
@@ -113,25 +107,25 @@ public class StorageService {
     public void uploadFile(InputStream inputStream, String objectName, String contentType, long size) {
         try {
             log.info("Uploading file to S3. Bucket: {}, Object: {}, Size: {} bytes, Content-Type: {}",
-                    bucket, objectName, size, contentType);
+                    getBucket(), objectName, size, contentType);
 
             // Создаем новый InputStream для каждой попытки
             byte[] data = inputStream.readAllBytes();
 
             PutObjectArgs args = PutObjectArgs.builder()
-                    .bucket(bucket)
+                    .bucket(getBucket())
                     .object(objectName)
                     .contentType(contentType)
                     .stream(new ByteArrayInputStream(data), size, -1)
                     .build();
 
             minioClient.putObject(args);
-            log.info("File uploaded successfully: {}/{}", bucket, objectName);
+            log.info("File uploaded successfully: {}/{}", getBucket(), objectName);
 
             // Проверяем, что файл действительно загружен
             StatObjectResponse stat = minioClient.statObject(
                     StatObjectArgs.builder()
-                            .bucket(bucket)
+                            .bucket(getBucket())
                             .object(objectName)
                             .build());
             log.info("File status check successful. Size: {}, LastModified: {}",
@@ -178,9 +172,18 @@ public class StorageService {
      * Получение публичного URL для файла
      */
     public String getPublicUrl(String objectName) {
-        String publicUrl = getPublicUrl();
-        String url = publicUrl + "/" + objectName;
-        log.debug("Generated public URL: {}", url);
+        String baseUrl = getPublicUrl();
+        String url;
+
+        if (isProd()) {
+            // Для prod окружения baseUrl уже содержит bucket name
+            url = baseUrl + "/" + objectName;
+        } else {
+            // Для dev окружения добавляем bucket name
+            url = baseUrl + "/" + getBucket() + "/" + objectName;
+        }
+
+        log.debug("Generated public URL (isProd: {}): {}", isProd(), url);
         return url;
     }
 

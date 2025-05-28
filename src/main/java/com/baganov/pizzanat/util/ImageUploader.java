@@ -148,14 +148,13 @@ public class ImageUploader {
                                 "image/png",
                                 imageData.length);
 
-                        // Обновляем URL в базе данных
+                        // Обновляем URL в базе данных (сохраняем только относительный путь)
                         Optional<Category> categoryOpt = categoryRepository.findByName(categoryName);
                         if (categoryOpt.isPresent()) {
                             Category category = categoryOpt.get();
-                            String fullImageUrl = storageService.getFullPublicUrl(imageUrl);
-                            category.setImageUrl(fullImageUrl);
+                            category.setImageUrl(imageUrl); // Сохраняем только относительный путь
                             categoryRepository.save(category);
-                            log.info("Обновлен URL изображения для категории {}: {}", categoryName, fullImageUrl);
+                            log.info("Обновлен URL изображения для категории {}: {}", categoryName, imageUrl);
                         } else {
                             log.warn("Категория не найдена в базе данных: {}", categoryName);
                         }
@@ -199,14 +198,13 @@ public class ImageUploader {
                                 "image/png",
                                 imageData.length);
 
-                        // Обновляем URL в базе данных
+                        // Обновляем URL в базе данных (сохраняем только относительный путь)
                         Optional<Product> productOpt = productRepository.findByName(productName);
                         if (productOpt.isPresent()) {
                             Product product = productOpt.get();
-                            String fullImageUrl = storageService.getFullPublicUrl(imageUrl);
-                            product.setImageUrl(fullImageUrl);
+                            product.setImageUrl(imageUrl); // Сохраняем только относительный путь
                             productRepository.save(product);
-                            log.info("Обновлен URL изображения для продукта {}: {}", productName, fullImageUrl);
+                            log.info("Обновлен URL изображения для продукта {}: {}", productName, imageUrl);
                         } else {
                             log.warn("Продукт не найден в базе данных: {}", productName);
                         }

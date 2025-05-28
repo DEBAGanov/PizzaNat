@@ -1,109 +1,16 @@
 version: "3.8"
+#docker-compose.prod
 
 services:
-  # postgres:
-  #   image: postgres:${POSTGRES_VERSION:-15-alpine}
-  #   container_name: pizzanat-postgres
-  #   restart: always
-  #   environment:
-  #     POSTGRES_DB: pizzanat_db
-  #     POSTGRES_USER: pizzanat_user
-  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
-  #     PGDATA: /var/lib/postgresql/data/pgdata
-  #   volumes:
-  #     - postgres-data:/var/lib/postgresql/data/pgdata
-  #   ports:
-  #     - "5432:5432"
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U pizzanat_user -d pizzanat_db"]
-  #     interval: ${HEALTH_CHECK_INTERVAL:-10s}
-  #     timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
-  #     retries: ${HEALTH_CHECK_RETRIES:-5}
-  #   networks:
-  #     - pizzanat-network
-  #   profiles:
-  #     - dev
-
-  redis:
-    image: redis:${REDIS_VERSION:-7-alpine}
-    container_name: pizzanat-redis
-    restart: always
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-strong_redis_password_change_me}
-    volumes:
-      - redis-data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "ping"]
-      interval: ${HEALTH_CHECK_INTERVAL:-10s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
-      retries: ${HEALTH_CHECK_RETRIES:-5}
-    networks:
-      - pizzanat-network
-
-  minio:
-    image: "minio/minio:${MINIO_VERSION:-latest}"
-    container_name: pizzanat-minio
-    command: server --console-address ":9001" /data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      - "MINIO_ROOT_USER=${MINIO_ROOT_USER:-accesskey}"
-      - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-secretkey}"
-      - "MINIO_SERVER_URL=http://localhost:9000"
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
-      interval: ${HEALTH_CHECK_INTERVAL:-10s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
-      retries: ${HEALTH_CHECK_RETRIES:-3}
-    networks:
-      - pizzanat-network
-
-  minio-init:
-    image: minio/mc
-    container_name: pizzanat-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    volumes:
-      - ./src/main/resources/images:/images
-      - ./init-scripts:/scripts
-    entrypoint: >
-      /bin/sh -c "
-        chmod +x /scripts/minio-init.sh &&
-        /scripts/minio-init.sh
-      "
-    environment:
-      - MINIO_HOST=minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-accesskey}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-secretkey}
-      - BUCKET_NAME=pizzanat
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/ready"]
-      interval: 15s
-      timeout: 13s
-      retries: 5
-    restart: on-failure
-    networks:
-      - pizzanat-network
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: pizzanat-app
     restart: on-failure
-    depends_on:
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      # Конфигурация БД
+      SPRING_PROFILES_ACTIVE: prod
+      # Конфигурация БД Timeweb
       SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.95.235.22:5432/default_db}
       SPRING_DATASOURCE_USERNAME: ${TIMEWEB_DB_USER:-gen_user}
       SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-strong_password_change_me}
@@ -113,15 +20,9 @@ services:
       TIMEWEB_S3_ENDPOINT: ${TIMEWEB_S3_ENDPOINT:-https://s3.twcstorage.ru}
       TIMEWEB_S3_BUCKET: ${TIMEWEB_S3_BUCKET:-f9c8e17a-pizzanat-products}
       TIMEWEB_S3_PUBLIC_URL: ${TIMEWEB_S3_PUBLIC_URL:-https://s3.twcstorage.ru/f9c8e17a-pizzanat-products}
-      # Остальные настройки
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-strong_redis_password_change_me}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-accesskey}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-secretkey}
-      S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost}
-      S3_BUCKET: pizzanat
+      # Отключаем Redis для prod (используем внутренний кэш)
+      SPRING_CACHE_TYPE: simple
+      # JWT и другие настройки
       JWT_SECRET: ${JWT_SECRET:-"YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg=="}
       SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.example.com}
       SPRING_MAIL_PORT: ${MAIL_PORT:-587}
@@ -138,35 +39,44 @@ services:
       - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "${SERVER_PORT:-8080}"]
-      interval: ${HEALTH_CHECK_INTERVAL:-30s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
-      retries: ${HEALTH_CHECK_RETRIES:-5}
+      interval: 30s
+      timeout: 10s
+      retries: 5
       start_period: 60s
-    networks:
-      - pizzanat-network
 
-  # Опционально: добавление прокси-сервера nginx для SSL и балансировки
   nginx:
-    image: nginx:${NGINX_VERSION:-alpine}
+    image: nginx:alpine
     container_name: pizzanat-nginx
     restart: always
     depends_on:
       app:
         condition: service_started
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+    # Встраиваем конфигурацию nginx напрямую
+    command: |
+      sh -c "
+      cat > /etc/nginx/conf.d/default.conf << 'EOF'
+      upstream app {
+          server app:8080;
+      }
+
+      server {
+          listen 80;
+          server_name _;
+          client_max_body_size 10M;
+
+          location / {
+              proxy_pass http://app;
+              proxy_set_header Host \$$host;
+              proxy_set_header X-Real-IP \$$remote_addr;
+              proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto \$$scheme;
+              proxy_connect_timeout 60s;
+              proxy_send_timeout 60s;
+              proxy_read_timeout 60s;
+          }
+      }
+      EOF
+      nginx -g 'daemon off;'
+      "
     ports:
       - "80:80"
-      - "443:443"
-    networks:
-      - pizzanat-network
-
-networks:
-  pizzanat-network:
-    driver: bridge
-
-volumes:
-  postgres-data:
-  redis-data:
-  minio-data:

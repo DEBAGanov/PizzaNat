@@ -224,9 +224,15 @@ public class OrderService {
         String imageUrl = null;
         if (item.getProduct().getImageUrl() != null && !item.getProduct().getImageUrl().isEmpty()) {
             try {
-                imageUrl = storageService.getPresignedUrl(item.getProduct().getImageUrl(), 3600);
+                // Для изображений продуктов используем простые публичные URL
+                if (item.getProduct().getImageUrl().startsWith("products/")) {
+                    imageUrl = storageService.getPublicUrl(item.getProduct().getImageUrl());
+                } else {
+                    // Если URL уже полный, используем как есть
+                    imageUrl = item.getProduct().getImageUrl();
+                }
             } catch (Exception e) {
-                log.error("Error getting presigned URL for product image", e);
+                log.error("Error getting public URL for product image", e);
             }
         }
 

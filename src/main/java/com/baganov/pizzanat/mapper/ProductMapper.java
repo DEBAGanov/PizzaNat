@@ -2,10 +2,17 @@ package com.baganov.pizzanat.mapper;
 
 import com.baganov.pizzanat.dto.ProductDto;
 import com.baganov.pizzanat.entity.Product;
+import com.baganov.pizzanat.service.StorageService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class ProductMapper {
+
+    private final StorageService storageService;
 
     public Product toEntity(ProductDto dto) {
         return Product.builder()
@@ -23,6 +30,22 @@ public class ProductMapper {
     }
 
     public ProductDto toDto(Product entity) {
+        String imageUrl = null;
+        if (entity.getImageUrl() != null && !entity.getImageUrl().isEmpty()) {
+            try {
+                // Для изображений продуктов используем простые публичные URL
+                if (entity.getImageUrl().startsWith("products/")) {
+                    imageUrl = storageService.getPublicUrl(entity.getImageUrl());
+                } else {
+                    // Если URL уже полный, используем как есть
+                    imageUrl = entity.getImageUrl();
+                }
+            } catch (Exception e) {
+                log.error("Error generating public URL for product image", e);
+                imageUrl = entity.getImageUrl();
+            }
+        }
+
         return ProductDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
@@ -31,7 +54,7 @@ public class ProductMapper {
                 .discountedPrice(entity.getDiscountedPrice())
                 .categoryId(entity.getCategory() != null ? entity.getCategory().getId() : null)
                 .categoryName(entity.getCategory() != null ? entity.getCategory().getName() : null)
-                .imageUrl(entity.getImageUrl())
+                .imageUrl(imageUrl)
                 .weight(entity.getWeight())
                 .isAvailable(entity.isAvailable())
                 .isSpecialOffer(entity.isSpecialOffer())

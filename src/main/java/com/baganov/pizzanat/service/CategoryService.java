@@ -38,9 +38,15 @@ public class CategoryService {
         String imageUrlWithPresignedUrl = null;
         if (category.getImageUrl() != null && !category.getImageUrl().isEmpty()) {
             try {
-                imageUrlWithPresignedUrl = storageService.getPresignedUrl(category.getImageUrl(), 3600);
+                // Для изображений категорий используем простые публичные URL
+                if (category.getImageUrl().startsWith("categories/")) {
+                    imageUrlWithPresignedUrl = storageService.getPublicUrl(category.getImageUrl());
+                } else {
+                    // Если URL уже полный, используем как есть
+                    imageUrlWithPresignedUrl = category.getImageUrl();
+                }
             } catch (Exception e) {
-                log.error("Failed to generate presigned URL for category image: {}", category.getImageUrl(), e);
+                log.error("Failed to generate public URL for category image: {}", category.getImageUrl(), e);
                 imageUrlWithPresignedUrl = category.getImageUrl();
             }
         }

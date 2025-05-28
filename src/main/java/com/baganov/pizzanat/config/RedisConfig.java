@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Configuration
 @EnableCaching
-@Profile("!test")
+@Profile({ "dev" }) // Только для dev профиля
 public class RedisConfig {
 
         @Bean
