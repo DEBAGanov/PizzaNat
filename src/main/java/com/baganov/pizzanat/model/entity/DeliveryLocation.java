@@ -50,6 +50,7 @@ public class DeliveryLocation {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "deliveryLocation")
+    @Builder.Default
     private List<Order> orders = new ArrayList<>();
 
     @PrePersist

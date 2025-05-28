@@ -44,6 +44,7 @@ public class Category {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<Product> products = new ArrayList<>();
 
     @PrePersist

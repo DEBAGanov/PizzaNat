@@ -91,7 +91,6 @@ class OrderServiceTest {
                                 .user(testUser)
                                 .items(new ArrayList<>(List.of(cartItem)))
                                 .build();
-                testCart.setTotalAmount(BigDecimal.valueOf(900));
 
                 createdStatus = OrderStatus.builder()
                                 .id(1)

@@ -31,6 +31,7 @@ public class Role {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "roles")
+    @Builder.Default
     private Set<User> users = new HashSet<>();
 
     @PrePersist
