@@ -1,0 +1,26 @@
+FROM openjdk:17-slim
+
+WORKDIR /app
+
+# Устанавливаем только необходимые инструменты
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Копируем все файлы проекта
+COPY . .
+
+# Собираем приложение
+RUN chmod +x ./gradlew && ./gradlew build -x test --no-daemon
+
+# Настройки JVM для контейнера
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+# Запуск с отладочной информацией
+ENTRYPOINT ["sh", "-c", "echo 'Java version:' && java -version && echo 'Starting application...' && java $JAVA_OPTS -jar build/libs/*.jar"]

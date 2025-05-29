@@ -1,0 +1,81 @@
+version: "3.8"
+
+# Отладочная версия для диагностики проблем в Timeweb Cloud
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: pizzanat-app-debug
+    restart: unless-stopped
+
+    environment:
+      # Spring настройки
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+
+      # JVM настройки для отладки
+      JAVA_OPTS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70.0
+        -XX:+ExitOnOutOfMemoryError
+        -Djava.security.egd=file:/dev/./urandom
+        -Dspring.jmx.enabled=false
+        -XX:+PrintGCDetails
+        -XX:+PrintGCTimeStamps
+        -verbose:gc
+
+      # База данных Timeweb
+      SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.95.235.22:5432/default_db}
+      SPRING_DATASOURCE_USERNAME: ${TIMEWEB_DB_USER:-gen_user}
+      SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-strong_password_change_me}
+
+      # Пул соединений (консервативные настройки)
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 5
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: 1
+      SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: 30000
+
+      # S3 настройки
+      TIMEWEB_S3_ACCESS_KEY: ${TIMEWEB_S3_ACCESS_KEY:-AJK63DSBOEBQD3IVTLOT}
+      TIMEWEB_S3_SECRET_KEY: ${TIMEWEB_S3_SECRET_KEY:-eOkZ8nzUkylhcsgPRQVJdr8qmvblxvaq7zoEcNpk}
+      TIMEWEB_S3_ENDPOINT: ${TIMEWEB_S3_ENDPOINT:-https://s3.twcstorage.ru}
+      TIMEWEB_S3_BUCKET: ${TIMEWEB_S3_BUCKET:-f9c8e17a-pizzanat-products}
+      TIMEWEB_S3_PUBLIC_URL: ${TIMEWEB_S3_PUBLIC_URL:-https://s3.twcstorage.ru/f9c8e17a-pizzanat-products}
+
+      # Отключаем кэширование для отладки
+      SPRING_CACHE_TYPE: none
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-"YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg=="}
+
+      # Расширенное логирование для отладки
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_BAGANOV: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: INFO
+      LOGGING_LEVEL_ORG_HIBERNATE: INFO
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+      # Actuator для диагностики
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,env,beans
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+      MANAGEMENT_ENDPOINT_HEALTH_ENABLED: true
+
+      # Spring Boot настройки для отладки
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_JPA_SHOW_SQL: true
+      SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: true
+
+      # Отключаем некоторые оптимизации для диагностики
+      SPRING_DEVTOOLS_RESTART_ENABLED: false
+      SPRING_DEVTOOLS_LIVERELOAD_ENABLED: false
+
+    ports:
+      - "8080:8080"
+
+    # Увеличиваем время ожидания для отладки
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 60s
+      timeout: 30s
+      retries: 5

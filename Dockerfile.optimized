@@ -1,0 +1,65 @@
+# Этап 1: Подготовка зависимостей
+FROM openjdk:17-slim as deps
+
+WORKDIR /app
+
+# Копируем только файлы необходимые для загрузки зависимостей
+COPY gradle/ gradle/
+COPY gradlew build.gradle settings.gradle ./
+
+# Загружаем зависимости (кэшируется при неизменных зависимостях)
+RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon
+
+# Этап 2: Сборка приложения
+FROM openjdk:17-slim as builder
+
+WORKDIR /app
+
+# Копируем зависимости из предыдущего этапа
+COPY --from=deps /root/.gradle /root/.gradle
+COPY gradle/ gradle/
+COPY gradlew build.gradle settings.gradle ./
+
+# Копируем исходный код
+COPY src/ src/
+
+# Собираем приложение
+RUN chmod +x ./gradlew && ./gradlew build -x test --no-daemon
+
+# Этап 3: Финальный образ
+FROM openjdk:17-slim
+
+LABEL maintainer="baganov"
+LABEL version="1.0"
+LABEL description="PizzaNat Spring Boot Application"
+
+# Устанавливаем только curl для health check
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Создаем пользователя для запуска приложения
+RUN groupadd -r pizzanat && useradd -r -g pizzanat pizzanat
+
+WORKDIR /app
+
+# Копируем JAR файл
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# Меняем владельца
+RUN chown pizzanat:pizzanat app.jar
+
+# Переключаемся на непривилегированного пользователя
+USER pizzanat
+
+# Настройки JVM для контейнера
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+# Улучшенный entrypoint с логированием
+ENTRYPOINT ["sh", "-c", "echo 'Starting PizzaNat application...' && java $JAVA_OPTS -jar app.jar"]

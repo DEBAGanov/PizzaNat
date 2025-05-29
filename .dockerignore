@@ -1,0 +1,70 @@
+# Gradle
+.gradle/
+build/
+gradle-wrapper.jar
+gradle-wrapper.properties
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Документация
+*.md
+docs/
+
+# Логи и временные файлы
+*.log
+tmp/
+temp/
+debug.log
+
+# Тесты и скрипты
+test*.sh
+scripts/
+**/test/**
+**/tests/**
+
+# Конфигурация разработки
+.env*
+.vscode/
+.specstory/
+
+# Кэш
+.gradle/
+node_modules/
+target/
+
+# Backup файлы
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+
+# Секретные данные
+*.key
+*.pem
+*.p12
+secrets/
