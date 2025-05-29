@@ -1,0 +1,81 @@
+# docker-compose.prod для Timeweb Cloud
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pizzanat-app
+    restart: on-failure
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # Конфигурация БД Timeweb
+      SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.95.235.22:5432/default_db}
+      SPRING_DATASOURCE_USERNAME: ${TIMEWEB_DB_USER:-gen_user}
+      SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-strong_password_change_me}
+      # Конфигурация Timeweb S3
+      TIMEWEB_S3_ACCESS_KEY: ${TIMEWEB_S3_ACCESS_KEY:-AJK63DSBOEBQD3IVTLOT}
+      TIMEWEB_S3_SECRET_KEY: ${TIMEWEB_S3_SECRET_KEY:-eOkZ8nzUkylhcsgPRQVJdr8qmvblxvaq7zoEcNpk}
+      TIMEWEB_S3_ENDPOINT: ${TIMEWEB_S3_ENDPOINT:-https://s3.twcstorage.ru}
+      TIMEWEB_S3_BUCKET: ${TIMEWEB_S3_BUCKET:-f9c8e17a-pizzanat-products}
+      TIMEWEB_S3_PUBLIC_URL: ${TIMEWEB_S3_PUBLIC_URL:-https://s3.twcstorage.ru/f9c8e17a-pizzanat-products}
+      # Отключаем Redis для prod (используем внутренний кэш)
+      SPRING_CACHE_TYPE: simple
+      # JWT и другие настройки
+      JWT_SECRET: ${JWT_SECRET:-"YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg=="}
+      # SPRING_MAIL_HOST: ${MAIL_HOST:-smtp.example.com}
+      # SPRING_MAIL_PORT: ${MAIL_PORT:-587}
+      # SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-mail@example.com}
+      # SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-mail_password}
+      # APP_NOTIFICATION_EMAIL_FROM: ${NOTIFICATION_EMAIL:-no-reply@pizzanat.com}
+      # APP_NOTIFICATION_EMAIL_ENABLED: ${NOTIFICATION_ENABLED:-false}
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      # PAYMENT_ROBOKASSA_MERCHANT_LOGIN: ${ROBOKASSA_MERCHANT_LOGIN:-your_merchant_login}
+      # PAYMENT_ROBOKASSA_PASSWORD1: ${ROBOKASSA_PASSWORD1:-your_password1}
+      # PAYMENT_ROBOKASSA_PASSWORD2: ${ROBOKASSA_PASSWORD2:-your_password2}
+      # PAYMENT_ROBOKASSA_TEST_MODE: ${ROBOKASSA_TEST_MODE:-true}
+    ports:
+      - "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "${SERVER_PORT:-8080}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  nginx:
+    image: nginx:alpine
+    container_name: pizzanat-nginx
+    restart: always
+    depends_on:
+      app:
+        condition: service_started
+    # Встраиваем конфигурацию nginx напрямую
+    command: |
+      sh -c "
+      cat > /etc/nginx/conf.d/default.conf << 'EOF'
+      upstream app {
+          server app:8080;
+      }
+
+      server {
+          listen 80;
+          server_name _;
+          client_max_body_size 10M;
+
+          location / {
+              proxy_pass http://app;
+              proxy_set_header Host \$$host;
+              proxy_set_header X-Real-IP \$$remote_addr;
+              proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto \$$scheme;
+              proxy_connect_timeout 60s;
+              proxy_send_timeout 60s;
+              proxy_read_timeout 60s;
+          }
+      }
+      EOF
+      nginx -g 'daemon off;'
+      "
+    ports:
+      - "80:80"
