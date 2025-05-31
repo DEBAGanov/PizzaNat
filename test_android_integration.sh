@@ -3,8 +3,8 @@
 echo "📱 Android Integration Tests для PizzaNat API"
 echo "=============================================="
 
-#BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
-BASE_URL="http://localhost:8080"
+BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
+#BASE_URL="http://localhost:8080"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'

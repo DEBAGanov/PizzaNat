@@ -29,10 +29,10 @@ public class DeliveryLocation {
     @Column(nullable = false)
     private String address;
 
-    @Column(nullable = false)
+    @Column(precision = 10, scale = 8)
     private BigDecimal latitude;
 
-    @Column(nullable = false)
+    @Column(precision = 11, scale = 8)
     private BigDecimal longitude;
 
     @Column(name = "working_hours")
@@ -57,6 +57,13 @@ public class DeliveryLocation {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+
+        if (latitude == null) {
+            latitude = BigDecimal.valueOf(55.7558);
+        }
+        if (longitude == null) {
+            longitude = BigDecimal.valueOf(37.6173);
+        }
     }
 
     @PreUpdate
