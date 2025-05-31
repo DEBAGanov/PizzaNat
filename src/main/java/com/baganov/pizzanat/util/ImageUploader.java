@@ -50,6 +50,27 @@ public class ImageUploader {
         PRODUCT_NAMES.put("karbonara", "Пицца Карбонара");
         PRODUCT_NAMES.put("gribnaya", "Грибная пицца");
         PRODUCT_NAMES.put("tom_yam", "Пицца Том Ям");
+        PRODUCT_NAMES.put("burger_classic", "Бургер Классический");
+        PRODUCT_NAMES.put("burger_cheeseburger", "Бургер Чизбургер");
+        PRODUCT_NAMES.put("burger_hawaiian", "Бургер Гавайский");
+        PRODUCT_NAMES.put("burger_tom_yam", "Бургер Том Ям");
+        PRODUCT_NAMES.put("drink_cola", "Молочный коктейль");
+        PRODUCT_NAMES.put("drink_chocolate_cola", "Шоколадный Молочный коктейль");
+        PRODUCT_NAMES.put("drink_pepsi", "Пепси");
+        PRODUCT_NAMES.put("drink_fant", "Фанта");
+        PRODUCT_NAMES.put("drink_sprite", "Спрайт");
+        PRODUCT_NAMES.put("drink_coffee", "Кофе");
+        PRODUCT_NAMES.put("drink_tea", "Чай");
+        PRODUCT_NAMES.put("drink_juice", "Сок");
+        PRODUCT_NAMES.put("dessert_chocolate", "Десерт Шоколадный");
+        PRODUCT_NAMES.put("dessert_fruit", "Десерт Фруктовый");
+        PRODUCT_NAMES.put("dessert_berry", "Десерт Ягодный");
+        PRODUCT_NAMES.put("dessert_strawberry", "Десерт Клубничный");
+        PRODUCT_NAMES.put("snack_cheese_balls", "Закуска Сырные шарики");
+        PRODUCT_NAMES.put("salad_caesar", "Салат Цезарь");
+        PRODUCT_NAMES.put("salad_olive", "Салат Оливье");
+        PRODUCT_NAMES.put("salad_greek", "Салат Греческий");
+        PRODUCT_NAMES.put("salad_russian", "Салат Русский");
     }
 
     @PostConstruct
@@ -128,6 +149,7 @@ public class ImageUploader {
         categoryImageMap.put("Напитки", "categories/drinks.png");
         categoryImageMap.put("Десерты", "categories/desserts.png");
         categoryImageMap.put("Закуски", "categories/snacks.png");
+        categoryImageMap.put("Салаты", "categories/salads.png");
 
         // Загружаем изображения категорий
         for (Map.Entry<String, String> entry : categoryImageMap.entrySet()) {
@@ -178,6 +200,28 @@ public class ImageUploader {
         productImageMap.put("Пицца Карбонара", "products/pizza_karbonara.png");
         productImageMap.put("Грибная пицца", "products/pizza_gribnaya.png");
         productImageMap.put("Пицца Том Ям", "products/pizza_tom_yam.png");
+        productImageMap.put("Бургер Классический", "products/burger_classic.png");
+        productImageMap.put("Бургер Чизбургер", "products/burger_cheeseburger.png");
+        productImageMap.put("Бургер Гавайский", "products/burger_hawaiian.png");
+        productImageMap.put("Бургер Том Ям", "products/burger_tom_yam.png");
+        productImageMap.put("Молочный коктейль", "products/drink_cola.png");
+        productImageMap.put("Шоколадный Молочный коктейль", "products/drink_cola.png");
+        productImageMap.put("Кока-Кола", "products/drink_cola.png");
+        productImageMap.put("Пепси", "products/drink_pepsi.png");
+        productImageMap.put("Фанта", "products/drink_fant.png");
+        productImageMap.put("Спрайт", "products/drink_sprite.png");
+        productImageMap.put("Кофе", "products/drink_coffee.png");
+        productImageMap.put("Чай", "products/drink_tea.png");
+        productImageMap.put("Сок", "products/drink_juice.png");
+        productImageMap.put("Десерт Шоколадный", "products/dessert_chocolate.png");
+        productImageMap.put("Десерт Фруктовый", "products/dessert_fruit.png");
+        productImageMap.put("Десерт Ягодный", "products/dessert_berry.png");
+        productImageMap.put("Десерт Клубничный", "products/dessert_strawberry.png");
+        productImageMap.put("Закуска Сырные шарики", "products/snack_cheese_balls.png");
+        productImageMap.put("Салат Цезарь", "products/salad_caesar.png");
+        productImageMap.put("Салат Оливье", "products/salad_olive.png");
+        productImageMap.put("Салат Греческий", "products/salad_greek.png");
+        productImageMap.put("Салат Русский", "products/salad_russian.png");
 
         // Загружаем изображения продуктов
         for (Map.Entry<String, String> entry : productImageMap.entrySet()) {

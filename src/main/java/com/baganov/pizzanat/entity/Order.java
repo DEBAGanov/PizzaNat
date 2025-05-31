@@ -41,6 +41,9 @@ public class Order {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "delivery_address", columnDefinition = "TEXT")
+    private String deliveryAddress;
+
     @Column(name = "contact_name", nullable = false)
     private String contactName;
 

@@ -21,6 +21,7 @@ public class OrderDTO {
     private Integer deliveryLocationId;
     private String deliveryLocationName;
     private String deliveryLocationAddress;
+    private String deliveryAddress;
     private BigDecimal totalAmount;
     private String comment;
     private String contactName;

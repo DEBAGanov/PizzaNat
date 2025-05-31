@@ -89,6 +89,8 @@ public class SecurityConfig {
             "/api/v1/categories/**",
             // Products
             "/api/v1/products/**",
+            // Delivery Locations (для Android приложения)
+            "/api/v1/delivery-locations/**",
             // Cart (доступна анонимным и аутентифицированным пользователям)
             "/api/v1/cart/**",
             // Orders (только для анонимных заказов)
@@ -116,6 +118,8 @@ public class SecurityConfig {
                             .requestMatchers(AUTH_WHITELIST).permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/v1/pizzas/**").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/orders").permitAll()
+                            .requestMatchers(HttpMethod.GET, "/api/v1/orders/**").permitAll()
                             .anyRequest().authenticated())
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authenticationProvider(authenticationProvider())
