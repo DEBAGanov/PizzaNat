@@ -1,5 +1,6 @@
 package com.baganov.pizzanat.model.dto.order;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,8 +27,13 @@ public class OrderDTO {
     private String comment;
     private String contactName;
     private String contactPhone;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
+
     @Builder.Default
     private List<OrderItemDTO> items = new ArrayList<>();
 }

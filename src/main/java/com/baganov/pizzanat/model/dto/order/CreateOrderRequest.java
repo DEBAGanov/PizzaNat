@@ -15,11 +15,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateOrderRequest {
 
-    @NotNull(message = "ID пункта выдачи не может быть пустым")
+    // Может быть null если используется deliveryAddress
     private Integer deliveryLocationId;
+
+    // Android поле: адрес доставки (альтернатива deliveryLocationId)
+    @Size(max = 500, message = "Адрес доставки не должен превышать 500 символов")
+    private String deliveryAddress;
 
     @Size(max = 500, message = "Комментарий не должен превышать 500 символов")
     private String comment;
+
+    // Android поле: заметки (приоритет ниже чем comment)
+    @Size(max = 500, message = "Заметки не должны превышать 500 символов")
+    private String notes;
 
     @NotBlank(message = "Имя получателя не может быть пустым")
     @Size(max = 100, message = "Имя получателя не должно превышать 100 символов")
@@ -28,4 +36,25 @@ public class CreateOrderRequest {
     @NotBlank(message = "Телефон получателя не может быть пустым")
     @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Некорректный формат телефона")
     private String contactPhone;
+
+    /**
+     * Валидация: должен быть указан либо deliveryLocationId, либо deliveryAddress
+     */
+    public boolean hasValidDeliveryInfo() {
+        return (deliveryLocationId != null) ||
+                (deliveryAddress != null && !deliveryAddress.trim().isEmpty());
+    }
+
+    /**
+     * Получает итоговый комментарий (приоритет: comment > notes)
+     */
+    public String getFinalComment() {
+        if (comment != null && !comment.trim().isEmpty()) {
+            return comment.trim();
+        }
+        if (notes != null && !notes.trim().isEmpty()) {
+            return notes.trim();
+        }
+        return null;
+    }
 }

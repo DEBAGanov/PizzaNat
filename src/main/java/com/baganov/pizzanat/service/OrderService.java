@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,6 +38,11 @@ public class OrderService {
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
     public OrderDTO createOrder(Integer userId, String sessionId, CreateOrderRequest request) {
+        // Валидация входных данных
+        if (!request.hasValidDeliveryInfo()) {
+            throw new IllegalArgumentException("Необходимо указать либо ID пункта выдачи, либо адрес доставки");
+        }
+
         User user = null;
         if (userId != null) {
             user = userRepository.findById(userId)
@@ -48,33 +54,50 @@ public class OrderService {
             throw new IllegalArgumentException("Корзина пуста");
         }
 
-        DeliveryLocation deliveryLocation = deliveryLocationRepository.findById(request.getDeliveryLocationId())
-                .orElseThrow(() -> new IllegalArgumentException("Пункт выдачи не найден"));
+        // Определяем пункт доставки
+        DeliveryLocation deliveryLocation;
+        if (request.getDeliveryLocationId() != null) {
+            // Используем существующий пункт доставки
+            deliveryLocation = deliveryLocationRepository.findById(request.getDeliveryLocationId())
+                    .orElseThrow(() -> new IllegalArgumentException("Пункт выдачи не найден"));
 
-        if (!deliveryLocation.isActive()) {
-            throw new IllegalArgumentException("Пункт выдачи недоступен");
+            if (!deliveryLocation.isActive()) {
+                throw new IllegalArgumentException("Пункт выдачи недоступен");
+            }
+        } else {
+            // Создаем новый пункт доставки для Android приложения
+            deliveryLocation = createDeliveryLocationFromAddress(request.getDeliveryAddress());
         }
 
         OrderStatus createdStatus = orderStatusRepository.findByName("CREATED")
                 .orElseThrow(() -> new IllegalArgumentException("Статус заказа 'CREATED' не найден"));
 
+        // Получаем финальный комментарий (приоритет: comment > notes)
+        String finalComment = request.getFinalComment();
+
         Order order = Order.builder()
                 .user(user)
                 .status(createdStatus)
                 .deliveryLocation(deliveryLocation)
+                .deliveryAddress(request.getDeliveryAddress()) // Сохраняем Android адрес
                 .totalAmount(cart.getTotalAmount())
-                .comment(request.getComment())
+                .comment(finalComment)
                 .contactName(request.getContactName())
                 .contactPhone(request.getContactPhone())
                 .build();
 
         // Копирование товаров из корзины в заказ
         for (CartItem cartItem : cart.getItems()) {
+            // Используем скидочную цену если есть, иначе обычную
+            BigDecimal itemPrice = cartItem.getProduct().getDiscountedPrice() != null
+                    ? cartItem.getProduct().getDiscountedPrice()
+                    : cartItem.getProduct().getPrice();
+
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
                     .product(cartItem.getProduct())
                     .quantity(cartItem.getQuantity())
-                    .price(cartItem.getProduct().getDiscountedPrice())
+                    .price(itemPrice)
                     .build();
             order.addItem(orderItem);
         }
@@ -85,9 +108,61 @@ public class OrderService {
         cart.getItems().clear();
         cartRepository.save(cart);
 
-        log.info("Создан новый заказ #{} на сумму {}", order.getId(), order.getTotalAmount());
+        log.info("Создан новый заказ #{} на сумму {} (адрес: {})",
+                order.getId(), order.getTotalAmount(),
+                request.getDeliveryAddress() != null ? request.getDeliveryAddress() : deliveryLocation.getAddress());
 
         return mapToDTO(order);
+    }
+
+    /**
+     * Создает новый пункт доставки из адреса (для Android приложения)
+     * Если пункт с таким адресом уже существует, возвращает существующий
+     */
+    private DeliveryLocation createDeliveryLocationFromAddress(String address) {
+        if (address == null || address.trim().isEmpty()) {
+            throw new IllegalArgumentException("Адрес доставки не может быть пустым");
+        }
+
+        String cleanAddress = address.trim();
+
+        // Проверяем, существует ли уже пункт доставки с таким адресом
+        Optional<DeliveryLocation> existingLocation = deliveryLocationRepository.findByAddress(cleanAddress);
+        if (existingLocation.isPresent()) {
+            log.info("Используется существующий пункт доставки с адресом: {}", cleanAddress);
+            return existingLocation.get();
+        }
+
+        // Генерируем уникальное имя для пункта доставки
+        String locationName = "Доставка по адресу: " + cleanAddress;
+
+        // На всякий случай проверяем существование по имени (хотя это маловероятно)
+        int counter = 1;
+        String finalName = locationName;
+        while (deliveryLocationRepository.existsByName(finalName)) {
+            finalName = locationName + " (" + counter + ")";
+            counter++;
+        }
+
+        // Создаем новый пункт доставки
+        DeliveryLocation newLocation = DeliveryLocation.builder()
+                .name(finalName)
+                .address(cleanAddress)
+                .phone("Указать при доставке")
+                .workingHours("Круглосуточно")
+                .isActive(true)
+                .build();
+
+        try {
+            DeliveryLocation savedLocation = deliveryLocationRepository.save(newLocation);
+            log.info("Создан новый пункт доставки: {} по адресу: {}", savedLocation.getName(), cleanAddress);
+            return savedLocation;
+        } catch (Exception e) {
+            log.error("Ошибка при создании пункта доставки для адреса: {}", cleanAddress, e);
+            // Если произошла ошибка уникальности, попробуем найти существующий
+            return deliveryLocationRepository.findByAddress(cleanAddress)
+                    .orElseThrow(() -> new RuntimeException("Не удалось создать или найти пункт доставки"));
+        }
     }
 
     /**
@@ -210,6 +285,7 @@ public class OrderService {
                 .deliveryLocationId(order.getDeliveryLocation().getId())
                 .deliveryLocationName(order.getDeliveryLocation().getName())
                 .deliveryLocationAddress(order.getDeliveryLocation().getAddress())
+                .deliveryAddress(order.getDeliveryAddress())
                 .totalAmount(order.getTotalAmount())
                 .comment(order.getComment())
                 .contactName(order.getContactName())
