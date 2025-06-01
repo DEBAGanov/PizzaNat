@@ -1,7 +1,9 @@
 package com.baganov.pizzanat.config;
 
+import com.baganov.pizzanat.entity.OrderStatus;
 import com.baganov.pizzanat.entity.Role;
 import com.baganov.pizzanat.entity.User;
+import com.baganov.pizzanat.repository.OrderStatusRepository;
 import com.baganov.pizzanat.repository.RoleRepository;
 import com.baganov.pizzanat.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -25,13 +27,21 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final OrderStatusRepository orderStatusRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) {
-        initializeRoles();
-        createTestUsers();
+        log.info("🚀 DataInitializer запущен! Начинаю инициализацию данных...");
+        try {
+            initializeRoles();
+            initializeOrderStatuses();
+            createTestUsers();
+            log.info("✅ DataInitializer завершен успешно!");
+        } catch (Exception e) {
+            log.error("❌ Ошибка в DataInitializer: {}", e.getMessage(), e);
+        }
     }
 
     private void initializeRoles() {
@@ -45,6 +55,32 @@ public class DataInitializer implements CommandLineRunner {
             adminRole.setName("ROLE_ADMIN");
             roleRepository.save(adminRole);
             log.info("Роли успешно созданы");
+        }
+    }
+
+    private void initializeOrderStatuses() {
+        log.info("Инициализация статусов заказов");
+
+        // Создаем все необходимые статусы заказов
+        createOrderStatus("CREATED", "Заказ создан");
+        createOrderStatus("CONFIRMED", "Заказ подтвержден");
+        createOrderStatus("PREPARING", "Заказ готовится");
+        createOrderStatus("READY", "Заказ готов");
+        createOrderStatus("DELIVERING", "Заказ доставляется");
+        createOrderStatus("DELIVERED", "Заказ доставлен");
+        createOrderStatus("CANCELLED", "Заказ отменен");
+
+        log.info("Статусы заказов успешно созданы");
+    }
+
+    private void createOrderStatus(String name, String description) {
+        if (orderStatusRepository.findByName(name).isEmpty()) {
+            OrderStatus status = new OrderStatus();
+            status.setName(name);
+            status.setDescription(description);
+            status.setActive(true);
+            orderStatusRepository.save(status);
+            log.info("Создан статус заказа: {} - {}", name, description);
         }
     }
 

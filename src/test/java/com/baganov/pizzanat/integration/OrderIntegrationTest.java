@@ -130,10 +130,10 @@ public class OrderIntegrationTest {
                                         .build());
                 }
 
-                if (orderStatusRepository.findByName("PROCESSING").isEmpty()) {
+                if (orderStatusRepository.findByName("CONFIRMED").isEmpty()) {
                         orderStatusRepository.save(OrderStatus.builder()
-                                        .name("PROCESSING")
-                                        .description("Заказ в обработке")
+                                        .name("CONFIRMED")
+                                        .description("Заказ подтвержден")
                                         .isActive(true)
                                         .build());
                 }
@@ -215,7 +215,7 @@ public class OrderIntegrationTest {
                 String adminToken = objectMapper.readTree(adminResponse).get("token").asText();
 
                 UpdateOrderStatusRequest updateRequest = UpdateOrderStatusRequest.builder()
-                                .status("PROCESSING")
+                                .statusName("CONFIRMED")
                                 .build();
 
                 mockMvc.perform(put("/api/v1/admin/orders/" + createdOrder.getId() + "/status")
@@ -223,6 +223,6 @@ public class OrderIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(updateRequest)))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.status").value("PROCESSING"));
+                                .andExpect(jsonPath("$.status").value("CONFIRMED"));
         }
 }

@@ -1,7 +1,13 @@
+/**
+ * @file: AddToCartRequest.java
+ * @description: DTO для добавления товара в корзину
+ * @dependencies: Jakarta Validation, Jackson
+ * @created: 2025-05-31
+ */
 package com.baganov.pizzanat.model.dto.cart;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,16 +20,18 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AddToCartRequest {
-    @NotNull(message = "ID продукта не может быть пустым")
+
+    @NotNull(message = "ID продукта обязателен")
+    @Positive(message = "ID продукта должен быть положительным")
     private Integer productId;
 
-    @NotNull(message = "Количество товара не может быть пустым")
-    @Min(value = 1, message = "Минимальное количество товара - 1")
+    @NotNull(message = "Количество обязательно")
+    @Positive(message = "Количество должно быть положительным")
     private Integer quantity;
 
     /**
-     * Дополнительные опции товара (размер, дополнения и т.д.)
-     * Поддержка Android интеграции
+     * Опции продукта для Android интеграции
+     * Пример: {"size": "large", "extraCheese": true}
      */
     private Map<String, Object> selectedOptions;
 }

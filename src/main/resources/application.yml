@@ -46,3 +46,10 @@ timeweb:
     secret-key: ${TIMEWEB_S3_SECRET_KEY:eOkZ8nzUkylhcsgPRQVJdr8qmvblxvaq7zoEcNpk}
     bucket: f9c8e17a-pizzanat-products
     public-url: https://s3.twcstorage.ru/f9c8e17a-pizzanat-products
+
+# Telegram Bot API настройки
+telegram:
+  enabled: ${TELEGRAM_ENABLED:false}
+  bot-token: ${TELEGRAM_BOT_TOKEN:}
+  chat-id: ${TELEGRAM_CHAT_ID:}
+  api-url: ${TELEGRAM_API_URL:https://api.telegram.org/bot}

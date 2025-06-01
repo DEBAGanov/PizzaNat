@@ -85,16 +85,18 @@ public class SecurityConfig {
             // Health check
             "/health",
             "/api/health",
-            // Categories
-            "/api/v1/categories/**",
-            // Products
-            "/api/v1/products/**",
-            // Delivery Locations (для Android приложения)
-            "/api/v1/delivery-locations/**",
-            // Cart (доступна анонимным и аутентифицированным пользователям)
-            "/api/v1/cart/**",
-            // Orders (только для анонимных заказов)
-            "/api/v1/orders/anonymous/**",
+            // Categories (только GET)
+            "/api/v1/categories",
+            "/api/v1/categories/*",
+            // Products (только GET)
+            "/api/v1/products",
+            "/api/v1/products/*",
+            "/api/v1/products/category/*",
+            "/api/v1/products/special-offers",
+            "/api/v1/products/search",
+            // Delivery Locations (только GET для Android приложения)
+            "/api/v1/delivery-locations",
+            "/api/v1/delivery-locations/*"
     };
 
     @Bean

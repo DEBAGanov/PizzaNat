@@ -34,6 +34,7 @@ public class OrderService {
     private final StorageService storageService;
     private final NotificationService notificationService;
     private final PaymentService paymentService;
+    private final TelegramBotService telegramBotService;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
@@ -107,6 +108,13 @@ public class OrderService {
         // Очистка корзины после создания заказа
         cart.getItems().clear();
         cartRepository.save(cart);
+
+        // Отправка Telegram уведомления о новом заказе
+        try {
+            telegramBotService.sendNewOrderNotification(order);
+        } catch (Exception e) {
+            log.error("Ошибка отправки Telegram уведомления о новом заказе #{}: {}", order.getId(), e.getMessage());
+        }
 
         log.info("Создан новый заказ #{} на сумму {} (адрес: {})",
                 order.getId(), order.getTotalAmount(),
@@ -221,18 +229,23 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Заказ не найден"));
 
-        String oldStatusName = order.getStatus().getName();
-
+        OrderStatus oldStatus = order.getStatus();
         OrderStatus newStatus = orderStatusRepository.findByName(statusName)
-                .orElseThrow(() -> new IllegalArgumentException("Статус заказа не найден"));
+                .orElseThrow(() -> new IllegalArgumentException("Статус заказа не найден: " + statusName));
 
         order.setStatus(newStatus);
         order = orderRepository.save(order);
 
-        // Отправляем уведомление о смене статуса
-        notificationService.sendOrderStatusChangeNotification(order, oldStatusName, statusName);
+        // Отправка Telegram уведомления об изменении статуса
+        try {
+            telegramBotService.sendOrderStatusUpdateNotification(order, oldStatus.getName(), newStatus.getName());
+        } catch (Exception e) {
+            log.error("Ошибка отправки Telegram уведомления об изменении статуса заказа #{}: {}", order.getId(),
+                    e.getMessage());
+        }
 
-        log.info("Обновлен статус заказа #{} с {} на {}", orderId, oldStatusName, statusName);
+        log.info("Статус заказа #{} изменен с '{}' на '{}'",
+                order.getId(), oldStatus.getName(), newStatus.getName());
 
         return mapToDTO(order);
     }
