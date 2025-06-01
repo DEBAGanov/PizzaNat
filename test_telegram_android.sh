@@ -6,20 +6,14 @@
 
 echo "🤖 PizzaNat - Тестирование Telegram интеграции"
 echo "=============================================="
-
-API_URL="http://localhost:8080"
+API_URL="https://debaganov-pizzanat-0177.twc1.net"
+#API_URL="http://localhost:8080"
 ADMIN_TOKEN=""
-TELEGRAM_BOT_TOKEN=7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
-TELEGRAM_CHAT_ID=-4919444764
-TELEGRAM_ENABLED=true
-
-
 
 # Цвета для вывода
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Функция для проверки статуса
@@ -32,98 +26,14 @@ check_status() {
 }
 
 echo ""
-echo -e "${BLUE}🔍 ДИАГНОСТИКА TELEGRAM НАСТРОЕК${NC}"
-echo "================================================"
-
-# Проверка переменных окружения
-if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
-    echo -e "${RED}❌ TELEGRAM_BOT_TOKEN не установлен${NC}"
-    echo "Установите: export TELEGRAM_BOT_TOKEN=ваш_токен"
-    exit 1
-else
-    echo -e "${GREEN}✅ TELEGRAM_BOT_TOKEN установлен${NC}"
-fi
-
-if [ -z "$TELEGRAM_CHAT_ID" ]; then
-    echo -e "${RED}❌ TELEGRAM_CHAT_ID не установлен${NC}"
-    echo "Установите: export TELEGRAM_CHAT_ID=ваш_chat_id"
-    exit 1
-else
-    echo -e "${GREEN}✅ TELEGRAM_CHAT_ID установлен: ${TELEGRAM_CHAT_ID}${NC}"
-fi
-
-# Проверка бота через Telegram API
-echo ""
-echo -e "${YELLOW}🔍 Проверка бота через Telegram API...${NC}"
-
-BOT_INFO=$(curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe")
-BOT_OK=$(echo "$BOT_INFO" | grep -o '"ok":true')
-
-if [ -n "$BOT_OK" ]; then
-    BOT_USERNAME=$(echo "$BOT_INFO" | grep -o '"username":"[^"]*' | cut -d'"' -f4)
-    echo -e "${GREEN}✅ Бот активен: @${BOT_USERNAME}${NC}"
-else
-    echo -e "${RED}❌ Бот не отвечает или токен неверный${NC}"
-    echo "Ответ API: $BOT_INFO"
-    exit 1
-fi
-
-# Тестовая отправка сообщения
-echo ""
-echo -e "${YELLOW}🧪 Тестовая отправка сообщения...${NC}"
-
-TEST_MESSAGE="🧪 Тест соединения с PizzaNat API $(date '+%H:%M:%S')"
-TEST_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "chat_id": "'$TELEGRAM_CHAT_ID'",
-        "text": "'$TEST_MESSAGE'",
-        "parse_mode": "HTML"
-    }')
-
-TEST_OK=$(echo "$TEST_RESPONSE" | grep -o '"ok":true')
-
-if [ -n "$TEST_OK" ]; then
-    echo -e "${GREEN}✅ Тестовое сообщение отправлено успешно${NC}"
-    echo -e "${GREEN}   Проверьте ваш Telegram чат${NC}"
-else
-    echo -e "${RED}❌ Ошибка отправки тестового сообщения${NC}"
-    echo "Ответ Telegram API: $TEST_RESPONSE"
-
-    # Анализ ошибки
-    if [[ $TEST_RESPONSE == *"chat not found"* ]]; then
-        echo ""
-        echo -e "${YELLOW}🔧 РЕШЕНИЕ ПРОБЛЕМЫ 'chat not found':${NC}"
-        echo "1. Убедитесь, что бот добавлен в чат/группу"
-        echo "2. Для получения правильного chat_id:"
-        echo "   - Добавьте бота @userinfobot в ваш чат"
-        echo "   - Отправьте команду /start"
-        echo "   - Скопируйте Chat ID"
-        echo "3. Для группы: chat_id должен начинаться с минуса (например: -1001234567890)"
-        echo "4. Для личного чата: используйте положительный ID"
-    elif [[ $TEST_RESPONSE == *"bot was blocked"* ]]; then
-        echo ""
-        echo -e "${YELLOW}🔧 РЕШЕНИЕ: Разблокируйте бота в личных сообщениях${NC}"
-    fi
-
-    echo ""
-    echo -e "${YELLOW}💡 Для получения chat_id выполните:${NC}"
-    echo "1. Отправьте сообщение боту или добавьте в группу"
-    echo "2. Выполните: curl https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getUpdates"
-    echo "3. Найдите 'chat':{'id': в ответе"
-
-    exit 1
-fi
-
-echo ""
 echo "📝 Предварительные требования:"
 echo "1. Создайте Telegram бота через @BotFather"
 echo "2. Получите токен бота"
 echo "3. Добавьте бота в группу/чат и получите chat_id"
 echo "4. Установите переменные окружения:"
 echo "   TELEGRAM_ENABLED=true"
-echo "   TELEGRAM_BOT_TOKEN=ваш_токен ${TELEGRAM_BOT_TOKEN}"
-echo "   TELEGRAM_CHAT_ID=ваш_chat_id ${TELEGRAM_CHAT_ID}"
+echo "   TELEGRAM_BOT_TOKEN=ваш_токен"
+echo "   TELEGRAM_CHAT_ID=ваш_chat_id"
 echo ""
 
 # Шаг 1: Получение токена администратора
