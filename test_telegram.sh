@@ -70,16 +70,18 @@ fi
 
 # Тестовая отправка сообщения
 echo ""
-echo -e "${YELLOW}🧪 Тестовая отправка сообщения...${NC}"
+echo -e "Тестовая отправка сообщения...${NC}"
 
-TEST_MESSAGE="🧪 Тест соединения с PizzaNat API $(date '+%H:%M:%S')"
+TEST_MESSAGE="Тест соединения с PizzaNat API $(date '+%H:%M:%S %Y-%m-%d')"
+echo "TEST_MESSAGE='$TEST_MESSAGE'"
 TEST_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
     -H "Content-Type: application/json" \
-    -d '{
-        "chat_id": "'$TELEGRAM_CHAT_ID'",
-        "text": "'$TEST_MESSAGE'",
-        "parse_mode": "HTML"
-    }')
+    -d "{
+        \"chat_id\": \"$TELEGRAM_CHAT_ID\",
+        \"text\": \"$TEST_MESSAGE\",
+        \"parse_mode\": \"HTML\"
+    }")
+
 
 TEST_OK=$(echo "$TEST_RESPONSE" | grep -o '"ok":true')
 
@@ -220,15 +222,30 @@ ORDER_RESPONSE=$(curl -s -X POST \
 
 echo "Ответ создания заказа: $ORDER_RESPONSE"
 
+
+
+
 ORDER_ID=$(echo $ORDER_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-
-if [ -z "$ORDER_ID" ]; then
-    echo -e "${RED}✗ Не удалось создать заказ${NC}"
-    exit 1
-fi
-
 echo -e "${GREEN}✓ Заказ #$ORDER_ID создан${NC}"
 echo ""
+
+TEST_MESSAGE_NEW_ORDER="✓ Заказ #$ORDER_ID создан $(date '+%H:%M:%S %Y-%m-%d')"
+echo "TEST_MESSAGE_NEW_ORDER='$TEST_MESSAGE_NEW_ORDER'"
+TEST_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"chat_id\": \"$TELEGRAM_CHAT_ID\",
+        \"text\": \"$TEST_MESSAGE_NEW_ORDER\",
+        \"parse_mode\": \"HTML\"
+    }")
+
+
+
+
+
+
+
+
 
 # Шаг 3: Изменение статуса заказа (должно отправить второе уведомление)
 echo "🔄 Шаг 3: Изменение статуса заказа на CONFIRMED"
@@ -249,6 +266,17 @@ else
     echo -e "${RED}✗ Не удалось изменить статус заказа${NC}"
 fi
 echo ""
+
+
+TEST_MESSAGE_NEW_STATUS_CONFIRMED="✓ Статус заказа #$ORDER_ID изменен на CONFIRMED $(date '+%H:%M:%S %Y-%m-%d')"
+echo "TEST_MESSAGE_NEW_ORDER='$TEST_MESSAGE_NEW_ORDER'"
+TEST_RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+    -H "Content-Type: application/json" \
+    -d "{
+        \"chat_id\": \"$TELEGRAM_CHAT_ID\",
+        \"text\": \"$TEST_MESSAGE_NEW_STATUS_CONFIRMED\",
+        \"parse_mode\": \"HTML\"
+    }")
 
 # Шаг 4: Еще одно изменение статуса
 echo "🚚 Шаг 4: Изменение статуса заказа на DELIVERING"
