@@ -278,6 +278,10 @@ public class OrderService {
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
 
+        // Форматируем даты в строки для избежания проблем сериализации
+        String createdAtStr = order.getCreatedAt() != null ? order.getCreatedAt().toString() : null;
+        String updatedAtStr = order.getUpdatedAt() != null ? order.getUpdatedAt().toString() : null;
+
         return OrderDTO.builder()
                 .id(order.getId())
                 .status(order.getStatus().getName())
@@ -290,8 +294,8 @@ public class OrderService {
                 .comment(order.getComment())
                 .contactName(order.getContactName())
                 .contactPhone(order.getContactPhone())
-                .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
+                .createdAt(createdAtStr)
+                .updatedAt(updatedAtStr)
                 .items(itemDTOs)
                 .build();
     }

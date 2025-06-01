@@ -1,13 +1,16 @@
 spring:
   profiles:
     active: dev
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
 
 s3:
   endpoint: http://localhost:9000
   access-key: minioadmin
   secret-key: minioadmin
   bucket: pizzanat
-  public-url: http://localhost:9000
+  public-url: http://localhost
 
 ---
 spring:
@@ -25,6 +28,16 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  datasource:
+    # Эти значения перезаписываются переменными окружения в продакшене
+    url: jdbc:postgresql://localhost:5432/pizzanat
+    username: pizzanat
+    password: pizzanat_password
+    driver-class-name: org.postgresql.Driver
 
 timeweb:
   s3:

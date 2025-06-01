@@ -1,7 +1,7 @@
 /**
  * @file: JacksonConfig.java
  * @description: Конфигурация Jackson для корректного форматирования JSON
- * @dependencies: Spring Web, Jackson
+ * @dependencies: Spring Web, Jackson, JSR310
  * @created: 2025-05-31
  */
 package com.baganov.pizzanat.config;
@@ -16,9 +16,6 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class JacksonConfig {
 
-    /**
-     * Настройка ObjectMapper для корректной работы с LocalDateTime
-     */
     @Bean
     @Primary
     public ObjectMapper objectMapper() {
@@ -29,6 +26,9 @@ public class JacksonConfig {
 
         // Отключаем сериализацию дат как timestamps
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // Настройки для корректной работы
+        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
 
         return mapper;
     }
