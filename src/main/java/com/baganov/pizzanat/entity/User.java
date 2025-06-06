@@ -27,7 +27,11 @@ public class User implements UserDetails {
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Column(nullable = false, unique = true)
+    /**
+     * Email - теперь может быть null для пользователей, регистрирующихся только
+     * через SMS/Telegram
+     */
+    @Column(unique = true)
     private String email;
 
     @Column(nullable = false)
@@ -50,6 +54,42 @@ public class User implements UserDetails {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // === Поля для SMS аутентификации ===
+
+    /**
+     * Номер телефона для SMS аутентификации в формате +7XXXXXXXXXX
+     */
+    @Column(name = "phone_number", unique = true, length = 20)
+    private String phoneNumber;
+
+    /**
+     * Флаг подтверждения номера телефона через SMS
+     */
+    @Column(name = "is_phone_verified")
+    @Builder.Default
+    private Boolean isPhoneVerified = false;
+
+    // === Поля для Telegram аутентификации ===
+
+    /**
+     * ID пользователя в Telegram для аутентификации
+     */
+    @Column(name = "telegram_id", unique = true)
+    private Long telegramId;
+
+    /**
+     * Username пользователя в Telegram
+     */
+    @Column(name = "telegram_username", length = 100)
+    private String telegramUsername;
+
+    /**
+     * Флаг подтверждения Telegram аутентификации
+     */
+    @Column(name = "is_telegram_verified")
+    @Builder.Default
+    private Boolean isTelegramVerified = false;
+
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @ManyToMany(fetch = FetchType.EAGER)
@@ -66,6 +106,51 @@ public class User implements UserDetails {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // === Дополнительные методы для аутентификации ===
+
+    /**
+     * Проверяет, есть ли у пользователя подтвержденный способ аутентификации
+     *
+     * @return true если есть хотя бы один подтвержденный способ
+     */
+    public boolean hasVerifiedAuthentication() {
+        return (email != null) ||
+                (phoneNumber != null && Boolean.TRUE.equals(isPhoneVerified)) ||
+                (telegramId != null && Boolean.TRUE.equals(isTelegramVerified));
+    }
+
+    /**
+     * Возвращает основной идентификатор пользователя для отображения
+     *
+     * @return email, номер телефона или Telegram username
+     */
+    public String getPrimaryIdentifier() {
+        if (email != null) {
+            return email;
+        } else if (phoneNumber != null) {
+            return phoneNumber;
+        } else if (telegramUsername != null) {
+            return "@" + telegramUsername;
+        } else {
+            return username;
+        }
+    }
+
+    /**
+     * Возвращает отображаемое имя пользователя
+     *
+     * @return полное имя или основной идентификатор
+     */
+    public String getDisplayName() {
+        if (firstName != null && lastName != null) {
+            return firstName + " " + lastName;
+        } else if (firstName != null) {
+            return firstName;
+        } else {
+            return getPrimaryIdentifier();
+        }
     }
 
     @Override

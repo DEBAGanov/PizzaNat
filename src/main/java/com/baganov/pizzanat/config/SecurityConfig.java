@@ -76,8 +76,12 @@ public class SecurityConfig {
             // Root and API help
             "/",
             "/api-help",
-            // Auth endpoints
+            // Auth endpoints (включая новые SMS и Telegram)
             "/api/v1/auth/**",
+            "/api/v1/auth/sms/**",
+            "/api/v1/auth/telegram/**",
+            // Telegram webhook endpoints
+            "/api/v1/telegram/**",
             // Public API
             "/api/v1/public/**",
             // Actuator

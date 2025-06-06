@@ -16,4 +16,48 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    // === Методы для SMS аутентификации ===
+
+    /**
+     * Поиск пользователя по номеру телефона
+     * 
+     * @param phoneNumber номер телефона в формате +7XXXXXXXXXX
+     * @return пользователь если найден
+     */
+    Optional<User> findByPhoneNumber(String phoneNumber);
+
+    /**
+     * Проверка существования пользователя с номером телефона
+     * 
+     * @param phoneNumber номер телефона
+     * @return true если пользователь существует
+     */
+    boolean existsByPhoneNumber(String phoneNumber);
+
+    // === Методы для Telegram аутентификации ===
+
+    /**
+     * Поиск пользователя по Telegram ID
+     * 
+     * @param telegramId ID пользователя в Telegram
+     * @return пользователь если найден
+     */
+    Optional<User> findByTelegramId(Long telegramId);
+
+    /**
+     * Проверка существования пользователя с Telegram ID
+     * 
+     * @param telegramId ID пользователя в Telegram
+     * @return true если пользователь существует
+     */
+    boolean existsByTelegramId(Long telegramId);
+
+    /**
+     * Поиск пользователя по Telegram username
+     * 
+     * @param telegramUsername username в Telegram (без @)
+     * @return пользователь если найден
+     */
+    Optional<User> findByTelegramUsername(String telegramUsername);
 }

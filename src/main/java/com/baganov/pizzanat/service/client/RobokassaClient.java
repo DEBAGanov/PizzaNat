@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -53,7 +54,7 @@ public class RobokassaClient extends BaseResilientClient {
     public RobokassaClient(
             CircuitBreakerRegistry circuitBreakerRegistry,
             RetryRegistry retryRegistry,
-            RestTemplate restTemplate,
+            @Qualifier("restTemplate") RestTemplate restTemplate,
             ObjectMapper objectMapper) {
         super(circuitBreakerRegistry, retryRegistry);
         this.restTemplate = restTemplate;
