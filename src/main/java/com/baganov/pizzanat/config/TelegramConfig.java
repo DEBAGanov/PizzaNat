@@ -7,12 +7,15 @@
 package com.baganov.pizzanat.config;
 
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.time.Duration;
 
@@ -42,6 +45,18 @@ public class TelegramConfig {
         return builder
                 .setConnectTimeout(Duration.ofSeconds(15))
                 .setReadTimeout(Duration.ofSeconds(15))
+                .build();
+    }
+
+    /**
+     * RestTemplate для Telegram Gateway API
+     */
+    @Bean("gatewayRestTemplate")
+    @ConditionalOnProperty(value = "telegram.gateway.enabled", havingValue = "true")
+    public RestTemplate gatewayRestTemplate(RestTemplateBuilder builder, TelegramGatewayProperties gatewayProperties) {
+        return builder
+                .setConnectTimeout(Duration.ofSeconds(gatewayProperties.getTimeoutSeconds()))
+                .setReadTimeout(Duration.ofSeconds(gatewayProperties.getTimeoutSeconds()))
                 .build();
     }
 
