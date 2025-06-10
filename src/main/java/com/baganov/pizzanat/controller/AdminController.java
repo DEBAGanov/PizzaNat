@@ -1,5 +1,7 @@
 package com.baganov.pizzanat.controller;
 
+import com.baganov.pizzanat.model.dto.AdminStatsResponse;
+import com.baganov.pizzanat.service.AdminStatsService;
 import com.baganov.pizzanat.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +26,16 @@ import java.util.Map;
 public class AdminController {
 
     private final StorageService storageService;
+    private final AdminStatsService adminStatsService;
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Получение статистики для админ панели", description = "Возвращает общую статистику: заказы, выручка, популярные товары, статусы заказов")
+    public ResponseEntity<AdminStatsResponse> getAdminStats() {
+        log.info("Запрос статистики админ панели");
+        AdminStatsResponse stats = adminStatsService.getAdminStats();
+        return ResponseEntity.ok(stats);
+    }
 
     @PostMapping("/upload")
     @PreAuthorize("hasRole('ADMIN')")

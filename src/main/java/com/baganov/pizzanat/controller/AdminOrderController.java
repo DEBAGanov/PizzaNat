@@ -27,13 +27,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/orders")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Admin Orders", description = "API для администрирования заказов")
 public class AdminOrderController {
 
     private final OrderService orderService;
 
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER') or hasRole('OPERATOR')")
     @Operation(summary = "Получение всех заказов", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Page<OrderDTO>> getAllOrders(
             @PageableDefault(size = 20) Pageable pageable) {
@@ -43,6 +43,7 @@ public class AdminOrderController {
     }
 
     @GetMapping("/{orderId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER') or hasRole('OPERATOR')")
     @Operation(summary = "Получение заказа по ID", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<OrderDTO> getOrderById(
             @Parameter(description = "ID заказа", required = true) @PathVariable Integer orderId) {
@@ -52,7 +53,8 @@ public class AdminOrderController {
     }
 
     @PutMapping("/{orderId}/status")
-    @Operation(summary = "Обновление статуса заказа (с Telegram уведомлением)", security = @SecurityRequirement(name = "bearerAuth"))
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER') or hasRole('OPERATOR')")
+    @Operation(summary = "Обновление статуса заказа (с Telegram уведомлением)", description = "Обновляет статус заказа. Поддерживаемые статусы: PENDING, CONFIRMED, PREPARING, READY, DELIVERING, DELIVERED, CANCELLED", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<OrderDTO> updateOrderStatus(
             @Parameter(description = "ID заказа", required = true) @PathVariable Integer orderId,
             @Valid @RequestBody UpdateOrderStatusRequest request) {

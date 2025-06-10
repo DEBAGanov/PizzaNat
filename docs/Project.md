@@ -439,7 +439,7 @@ TELEGRAM_RATE_LIMIT_PER_HOUR=5
 private String phoneNumber;           // +7XXXXXXXXXX
 private Boolean isPhoneVerified;      // Подтверждение SMS
 
-// Поля для Telegram аутентификации  
+// Поля для Telegram аутентификации
 private Long telegramId;              // ID в Telegram
 private String telegramUsername;      // @username
 private Boolean isTelegramVerified;   // Подтверждение Telegram

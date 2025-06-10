@@ -226,28 +226,84 @@ public class OrderService {
             @CacheEvict(value = "allOrders", allEntries = true)
     })
     public OrderDTO updateOrderStatus(Integer orderId, String statusName) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException("Заказ не найден"));
+        log.info("Начало обновления статуса заказа {} на '{}'", orderId, statusName);
 
-        OrderStatus oldStatus = order.getStatus();
-        OrderStatus newStatus = orderStatusRepository.findByName(statusName)
-                .orElseThrow(() -> new IllegalArgumentException("Статус заказа не найден: " + statusName));
-
-        order.setStatus(newStatus);
-        order = orderRepository.save(order);
-
-        // Отправка Telegram уведомления об изменении статуса
-        try {
-            telegramBotService.sendOrderStatusUpdateNotification(order, oldStatus.getName(), newStatus.getName());
-        } catch (Exception e) {
-            log.error("Ошибка отправки Telegram уведомления об изменении статуса заказа #{}: {}", order.getId(),
-                    e.getMessage());
+        // Валидация входных параметров
+        if (orderId == null) {
+            throw new IllegalArgumentException("ID заказа не может быть null");
+        }
+        if (statusName == null || statusName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Название статуса не может быть пустым");
         }
 
-        log.info("Статус заказа #{} изменен с '{}' на '{}'",
-                order.getId(), oldStatus.getName(), newStatus.getName());
+        String normalizedStatusName = statusName.trim().toUpperCase();
+        log.debug("Нормализованное название статуса: '{}'", normalizedStatusName);
 
-        return mapToDTO(order);
+        try {
+            // Поиск заказа
+            Order order = orderRepository.findById(orderId)
+                    .orElseThrow(() -> new IllegalArgumentException("Заказ с ID " + orderId + " не найден"));
+
+            log.debug("Найден заказ с ID: {}, текущий статус: '{}'", orderId, order.getStatus().getName());
+
+            // Сохраняем старый статус для логирования и уведомлений
+            OrderStatus oldStatus = order.getStatus();
+
+            // Поиск нового статуса
+            OrderStatus newStatus = orderStatusRepository.findByName(normalizedStatusName)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            String.format(
+                                    "Статус заказа '%s' не найден. Доступные статусы: PENDING, CONFIRMED, PREPARING, READY, DELIVERING, DELIVERED, CANCELLED, CREATED, PAID",
+                                    normalizedStatusName)));
+
+            log.debug("Найден новый статус: '{}' с ID: {}", newStatus.getName(), newStatus.getId());
+
+            // Проверяем, не пытаемся ли мы установить тот же статус
+            if (oldStatus.getId().equals(newStatus.getId())) {
+                log.info("Статус заказа {} уже установлен на '{}', изменений не требуется", orderId,
+                        normalizedStatusName);
+                return mapToDTO(order);
+            }
+
+            // Обновляем статус
+            order.setStatus(newStatus);
+            order = orderRepository.save(order);
+
+            log.info("Статус заказа #{} успешно изменен с '{}' на '{}'",
+                    order.getId(), oldStatus.getName(), newStatus.getName());
+
+            // Отправка Telegram уведомления об изменении статуса (безопасно)
+            sendTelegramNotificationSafely(order, oldStatus.getName(), newStatus.getName());
+
+            return mapToDTO(order);
+
+        } catch (IllegalArgumentException e) {
+            log.error("Ошибка валидации при обновлении статуса заказа {}: {}", orderId, e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Неожиданная ошибка при обновлении статуса заказа {} на '{}': {}", orderId, statusName,
+                    e.getMessage(), e);
+            throw new RuntimeException("Не удалось обновить статус заказа: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Безопасная отправка Telegram уведомления
+     */
+    private void sendTelegramNotificationSafely(Order order, String oldStatusName, String newStatusName) {
+        try {
+            if (telegramBotService != null) {
+                telegramBotService.sendOrderStatusUpdateNotification(order, oldStatusName, newStatusName);
+                log.debug("Telegram уведомление об изменении статуса заказа #{} успешно отправлено", order.getId());
+            } else {
+                log.warn("TelegramBotService недоступен, уведомление не отправлено для заказа #{}", order.getId());
+            }
+        } catch (Exception e) {
+            log.error("Ошибка отправки Telegram уведомления об изменении статуса заказа #{}: {}",
+                    order.getId(), e.getMessage());
+            // Не пробрасываем исключение, чтобы не нарушать основную логику обновления
+            // статуса
+        }
     }
 
     /**

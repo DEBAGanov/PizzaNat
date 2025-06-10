@@ -20,6 +20,6 @@ import lombok.NoArgsConstructor;
 public class UpdateOrderStatusRequest {
 
     @NotBlank(message = "Статус заказа обязателен")
-    @Pattern(regexp = "^(CREATED|CONFIRMED|PREPARING|READY|DELIVERING|DELIVERED|CANCELLED)$", message = "Недопустимый статус заказа")
+    @Pattern(regexp = "^(PENDING|CONFIRMED|PREPARING|READY|DELIVERING|DELIVERED|CANCELLED|CREATED|PAID)$", message = "Недопустимый статус заказа")
     private String statusName;
 }

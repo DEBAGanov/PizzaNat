@@ -4,8 +4,8 @@
 echo "🔍 PizzaNat - Диагностика Telegram аутентификации"
 echo "================================================="
 
-#API_URL="https://debaganov-pizzanat-0177.twc1.net"
-API_URL="http://localhost:8080"
+API_URL="https://debaganov-pizzanat-0177.twc1.net"
+№API_URL="http://localhost:8080"
 
 # Цвета для вывода
 GREEN='\033[0;32m'

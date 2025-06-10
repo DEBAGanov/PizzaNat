@@ -195,12 +195,12 @@
       private boolean webhookEnabled;
       private int tokenTtlMinutes;
       private int rateLimitPerHour;
-      
+
       // Методы для валидации и получения URL
       public boolean isValid() { return botToken != null && !botToken.isEmpty(); }
       public String getApiUrl() { return "https://api.telegram.org/bot" + botToken; }
-      public String getStartAuthUrl(String authToken) { 
-          return "https://t.me/" + botUsername + "?start=" + authToken; 
+      public String getStartAuthUrl(String authToken) {
+          return "https://t.me/" + botUsername + "?start=" + authToken;
       }
   }
   ```
@@ -212,13 +212,13 @@
       boolean registerWebhook();
       boolean deleteWebhook();
       Object getWebhookInfo();
-      
+
       // Обработка команд и callback query
       private void processMessage(TelegramUpdate update);
       private void processCallbackQuery(TelegramUpdate update);
       private void handleStartCommand(String command, Long chatId, TelegramUserData user);
       private void handleAuthConfirmation(String authToken, Long chatId, TelegramUserData user);
-      
+
       // Отправка сообщений
       private void sendAuthConfirmationMessage(Long chatId, String authToken, TelegramUserData user);
       private void sendAuthSuccessMessage(Long chatId, TelegramUserData user);
@@ -253,7 +253,7 @@
       String generateAuthToken(); // Генерирует "tg_auth_" + 20 символов
       boolean isValidAuthToken(String token); // Валидация по паттерну
       String extractTokenFromStartCommand(String command); // Извлечение из /start команды
-      
+
       // Константы
       private static final String AUTH_TOKEN_PREFIX = "tg_auth_";
       private static final int TOKEN_LENGTH = 20;
@@ -279,7 +279,7 @@
       private final TokenGenerator tokenGenerator;
       private final TelegramUserDataExtractor userDataExtractor;
       private final RateLimitService rateLimitService;
-      
+
       // Single Responsibility - каждый метод выполняет одну задачу
       private User findOrCreateUser(TelegramUserData userData);
       private void addDefaultRole(User user);
@@ -294,7 +294,7 @@
       boolean isValidUserData(TelegramUserData userData);
       User createUserFromTelegramData(TelegramUserData userData);
       void updateUserWithTelegramData(User user, TelegramUserData userData);
-      
+
       // Валидация обязательных полей
       private boolean hasRequiredFields(TelegramUserData userData);
       private String generateUsernameFromTelegram(TelegramUserData userData);
@@ -315,7 +315,7 @@
       @GetMapping("/status/{authToken}")
       @Operation(summary = "Проверка статуса Telegram аутентификации")
       ResponseEntity<TelegramStatusResponse> checkStatus(@PathVariable String authToken);
-      
+
       @GetMapping("/test")
       @Operation(summary = "Health check Telegram аутентификации")
       ResponseEntity<Object> healthCheck();
@@ -329,15 +329,15 @@
       @PostMapping("/webhook")
       @Operation(summary = "Webhook для обработки Telegram updates")
       ResponseEntity<Void> handleWebhook(@RequestBody TelegramUpdate update);
-      
+
       @GetMapping("/webhook/info")
       @Operation(summary = "Информация о webhook")
       ResponseEntity<Object> getWebhookInfo();
-      
+
       @PostMapping("/webhook/register")
       @Operation(summary = "Регистрация webhook")
       ResponseEntity<Object> registerWebhook();
-      
+
       @DeleteMapping("/webhook")
       @Operation(summary = "Удаление webhook")
       ResponseEntity<Object> deleteWebhook();
@@ -357,7 +357,7 @@
       String telegramBotUrl;
       LocalDateTime expiresAt;
       String message;
-      
+
       // Factory methods
       static TelegramAuthResponse success(String authToken, String telegramBotUrl, LocalDateTime expiresAt);
       static TelegramAuthResponse error(String message);
@@ -368,7 +368,7 @@
       TokenStatus status;
       String message;
       AuthResponse authData; // если подтверждено
-      
+
       // Factory methods
       static TelegramStatusResponse pending();
       static TelegramStatusResponse confirmed(AuthResponse authData);
@@ -380,7 +380,7 @@
   public class TelegramUpdate {
       TelegramMessage message;
       TelegramCallbackQuery callbackQuery;
-      
+
       // Helper methods
       boolean hasMessage();
       boolean hasCallbackQuery();
@@ -393,7 +393,7 @@
       String username;
       String firstName;
       String lastName;
-      
+
       // Helper methods
       String getFullName();
       String getDisplayName();
@@ -417,7 +417,7 @@
   "Привет, %s!\n\n" +
   "Вы хотите войти в мобильное приложение?\n\n" +
   "Нажмите ✅ Подтвердить для входа в аккаунт"
-  
+
   // Inline клавиатуры для подтверждения/отмены
   Map<String, Object> keyboard = Map.of(
       "inline_keyboard", new Object[][] {
@@ -782,17 +782,115 @@
 
 ## Запланированные задачи
 
+### 🔥 КРИТИЧЕСКИЙ ПРИОРИТЕТ - Android приложение интеграция
+
+#### 📋 ТЗ 1: API статистики админ панели [КРИТИЧЕСКИЙ ПРИОРИТЕТ]
+**Статус:** ✅ ЗАВЕРШЕНО
+**Дедлайн:** 20.06.2025
+**Дата завершения:** 27.01.2025
+**Ответственный:** Backend Team
+**Android интеграция:** [PizzaNatApp](https://github.com/DEBAGanov/PizzaNatApp)
+
+**Описание:** Реализация эндпоинта `GET /api/v1/admin/stats` для получения статистики в админ панели мобильного приложения
+
+**Проблема:**
+- ✅ Исправлено: HTTP 500 "Внутренняя ошибка сервера"
+- ✅ Админка теперь работает с полной статистикой
+- ✅ Android приложение готово к интеграции, backend отвечает корректно
+
+**Шаги выполнения:**
+- [x] **Создать AdminStatsDTO** - структура ответа с основной статистикой
+- [x] **Создать PopularProductDTO** - DTO для популярных продуктов
+- [x] **Реализовать AdminStatsService** - бизнес-логика для расчета статистики
+- [x] **Создать AdminStatsRepository** - SQL запросы для статистики
+- [x] **Исправить AdminController** - добавить эндпоинт `/api/v1/admin/stats`
+- [x] **Добавить валидацию прав доступа** - SUPER_ADMIN, MANAGER
+- [ ] **Протестировать с реальными данными БД**
+- [ ] **Интегрировать с Android приложением**
+
+**Требуемые поля ответа:**
+```json
+{
+  "totalOrders": int,
+  "totalRevenue": double,
+  "totalProducts": int,
+  "totalCategories": int,
+  "ordersToday": int,
+  "revenueToday": double,
+  "popularProducts": [
+    {
+      "productId": long,
+      "productName": string,
+      "ordersCount": int,
+      "revenue": double
+    }
+  ],
+  "orderStatusStats": {
+    "CREATED": int,
+    "PENDING": int,
+    "CONFIRMED": int,
+    // ... все статусы
+  }
+}
+```
+
+**Документация:** `docs/TZ_ADMIN_STATS_API.md`
+
+---
+
+#### 📋 ТЗ 2: API обновления статуса заказа [КРИТИЧЕСКИЙ ПРИОРИТЕТ]
+**Статус:** ✅ ЗАВЕРШЕНО
+**Дедлайн:** 20.06.2025
+**Дата завершения:** 27.01.2025
+**Ответственный:** Backend Team
+**Android интеграция:** [PizzaNatApp](https://github.com/DEBAGanov/PizzaNatApp)
+
+**Описание:** Исправление эндпоинта `PUT /api/v1/admin/orders/{orderId}/status` для обновления статуса заказа администратором
+
+**Проблема:**
+- ✅ Исправлено: HTTP 500 "Внутренняя ошибка сервера"
+- ✅ Админы теперь могут управлять заказами
+- ✅ Android JSON `{"status":"DELIVERED"}` корректно обрабатывается backend
+
+**Шаги выполнения:**
+- [x] **Создать UpdateOrderStatusRequest DTO** - для приема JSON с новым статусом
+- [x] **Исправить AdminOrderController** - метод PUT для обновления статуса
+- [x] **Добавить валидацию enum статусов** - все 7 возможных значений
+- [x] **Реализовать AdminOrderService.updateStatus()** - бизнес-логика
+- [x] **Обновить OrderRepository** - метод обновления статуса
+- [x] **Добавить валидацию прав доступа** - SUPER_ADMIN, MANAGER, OPERATOR
+- [ ] **Протестировать все статусы** - от PENDING до DELIVERED
+- [ ] **Интегрировать с Android приложением**
+
+**Enum статусы (uppercase):**
+- PENDING, CONFIRMED, PREPARING, READY, DELIVERING, DELIVERED, CANCELLED
+
+**Формат запроса от Android:**
+```http
+PUT /api/v1/admin/orders/{orderId}/status
+Authorization: Bearer <admin_jwt_token>
+Content-Type: application/json
+
+{
+  "status": "DELIVERED"
+}
+```
+
+**Документация:** `docs/TZ_ADMIN_ORDER_STATUS_API.md`
+
+---
+
 ### Модуль заказов
 - **Задача**: Разработка механизма отслеживания заказа
   - **Статус**: Запланирована
-  - **Приоритет**: Высокий
+  - **Приоритет**: Средний
   - **Описание**: Реализация системы отслеживания статуса заказа в реальном времени
   - **Шаги выполнения**:
     - [ ] Разработка модели данных для событий заказа
     - [ ] Реализация API для получения обновлений
     - [ ] Интеграция с системой уведомлений
     - [ ] Написание тестов
-  - **Зависимости**: Завершение задачи "Реализация системы уведомлений"
+  - **Зависимости**: Завершение критических задач Android интеграции
 
 ### Модуль платежей
 - **Задача**: Интеграция с платежным шлюзом
@@ -1276,7 +1374,7 @@ Edge Cases:         70%  ✅
 
 **Проблема №1:** `UnsatisfiedDependencyException` - конфликт нескольких RestTemplate бинов:
 - `exolveRestTemplate` (ExolveConfig)
-- `telegramRestTemplate` (TelegramConfig) 
+- `telegramRestTemplate` (TelegramConfig)
 - `telegramAuthRestTemplate` (TelegramConfig)
 - `restTemplate` (RestTemplateConfig)
 
@@ -1329,7 +1427,7 @@ telegram:
 - ✅ Все конфликты бинов устранены
 - ✅ Приложение успешно компилируется
 - ✅ Unit тесты проходят (RobokassaClientTest)
-- ✅ **Spring контекст создается без ошибок** 
+- ✅ **Spring контекст создается без ошибок**
 - ✅ **Приложение запускается успешно**
 - ✅ Следует принципу Dependency Inversion из SOLID
 
