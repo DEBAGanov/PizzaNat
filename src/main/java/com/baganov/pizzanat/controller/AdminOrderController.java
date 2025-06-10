@@ -33,7 +33,7 @@ public class AdminOrderController {
     private final OrderService orderService;
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER') or hasRole('OPERATOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Получение всех заказов", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Page<OrderDTO>> getAllOrders(
             @PageableDefault(size = 20) Pageable pageable) {
@@ -43,7 +43,7 @@ public class AdminOrderController {
     }
 
     @GetMapping("/{orderId}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER') or hasRole('OPERATOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Получение заказа по ID", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<OrderDTO> getOrderById(
             @Parameter(description = "ID заказа", required = true) @PathVariable Integer orderId) {
@@ -53,7 +53,7 @@ public class AdminOrderController {
     }
 
     @PutMapping("/{orderId}/status")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER') or hasRole('OPERATOR')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Обновление статуса заказа (с Telegram уведомлением)", description = "Обновляет статус заказа. Поддерживаемые статусы: PENDING, CONFIRMED, PREPARING, READY, DELIVERING, DELIVERED, CANCELLED", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<OrderDTO> updateOrderStatus(
             @Parameter(description = "ID заказа", required = true) @PathVariable Integer orderId,

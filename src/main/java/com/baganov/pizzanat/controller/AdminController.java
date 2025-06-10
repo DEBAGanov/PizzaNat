@@ -29,7 +29,7 @@ public class AdminController {
     private final AdminStatsService adminStatsService;
 
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Получение статистики для админ панели", description = "Возвращает общую статистику: заказы, выручка, популярные товары, статусы заказов")
     public ResponseEntity<AdminStatsResponse> getAdminStats() {
         log.info("Запрос статистики админ панели");
