@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * DTO для ответа инициализации Telegram аутентификации.
@@ -28,7 +29,7 @@ public class TelegramAuthResponse {
     private String telegramBotUrl;
 
     @Schema(description = "Время истечения токена", example = "2025-01-15T14:30:00")
-    private LocalDateTime expiresAt;
+    private String expiresAt;
 
     @Schema(description = "Сообщение для пользователя", example = "Перейдите по ссылке для подтверждения")
     private String message;
@@ -41,7 +42,7 @@ public class TelegramAuthResponse {
                 .success(true)
                 .authToken(authToken)
                 .telegramBotUrl(telegramBotUrl)
-                .expiresAt(expiresAt)
+                .expiresAt(expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                 .message("Перейдите по ссылке для подтверждения аутентификации в Telegram")
                 .build();
     }

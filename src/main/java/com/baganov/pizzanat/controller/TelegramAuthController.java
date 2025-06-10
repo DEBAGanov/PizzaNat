@@ -152,7 +152,7 @@ public class TelegramAuthController {
             java.util.Map<String, Object> response = new java.util.HashMap<>();
             response.put("status", "OK");
             response.put("service", "Telegram Authentication");
-            response.put("timestamp", java.time.LocalDateTime.now());
+            response.put("timestamp", java.time.LocalDateTime.now().toString());
 
             // Добавляем минимальную диагностическую информацию
             try {
@@ -171,7 +171,7 @@ public class TelegramAuthController {
                     "status", "ERROR",
                     "service", "Telegram Authentication",
                     "error", e.getMessage(),
-                    "timestamp", java.time.LocalDateTime.now()));
+                    "timestamp", java.time.LocalDateTime.now().toString()));
         }
     }
 }

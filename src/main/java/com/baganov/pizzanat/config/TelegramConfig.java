@@ -105,12 +105,28 @@ public class TelegramConfig {
         }
 
         /**
+         * Получить URL webhook (геттер для webhookUrl)
+         */
+        public String getWebhookUrl() {
+            return webhookUrl;
+        }
+
+        /**
          * Проверить валидность конфигурации
          */
         public boolean isValid() {
             return enabled &&
                     botToken != null && !botToken.trim().isEmpty() &&
                     botUsername != null && !botUsername.trim().isEmpty();
+        }
+
+        /**
+         * Проверить, настроен ли webhook
+         */
+        public boolean isWebhookConfigured() {
+            return webhookEnabled &&
+                    webhookUrl != null &&
+                    !webhookUrl.trim().isEmpty();
         }
     }
 }

@@ -35,7 +35,7 @@ public class TelegramWebhookService {
 
     /**
      * Обработка входящего update от Telegram
-     * 
+     *
      * @param update данные от Telegram webhook
      */
     public void processUpdate(TelegramUpdate update) {
@@ -64,7 +64,7 @@ public class TelegramWebhookService {
 
     /**
      * Обработка текстовых сообщений
-     * 
+     *
      * @param update Telegram update с сообщением
      */
     private void processMessage(TelegramUpdate update) {
@@ -97,7 +97,7 @@ public class TelegramWebhookService {
 
     /**
      * Обработка callback query от inline кнопок
-     * 
+     *
      * @param update Telegram update с callback query
      */
     private void processCallbackQuery(TelegramUpdate update) {
@@ -130,7 +130,7 @@ public class TelegramWebhookService {
 
     /**
      * Обработка команды /start с токеном аутентификации
-     * 
+     *
      * @param command полная команда
      * @param chatId  ID чата
      * @param user    данные пользователя
@@ -151,7 +151,7 @@ public class TelegramWebhookService {
 
     /**
      * Обработка подтверждения аутентификации
-     * 
+     *
      * @param authToken токен аутентификации
      * @param chatId    ID чата
      * @param user      данные пользователя
@@ -171,7 +171,7 @@ public class TelegramWebhookService {
 
     /**
      * Обработка отмены аутентификации
-     * 
+     *
      * @param authToken токен аутентификации
      * @param chatId    ID чата
      * @param user      данные пользователя
@@ -184,7 +184,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения с подтверждением аутентификации
-     * 
+     *
      * @param chatId    ID чата
      * @param authToken токен аутентификации
      * @param user      данные пользователя
@@ -215,7 +215,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения об успешной аутентификации
-     * 
+     *
      * @param chatId ID чата
      * @param user   данные пользователя
      */
@@ -232,7 +232,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения об отмене аутентификации
-     * 
+     *
      * @param chatId ID чата
      */
     private void sendAuthCancelledMessage(Long chatId) {
@@ -245,7 +245,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения об ошибке аутентификации
-     * 
+     *
      * @param chatId       ID чата
      * @param errorMessage сообщение об ошибке
      */
@@ -260,7 +260,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка приветственного сообщения
-     * 
+     *
      * @param chatId ID чата
      */
     private void sendWelcomeMessage(Long chatId) {
@@ -275,7 +275,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка справочного сообщения
-     * 
+     *
      * @param chatId ID чата
      */
     private void sendHelpMessage(Long chatId) {
@@ -294,7 +294,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения о неизвестной команде
-     * 
+     *
      * @param chatId ID чата
      */
     private void sendUnknownCommandMessage(Long chatId) {
@@ -306,7 +306,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения о некорректном токене
-     * 
+     *
      * @param chatId ID чата
      */
     private void sendInvalidTokenMessage(Long chatId) {
@@ -319,7 +319,7 @@ public class TelegramWebhookService {
 
     /**
      * Отправка сообщения в Telegram
-     * 
+     *
      * @param chatId      ID чата
      * @param text        текст сообщения
      * @param parseMode   режим парсинга (Markdown, HTML)
@@ -366,7 +366,7 @@ public class TelegramWebhookService {
 
     /**
      * Ответ на callback query
-     * 
+     *
      * @param callbackQueryId ID callback query
      */
     private void answerCallbackQuery(String callbackQueryId) {
@@ -393,7 +393,7 @@ public class TelegramWebhookService {
 
     /**
      * Регистрация webhook в Telegram
-     * 
+     *
      * @return true если успешно
      */
     public boolean registerWebhook() {
@@ -428,7 +428,7 @@ public class TelegramWebhookService {
 
     /**
      * Удаление webhook из Telegram
-     * 
+     *
      * @return true если успешно
      */
     public boolean deleteWebhook() {
@@ -459,7 +459,7 @@ public class TelegramWebhookService {
 
     /**
      * Получение информации о webhook
-     * 
+     *
      * @return информация о webhook
      */
     public Object getWebhookInfo() {
@@ -478,7 +478,7 @@ public class TelegramWebhookService {
                 return Map.of(
                         "webhookInfo", response.getBody(),
                         "configured", true,
-                        "timestamp", LocalDateTime.now());
+                        "timestamp", LocalDateTime.now().toString());
             } else {
                 return Map.of(
                         "error", "Ошибка получения информации",
@@ -489,7 +489,7 @@ public class TelegramWebhookService {
             log.error("Ошибка при получении информации о webhook: {}", e.getMessage(), e);
             return Map.of(
                     "error", e.getMessage(),
-                    "timestamp", LocalDateTime.now());
+                    "timestamp", LocalDateTime.now().toString());
         }
     }
 }
