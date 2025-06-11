@@ -43,16 +43,21 @@ public class TelegramWebhookController {
     })
     public ResponseEntity<Object> handleWebhook(@RequestBody TelegramUpdate update) {
         try {
-            log.debug("Получен Telegram webhook update: {}", update.getUpdateId());
+            log.info("WEBHOOK: Получен Telegram webhook update: {}", update.getUpdateId());
+            log.info("WEBHOOK: Update details: {}", update);
 
             telegramWebhookService.processUpdate(update);
 
+            log.info("WEBHOOK: Обработка завершена успешно для update: {}", update.getUpdateId());
             return ResponseEntity.ok(java.util.Map.of("status", "OK"));
 
         } catch (Exception e) {
-            log.error("Ошибка при обработке Telegram webhook: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(
-                    java.util.Map.of("error", "Invalid update data"));
+            log.error("WEBHOOK: Ошибка при обработке Telegram webhook update {}: {}",
+                    update != null ? update.getUpdateId() : "null", e.getMessage(), e);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "status", "OK",
+                    "processed", false,
+                    "error", e.getMessage()));
         }
     }
 

@@ -68,30 +68,57 @@ public class TelegramWebhookService {
      * @param update Telegram update с сообщением
      */
     private void processMessage(TelegramUpdate update) {
-        TelegramUpdate.TelegramMessage message = update.getMessage();
+        try {
+            TelegramUpdate.TelegramMessage message = update.getMessage();
 
-        if (message == null || message.getText() == null) {
-            return;
-        }
+            if (message == null) {
+                log.warn("Получено пустое сообщение в update: {}", update.getUpdateId());
+                return;
+            }
 
-        String text = message.getText().trim();
-        Long chatId = message.getChat().getId();
-        TelegramUserData user = message.getFrom();
+            if (message.getChat() == null || message.getFrom() == null) {
+                log.warn("Некорректное сообщение без chat или from в update: {}", update.getUpdateId());
+                return;
+            }
 
-        log.debug("Обработка сообщения от пользователя {}: {}", user.getId(), text);
+            Long chatId = message.getChat().getId();
+            TelegramUserData user = message.getFrom();
 
-        // Обработка команды /start с токеном
-        if (text.startsWith("/start ")) {
-            handleStartCommand(text, chatId, user);
-        }
-        // Обработка других команд
-        else if (text.equals("/start")) {
-            sendWelcomeMessage(chatId);
-        } else if (text.equals("/help")) {
-            sendHelpMessage(chatId);
-        } else {
-            // Неизвестная команда
-            sendUnknownCommandMessage(chatId);
+            log.debug("Обработка сообщения от пользователя {}: {}", user.getId(),
+                    message.getText() != null ? message.getText() : "контакт/медиа");
+
+            // Обработка контактных данных
+            if (message.hasContact()) {
+                handleContactMessage(message, chatId, user);
+                return;
+            }
+
+            // Обработка текстовых сообщений
+            if (message.getText() == null) {
+                log.debug("Получено не-текстовое сообщение от пользователя {}", user.getId());
+                return;
+            }
+
+            String text = message.getText().trim();
+
+            // Обработка команды /start с токеном
+            if (text.startsWith("/start ")) {
+                handleStartCommand(text, chatId, user);
+            }
+            // Обработка других команд
+            else if (text.equals("/start")) {
+                sendWelcomeMessage(chatId);
+            } else if (text.equals("/help")) {
+                sendHelpMessage(chatId);
+            } else {
+                // Неизвестная команда
+                sendUnknownCommandMessage(chatId);
+            }
+
+        } catch (Exception e) {
+            log.error("Ошибка при обработке сообщения в update {}: {}",
+                    update.getUpdateId(), e.getMessage(), e);
+            // Не перебрасываем исключение, чтобы не возвращать 500
         }
     }
 
@@ -193,22 +220,21 @@ public class TelegramWebhookService {
         String message = String.format(
                 "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
                         "Привет, %s!\n\n" +
-                        "Вы хотите войти в мобильное приложение?\n\n" +
-                        "Нажмите ✅ *Подтвердить* для входа в аккаунт",
+                        "Для завершения авторизации необходимо " +
+                        "поделиться номером телефона через кнопку ниже",
                 user.getDisplayName());
 
-        // Создаем inline клавиатуру
+        // Создаем клавиатуру с кнопкой запроса контакта
         Map<String, Object> keyboard = Map.of(
-                "inline_keyboard", new Object[][] {
+                "keyboard", new Object[][] {
                         {
                                 Map.of(
-                                        "text", "✅ Подтвердить",
-                                        "callback_data", "confirm_auth_" + authToken),
-                                Map.of(
-                                        "text", "❌ Отмена",
-                                        "callback_data", "cancel_auth_" + authToken)
+                                        "text", "📞 Поделиться номером телефона",
+                                        "request_contact", true)
                         }
-                });
+                },
+                "resize_keyboard", true,
+                "one_time_keyboard", true);
 
         sendMessage(chatId, message, "Markdown", keyboard);
     }
@@ -491,5 +517,130 @@ public class TelegramWebhookService {
                     "error", e.getMessage(),
                     "timestamp", LocalDateTime.now().toString());
         }
+    }
+
+    /**
+     * Обработка получения контактных данных от пользователя
+     *
+     * @param message сообщение с контактом
+     * @param chatId  ID чата
+     * @param user    данные пользователя
+     */
+    private void handleContactMessage(TelegramUpdate.TelegramMessage message, Long chatId, TelegramUserData user) {
+        TelegramUpdate.TelegramContact contact = message.getContact();
+
+        if (contact == null) {
+            log.warn("Получен null контакт от пользователя {}", user.getId());
+            sendContactErrorMessage(chatId);
+            return;
+        }
+
+        log.info("Получен контакт от пользователя {}: телефон {}, имя '{}'",
+                user.getId(),
+                contact.getPhoneNumber() != null
+                        ? contact.getPhoneNumber().replaceAll("(\\d{1,3})(\\d{3})(\\d{3})(\\d+)", "$1***$2***$4")
+                        : "null",
+                contact.getFullName());
+
+        try {
+            // Проверяем, что это контакт самого пользователя
+            if (!contact.isOwnContact(user.getId())) {
+                sendNotOwnContactMessage(chatId, contact.getFullName());
+                return;
+            }
+
+            // Валидируем номер телефона
+            if (contact.getPhoneNumber() == null || contact.getPhoneNumber().trim().isEmpty()) {
+                sendInvalidPhoneMessage(chatId);
+                return;
+            }
+
+            // Обновляем данные пользователя с номером телефона
+            TelegramUserData updatedUser = TelegramUserData.builder()
+                    .id(user.getId())
+                    .username(user.getUsername())
+                    .firstName(contact.getFirstName() != null ? contact.getFirstName() : user.getFirstName())
+                    .lastName(contact.getLastName() != null ? contact.getLastName() : user.getLastName())
+                    .phoneNumber(contact.getPhoneNumber())
+                    .build();
+
+            // Сохраняем данные пользователя с номером телефона
+            telegramAuthService.updateUserWithPhoneNumber(updatedUser);
+
+            sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), user.getDisplayName());
+
+        } catch (Exception e) {
+            log.error("Ошибка при обработке контакта от пользователя {}: {}", user.getId(), e.getMessage(), e);
+            sendContactErrorMessage(chatId);
+        }
+    }
+
+    /**
+     * Отправка сообщения об успешном получении номера телефона
+     *
+     * @param chatId      ID чата
+     * @param phoneNumber номер телефона
+     * @param userName    имя пользователя
+     */
+    private void sendPhoneReceivedMessage(Long chatId, String phoneNumber, String userName) {
+        // Маскируем номер для безопасности
+        String maskedPhone = phoneNumber.replaceAll("(\\d{1,3})(\\d{3})(\\d{3})(\\d+)", "$1***$2***$4");
+
+        String message = String.format(
+                "✅ *Номер телефона получен!*\n\n" +
+                        "Спасибо, %s!\n\n" +
+                        "Ваш номер: %s\n\n" +
+                        "Теперь можете вернуться в приложение для завершения авторизации.",
+                userName, maskedPhone);
+
+        // Убираем клавиатуру
+        Map<String, Object> keyboard = Map.of("remove_keyboard", true);
+
+        sendMessage(chatId, message, "Markdown", keyboard);
+    }
+
+    /**
+     * Отправка сообщения об ошибке обработки контакта
+     *
+     * @param chatId ID чата
+     */
+    private void sendContactErrorMessage(Long chatId) {
+        String message = "❌ *Ошибка обработки контакта*\n\n" +
+                "Произошла ошибка при обработке ваших контактных данных. " +
+                "Попробуйте еще раз или обратитесь в поддержку.";
+
+        sendMessage(chatId, message, "Markdown", null);
+    }
+
+    /**
+     * Отправка сообщения о неверном контакте (не свой)
+     *
+     * @param chatId      ID чата
+     * @param contactName имя контакта
+     */
+    private void sendNotOwnContactMessage(Long chatId, String contactName) {
+        String message = String.format(
+                "⚠️ *Необходим ваш контакт*\n\n" +
+                        "Вы отправили контакт: %s\n\n" +
+                        "Для авторизации необходимо поделиться " +
+                        "*вашим собственным* номером телефона " +
+                        "через кнопку \"📞 Поделиться номером телефона\".",
+                contactName != null ? contactName : "Неизвестный");
+
+        sendMessage(chatId, message, "Markdown", null);
+    }
+
+    /**
+     * Отправка сообщения о неверном номере телефона
+     *
+     * @param chatId ID чата
+     */
+    private void sendInvalidPhoneMessage(Long chatId) {
+        String message = "❌ *Неверный номер телефона*\n\n" +
+                "Не удалось получить ваш номер телефона. " +
+                "Убедитесь, что в настройках Telegram указан номер телефона, " +
+                "и попробуйте еще раз.";
+
+        sendMessage(chatId, message, "Markdown", null);
     }
 }

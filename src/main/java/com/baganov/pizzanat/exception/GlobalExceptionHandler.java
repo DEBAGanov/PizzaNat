@@ -9,20 +9,70 @@ package com.baganov.pizzanat.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 
 import jakarta.validation.ValidationException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.validation.FieldError;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * Обработчик ошибок JSON парсинга (для webhook диагностики)
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Object> handleJsonParsingError(
+            HttpMessageNotReadableException ex, WebRequest request) {
+
+        log.error("JSON PARSING ERROR: URL: {}, Message: {}",
+                request.getDescription(false), ex.getMessage(), ex);
+
+        String errorMessage = "Ошибка парсинга JSON";
+
+        // Детальная информация об ошибке JSON для webhook
+        Throwable cause = ex.getCause();
+        if (cause instanceof JsonProcessingException jsonEx) {
+            log.error("JSON Processing Exception: {}", jsonEx.getOriginalMessage());
+            errorMessage = "Ошибка обработки JSON: " + jsonEx.getOriginalMessage();
+        } else if (cause instanceof InvalidFormatException formatEx) {
+            log.error("Invalid Format Exception: {}", formatEx.getOriginalMessage());
+            errorMessage = "Неверный формат данных: " + formatEx.getOriginalMessage();
+        } else if (cause instanceof MismatchedInputException inputEx) {
+            log.error("Mismatched Input Exception: {}", inputEx.getOriginalMessage());
+            errorMessage = "Несоответствие входных данных: " + inputEx.getOriginalMessage();
+        }
+
+        // Для Telegram webhook возвращаем OK статус с ошибкой
+        if (request.getDescription(false).contains("/telegram/webhook")) {
+            return ResponseEntity.ok(Map.of(
+                    "status", "OK",
+                    "processed", false,
+                    "error", errorMessage,
+                    "timestamp", LocalDateTime.now().toString()));
+        }
+
+        // Для остальных эндпоинтов используем стандартную обработку ошибок
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                errorMessage,
+                System.currentTimeMillis());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
@@ -80,8 +130,20 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        log.error("Внутренняя ошибка сервера: {}", ex.getMessage(), ex);
+    public ResponseEntity<Object> handleGenericException(Exception ex, WebRequest request) {
+        log.error("GENERIC ERROR: URL: {}, Exception: {}, Message: {}",
+                request.getDescription(false), ex.getClass().getSimpleName(), ex.getMessage(), ex);
+
+        // Для Telegram webhook возвращаем OK статус с ошибкой
+        if (request.getDescription(false).contains("/telegram/webhook")) {
+            return ResponseEntity.ok(Map.of(
+                    "status", "OK",
+                    "processed", false,
+                    "error", ex.getMessage() != null ? ex.getMessage() : "Внутренняя ошибка сервера",
+                    "timestamp", LocalDateTime.now().toString()));
+        }
+
+        // Для остальных эндпоинтов используем стандартную обработку ошибок
         ErrorResponse error = new ErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Внутренняя ошибка сервера",

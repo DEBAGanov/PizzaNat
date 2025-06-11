@@ -1,8 +1,8 @@
 /**
  * @file: OpenApiConfig.java
- * @description: Конфигурация OpenAPI и Swagger UI
+ * @description: Простая стандартная конфигурация OpenAPI и Swagger UI
  * @dependencies: SpringDoc OpenAPI
- * @created: 2025-05-23
+ * @created: 2025-06-10
  */
 package com.baganov.pizzanat.config;
 
@@ -17,46 +17,37 @@ import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Arrays;
+import java.util.List;
 
+/**
+ * Простая стандартная конфигурация OpenAPI 3.0
+ * Использует только базовые настройки SpringDoc без кастомизации
+ */
 @Configuration
 public class OpenApiConfig {
 
-    private static final String BEARER_AUTH = "bearer-jwt";
-
-    @Bean
-    public OpenAPI customOpenAPI() {
-        return new OpenAPI()
-                .openapi("3.0.1")
-                .info(apiInfo())
-                .servers(Arrays.asList(
-                        new Server()
-                                .url("/")
-                                .description("Текущий сервер")))
-                .addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH))
-                .components(
-                        new Components()
-                                .addSecuritySchemes(BEARER_AUTH,
-                                        new SecurityScheme()
-                                                .name("Authorization")
-                                                .type(SecurityScheme.Type.HTTP)
-                                                .scheme("bearer")
-                                                .bearerFormat("JWT")
-                                                .in(SecurityScheme.In.HEADER)
-                                                .description("JWT Authorization header using the Bearer scheme.")));
-    }
-
-    private Info apiInfo() {
-        return new Info()
-                .title("PizzaNat API")
-                .description("API для сервиса заказа пиццы PizzaNat")
-                .version("1.0.0")
-                .contact(new Contact()
-                        .name("Baganov")
-                        .url("https://pizzanat.com")
-                        .email("support@pizzanat.com"))
-                .license(new License()
-                        .name("Apache 2.0")
-                        .url("https://www.apache.org/licenses/LICENSE-2.0.html"));
-    }
+        @Bean
+        public OpenAPI pizzaNatOpenAPI() {
+                return new OpenAPI()
+                                .openapi("3.0.1")
+                                .info(new Info()
+                                                .title("Application API")
+                                                .description("The project to support your fit")
+                                                .version("0.0.1-SNAPSHOT")
+                                                .contact(new Contact()
+                                                                .name("Contact Roman"))
+                                                .license(new License()
+                                                                .name("Apache 2.0")
+                                                                .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
+                                .servers(List.of(
+                                                new Server().url("http://localhost:8080")
+                                                                .description("Dev service")))
+                                .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+                                .components(new Components()
+                                                .addSecuritySchemes("bearerAuth", new SecurityScheme()
+                                                                .type(SecurityScheme.Type.HTTP)
+                                                                .scheme("bearer")
+                                                                .bearerFormat("JWT")
+                                                                .description("JWT Authorization header")));
+        }
 }

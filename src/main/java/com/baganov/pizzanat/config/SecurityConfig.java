@@ -64,18 +64,12 @@ public class SecurityConfig {
      * Массив URL-адресов, на которые можно делать запросы без аутентификации
      */
     private static final String[] AUTH_WHITELIST = {
-            // Swagger UI
+            // Swagger UI - стандартные пути
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/swagger-resources/**",
             "/v3/api-docs/**",
-            "/swagger",
-            "/swagger-ui/index.html",
-            "/swagger-ui/custom-swagger-ui.html",
-            "/swagger-ui/*",
-            // Root and API help
+            // Root path
             "/",
-            "/api-help",
             // Auth endpoints (включая новые SMS и Telegram)
             "/api/v1/auth/**",
             "/api/v1/auth/sms/**",

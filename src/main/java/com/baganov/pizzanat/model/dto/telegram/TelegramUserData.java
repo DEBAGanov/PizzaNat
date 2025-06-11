@@ -29,6 +29,9 @@ public class TelegramUserData {
     @Schema(description = "Фамилия пользователя в Telegram", example = "Иванов")
     private String lastName;
 
+    @Schema(description = "Номер телефона пользователя", example = "+79161234567")
+    private String phoneNumber;
+
     /**
      * Получить полное имя пользователя
      *

@@ -273,9 +273,56 @@ public class TelegramAuthService {
             if (markedExpired > 0) {
                 log.info("Помечено как истекшие {} Telegram токенов", markedExpired);
             }
-
         } catch (Exception e) {
             log.error("Ошибка при очистке истекших Telegram токенов: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Обновление пользователя номером телефона из Telegram
+     * 
+     * @param userData данные пользователя с номером телефона
+     */
+    @Transactional
+    public void updateUserWithPhoneNumber(TelegramUserData userData) {
+        try {
+            if (userData == null || userData.getId() == null) {
+                throw new IllegalArgumentException("Некорректные данные пользователя");
+            }
+
+            // Ищем пользователя по Telegram ID
+            Optional<User> userOpt = userRepository.findByTelegramId(userData.getId());
+
+            if (userOpt.isEmpty()) {
+                log.warn("Пользователь с Telegram ID {} не найден для обновления номера телефона", userData.getId());
+                return;
+            }
+
+            User user = userOpt.get();
+
+            // Обновляем номер телефона если он предоставлен
+            if (userData.getPhoneNumber() != null && !userData.getPhoneNumber().trim().isEmpty()) {
+                user.setPhoneNumber(userData.getPhoneNumber().trim());
+                user.setIsPhoneVerified(true);
+                log.info("Обновлен номер телефона для пользователя {} (Telegram ID: {})",
+                        user.getUsername(), userData.getId());
+            }
+
+            // Обновляем другие данные если они предоставлены
+            if (userData.getFirstName() != null && user.getFirstName() == null) {
+                user.setFirstName(userData.getFirstName().trim());
+            }
+
+            if (userData.getLastName() != null && user.getLastName() == null) {
+                user.setLastName(userData.getLastName().trim());
+            }
+
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+
+        } catch (Exception e) {
+            log.error("Ошибка при обновлении пользователя номером телефона: {}", e.getMessage(), e);
+            throw new RuntimeException("Ошибка обновления данных пользователя: " + e.getMessage());
         }
     }
 }
