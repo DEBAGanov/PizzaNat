@@ -1,5 +1,6 @@
 package com.baganov.pizzanat.model.dto.telegram;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -15,11 +16,16 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Schema(description = "Данные пользователя Telegram")
 public class TelegramUserData {
 
     @Schema(description = "ID пользователя в Telegram", example = "123456789", required = true)
     private Long id;
+
+    @Schema(description = "Является ли пользователь ботом", example = "false")
+    @JsonProperty("is_bot")
+    private Boolean isBot;
 
     @Schema(description = "Username пользователя в Telegram (без @)", example = "john_doe")
     private String username;
@@ -31,6 +37,10 @@ public class TelegramUserData {
     @Schema(description = "Фамилия пользователя в Telegram", example = "Иванов")
     @JsonProperty("last_name")
     private String lastName;
+
+    @Schema(description = "Код языка пользователя", example = "en")
+    @JsonProperty("language_code")
+    private String languageCode;
 
     @Schema(description = "Номер телефона пользователя", example = "+79161234567")
     private String phoneNumber;
