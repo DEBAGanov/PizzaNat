@@ -39,17 +39,18 @@ public class TelegramWebhookService {
      * @param update данные обновления
      */
     public void processUpdate(TelegramUpdate update) {
-        log.info("WEBHOOK_UPDATE: Получено обновление ID: {}", update.getUpdateId());
+        log.info("WEBHOOK_UPDATE: Получено обновление ID: {}. Полные данные: {}",
+                update.getUpdateId(), update);
 
         try {
             if (update.getMessage() != null) {
-                log.info("WEBHOOK_UPDATE: Обработка сообщения");
+                log.info("WEBHOOK_UPDATE: Обработка сообщения. Message: {}", update.getMessage());
                 processMessage(update);
             } else if (update.getCallbackQuery() != null) {
-                log.info("WEBHOOK_UPDATE: Обработка callback query");
+                log.info("WEBHOOK_UPDATE: Обработка callback query. CallbackQuery: {}", update.getCallbackQuery());
                 processCallbackQuery(update);
             } else {
-                log.warn("WEBHOOK_UPDATE: Неизвестный тип обновления: {}", update);
+                log.warn("WEBHOOK_UPDATE: Неизвестный тип обновления. Update: {}", update);
             }
         } catch (Exception e) {
             log.error("WEBHOOK_UPDATE: Ошибка при обработке обновления {}: {}",
@@ -65,23 +66,25 @@ public class TelegramWebhookService {
      * @param update Telegram update с сообщением
      */
     private void processMessage(TelegramUpdate update) {
+        log.info("PROCESS_MESSAGE: Начало обработки сообщения для update: {}", update.getUpdateId());
         try {
             TelegramUpdate.TelegramMessage message = update.getMessage();
 
             if (message == null) {
-                log.warn("Получено пустое сообщение в update: {}", update.getUpdateId());
+                log.warn("PROCESS_MESSAGE: Получено пустое сообщение в update: {}", update.getUpdateId());
                 return;
             }
 
             if (message.getChat() == null || message.getFrom() == null) {
-                log.warn("Некорректное сообщение без chat или from в update: {}", update.getUpdateId());
+                log.warn("PROCESS_MESSAGE: Некорректное сообщение без chat или from в update: {}",
+                        update.getUpdateId());
                 return;
             }
 
             Long chatId = message.getChat().getId();
             TelegramUserData user = message.getFrom();
 
-            log.debug("Обработка сообщения от пользователя {}: {}", user.getId(),
+            log.info("PROCESS_MESSAGE: Обработка сообщения от пользователя {}: {}", user.getId(),
                     message.getText() != null ? message.getText() : "контакт/медиа");
 
             // Обработка контактных данных (опционально)
@@ -167,14 +170,19 @@ public class TelegramWebhookService {
      * @param user    данные пользователя
      */
     private void handleStartCommand(String command, Long chatId, TelegramUserData user) {
+        log.info("HANDLE_START: Обработка команды /start. Команда: '{}', ChatId: {}, UserId: {}",
+                command, chatId, user.getId());
+
         String authToken = tokenGenerator.extractTokenFromStartCommand(command);
+        log.info("HANDLE_START: Извлеченный токен: '{}'", authToken);
 
         if (authToken != null) {
-            log.info("Получен запрос аутентификации от пользователя {} с токеном: {}",
+            log.info("HANDLE_START: Токен валиден. Получен запрос аутентификации от пользователя {} с токеном: {}",
                     user.getId(), authToken);
             sendAuthConfirmationMessage(chatId, authToken, user);
+            log.info("HANDLE_START: Сообщение с подтверждением отправлено пользователю {}", user.getId());
         } else {
-            log.warn("Некорректный токен в команде /start от пользователя {}: {}",
+            log.warn("HANDLE_START: Некорректный токен в команде /start от пользователя {}: '{}'",
                     user.getId(), command);
             sendInvalidTokenMessage(chatId);
         }
