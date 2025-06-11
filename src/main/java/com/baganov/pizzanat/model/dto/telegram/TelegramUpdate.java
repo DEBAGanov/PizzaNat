@@ -1,5 +1,6 @@
 package com.baganov.pizzanat.model.dto.telegram;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -73,6 +74,7 @@ public class TelegramUpdate {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     @Schema(description = "Telegram чат")
     public static class TelegramChat {
 
