@@ -7,9 +7,7 @@
 package com.baganov.pizzanat.config;
 
 import com.baganov.pizzanat.security.JwtAuthenticationFilter;
-import com.baganov.pizzanat.security.GlobalJwtFilter;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -154,13 +152,4 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    @Bean
-    public FilterRegistrationBean<GlobalJwtFilter> globalJwtFilterRegistration(GlobalJwtFilter globalJwtFilter) {
-        FilterRegistrationBean<GlobalJwtFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(globalJwtFilter);
-        registration.addUrlPatterns("/*");
-        registration.setOrder(-100); // Выполняется до Spring Security (который имеет order 0)
-        registration.setName("globalJwtFilter");
-        return registration;
-    }
 }

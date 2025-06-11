@@ -22,7 +22,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
 
         /**
          * Поиск действующего токена по auth_token и статусу
-         * 
+         *
          * @param authToken токен аутентификации
          * @param status    статус токена
          * @param now       текущее время для проверки истечения
@@ -35,7 +35,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
 
         /**
          * Удаление истекших токенов
-         * 
+         *
          * @param cutoff время, до которого удалять истекшие токены
          */
         @Modifying
@@ -46,7 +46,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
         /**
          * Подсчет количества созданных токенов за определенный период по статусу
          * Используется для rate limiting
-         * 
+         *
          * @param since  время с которого считать
          * @param status статус токенов для подсчета
          * @return количество токенов
@@ -59,7 +59,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
         /**
          * Поиск токенов по статусу, которые истекли
          * Используется для очистки истекших токенов
-         * 
+         *
          * @param status статус токенов
          * @param cutoff время, до которого считать истекшими
          * @return список истекших токенов
@@ -70,7 +70,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
 
         /**
          * Поиск действующего токена только по auth_token
-         * 
+         *
          * @param authToken токен аутентификации
          * @param now       текущее время
          * @return действующий токен если найден
@@ -81,8 +81,16 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
                         @Param("now") LocalDateTime now);
 
         /**
+         * Поиск токена по auth_token (для диагностики)
+         *
+         * @param authToken токен аутентификации
+         * @return токен если найден
+         */
+        Optional<TelegramAuthToken> findByAuthToken(String authToken);
+
+        /**
          * Поиск токенов по Telegram ID пользователя
-         * 
+         *
          * @param telegramId ID пользователя в Telegram
          * @return список токенов пользователя
          */
@@ -90,7 +98,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
 
         /**
          * Подсчет токенов по статусу
-         * 
+         *
          * @param status статус для подсчета
          * @return количество токенов
          */
@@ -99,7 +107,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
 
         /**
          * Поиск последнего токена для устройства
-         * 
+         *
          * @param deviceId ID устройства
          * @return последний токен устройства
          */
@@ -108,7 +116,7 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
         /**
          * Автоматическое истечение токенов по времени
          * Помечает истекшие PENDING токены как EXPIRED
-         * 
+         *
          * @param now текущее время
          * @return количество обновленных токенов
          */

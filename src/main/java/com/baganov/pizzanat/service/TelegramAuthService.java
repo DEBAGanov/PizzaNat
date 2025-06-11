@@ -46,7 +46,7 @@ public class TelegramAuthService {
 
     /**
      * Инициализация Telegram аутентификации
-     * 
+     *
      * @param deviceId ID устройства (опционально)
      * @return ответ с токеном и ссылкой на бот
      */
@@ -98,7 +98,7 @@ public class TelegramAuthService {
 
     /**
      * Проверка статуса Telegram аутентификации
-     * 
+     *
      * @param authToken токен аутентификации
      * @return статус аутентификации
      */
@@ -148,46 +148,77 @@ public class TelegramAuthService {
 
     /**
      * Подтверждение аутентификации от Telegram webhook
-     * 
+     *
      * @param authToken токен аутентификации
      * @param userData  данные пользователя от Telegram
      * @return результат аутентификации
      */
     public AuthResponse confirmAuth(String authToken, TelegramUserData userData) {
         try {
+            log.info("Начало подтверждения авторизации для токена: {} и пользователя: {}", authToken, userData.getId());
+
             // Валидация входных данных
             if (!tokenGenerator.isValidAuthToken(authToken)) {
+                log.error("Некорректный формат токена: {}", authToken);
                 throw new IllegalArgumentException("Некорректный токен аутентификации");
             }
+            log.debug("Токен прошел валидацию: {}", authToken);
 
             if (!userDataExtractor.isValidUserData(userData)) {
+                log.error("Некорректные данные пользователя: {}", userData);
                 throw new IllegalArgumentException("Некорректные данные пользователя Telegram");
             }
+            log.debug("Данные пользователя прошли валидацию: {}", userData.getId());
 
             // Поиск токена
+            log.debug("Поиск токена в БД: authToken={}, status=PENDING, currentTime={}",
+                    authToken, LocalDateTime.now());
+
             Optional<TelegramAuthToken> tokenOpt = tokenRepository
                     .findByAuthTokenAndStatusAndExpiresAtAfter(authToken, TokenStatus.PENDING, LocalDateTime.now());
 
             if (tokenOpt.isEmpty()) {
+                log.error("Токен не найден в БД: {} (статус PENDING, не истекший)", authToken);
+                // Дополнительная диагностика
+                Optional<TelegramAuthToken> anyTokenOpt = tokenRepository.findByAuthToken(authToken);
+                if (anyTokenOpt.isPresent()) {
+                    TelegramAuthToken existingToken = anyTokenOpt.get();
+                    log.error("Токен найден, но не подходит: статус={}, истекает={}, текущее время={}",
+                            existingToken.getStatus(), existingToken.getExpiresAt(), LocalDateTime.now());
+                } else {
+                    log.error("Токен вообще не найден в БД: {}", authToken);
+                }
                 throw new IllegalArgumentException("Токен не найден или истек");
             }
 
+            log.info("Токен найден успешно: {}", authToken);
+
             TelegramAuthToken token = tokenOpt.get();
+            log.debug("Токен получен из БД: id={}, status={}, telegramId={}",
+                    token.getId(), token.getStatus(), token.getTelegramId());
 
             // Поиск или создание пользователя
+            log.debug("Поиск или создание пользователя для Telegram ID: {}", userData.getId());
             User user = findOrCreateUser(userData);
+            log.info("Пользователь найден/создан: id={}, username={}", user.getId(), user.getUsername());
 
             // Обновляем токен
+            log.debug("Обновление токена данными пользователя");
             token.setTelegramId(userData.getId());
             token.setTelegramUsername(userData.getUsername());
             token.setTelegramFirstName(userData.getFirstName());
             token.setTelegramLastName(userData.getLastName());
             token.confirm();
+            log.debug("Токен подтвержден, новый статус: {}, confirmedAt: {}",
+                    token.getStatus(), token.getConfirmedAt());
 
-            tokenRepository.save(token);
+            TelegramAuthToken savedToken = tokenRepository.save(token);
+            log.info("Токен сохранен в БД: id={}, status={}", savedToken.getId(), savedToken.getStatus());
 
             // Генерируем JWT токен
+            log.debug("Генерация JWT токена для пользователя: {}", user.getUsername());
             String jwtToken = jwtService.generateToken(user);
+            log.debug("JWT токен сгенерирован успешно");
 
             log.info("Telegram аутентификация подтверждена для пользователя: {} ({})",
                     user.getUsername(), userData.getId());
@@ -202,7 +233,7 @@ public class TelegramAuthService {
 
     /**
      * Поиск или создание пользователя по данным Telegram
-     * 
+     *
      * @param userData данные пользователя от Telegram
      * @return пользователь
      */
@@ -228,7 +259,7 @@ public class TelegramAuthService {
 
     /**
      * Добавляет роль пользователя по умолчанию
-     * 
+     *
      * @param user пользователь
      */
     private void addDefaultRole(User user) {
@@ -240,7 +271,7 @@ public class TelegramAuthService {
 
     /**
      * Создает AuthResponse из JWT токена и пользователя
-     * 
+     *
      * @param jwtToken JWT токен
      * @param user     пользователь
      * @return AuthResponse
@@ -280,7 +311,7 @@ public class TelegramAuthService {
 
     /**
      * Обновление пользователя номером телефона из Telegram
-     * 
+     *
      * @param userData данные пользователя с номером телефона
      */
     @Transactional

@@ -34,32 +34,29 @@ public class TelegramWebhookService {
     private final TelegramConfig.TelegramAuthProperties telegramAuthProperties;
 
     /**
-     * Обработка входящего update от Telegram
+     * Обработка webhook обновления от Telegram
      *
-     * @param update данные от Telegram webhook
+     * @param update данные обновления
      */
     public void processUpdate(TelegramUpdate update) {
+        log.info("WEBHOOK_UPDATE: Получено обновление ID: {}", update.getUpdateId());
+
         try {
-            if (update == null) {
-                log.warn("Получен пустой Telegram update");
-                return;
-            }
-
-            log.debug("Обработка Telegram update: {}", update.getUpdateId());
-
-            // Обработка сообщений
-            if (update.hasMessage()) {
+            if (update.getMessage() != null) {
+                log.info("WEBHOOK_UPDATE: Обработка сообщения");
                 processMessage(update);
-            }
-
-            // Обработка callback query (inline кнопки)
-            if (update.hasCallbackQuery()) {
+            } else if (update.getCallbackQuery() != null) {
+                log.info("WEBHOOK_UPDATE: Обработка callback query");
                 processCallbackQuery(update);
+            } else {
+                log.warn("WEBHOOK_UPDATE: Неизвестный тип обновления: {}", update);
             }
-
         } catch (Exception e) {
-            log.error("Ошибка при обработке Telegram update: {}", e.getMessage(), e);
+            log.error("WEBHOOK_UPDATE: Ошибка при обработке обновления {}: {}",
+                    update.getUpdateId(), e.getMessage(), e);
         }
+
+        log.info("WEBHOOK_UPDATE: Завершена обработка обновления ID: {}", update.getUpdateId());
     }
 
     /**
@@ -87,7 +84,7 @@ public class TelegramWebhookService {
             log.debug("Обработка сообщения от пользователя {}: {}", user.getId(),
                     message.getText() != null ? message.getText() : "контакт/медиа");
 
-            // Обработка контактных данных
+            // Обработка контактных данных (опционально)
             if (message.hasContact()) {
                 handleContactMessage(message, chatId, user);
                 return;
@@ -123,14 +120,16 @@ public class TelegramWebhookService {
     }
 
     /**
-     * Обработка callback query от inline кнопок
+     * Обработка callback query (нажатия inline-кнопок)
      *
-     * @param update Telegram update с callback query
+     * @param update данные от Telegram
      */
     private void processCallbackQuery(TelegramUpdate update) {
+        log.info("CALLBACK_QUERY: Начало обработки callback query");
         TelegramUpdate.TelegramCallbackQuery callbackQuery = update.getCallbackQuery();
 
         if (callbackQuery == null || callbackQuery.getData() == null) {
+            log.warn("CALLBACK_QUERY: Пустой callback query или отсутствуют данные");
             return;
         }
 
@@ -138,21 +137,26 @@ public class TelegramWebhookService {
         Long chatId = callbackQuery.getMessage().getChat().getId();
         TelegramUserData user = callbackQuery.getFrom();
 
-        log.debug("Обработка callback query от пользователя {}: {}", user.getId(), data);
+        log.info("CALLBACK_QUERY: Обработка callback query от пользователя {}: {}", user.getId(), data);
 
         // Обработка подтверждения аутентификации
         if (data.startsWith("confirm_auth_")) {
             String authToken = data.substring(13); // убираем "confirm_auth_"
+            log.info("CALLBACK_QUERY: Найден токен подтверждения: {}", authToken);
             handleAuthConfirmation(authToken, chatId, user);
         }
         // Обработка отмены аутентификации
         else if (data.startsWith("cancel_auth_")) {
             String authToken = data.substring(12); // убираем "cancel_auth_"
+            log.info("CALLBACK_QUERY: Найден токен отмены: {}", authToken);
             handleAuthCancellation(authToken, chatId, user);
+        } else {
+            log.warn("CALLBACK_QUERY: Неизвестный тип данных: {}", data);
         }
 
         // Отвечаем на callback query
         answerCallbackQuery(callbackQuery.getId());
+        log.info("CALLBACK_QUERY: Завершена обработка callback query");
     }
 
     /**
@@ -184,14 +188,16 @@ public class TelegramWebhookService {
      * @param user      данные пользователя
      */
     private void handleAuthConfirmation(String authToken, Long chatId, TelegramUserData user) {
+        log.info("AUTH_CONFIRM: Начало подтверждения авторизации. Токен: {}, Пользователь: {}",
+                authToken, user.getId());
         try {
             telegramAuthService.confirmAuth(authToken, user);
             sendAuthSuccessMessage(chatId, user);
-            log.info("Аутентификация подтверждена для пользователя {} с токеном: {}",
+            log.info("AUTH_CONFIRM: Аутентификация подтверждена для пользователя {} с токеном: {}",
                     user.getId(), authToken);
         } catch (Exception e) {
-            log.error("Ошибка при подтверждении аутентификации для токена {}: {}",
-                    authToken, e.getMessage());
+            log.error("AUTH_CONFIRM: Ошибка при подтверждении аутентификации для токена {}: {}",
+                    authToken, e.getMessage(), e);
             sendAuthErrorMessage(chatId, e.getMessage());
         }
     }
@@ -220,23 +226,23 @@ public class TelegramWebhookService {
         String message = String.format(
                 "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
                         "Привет, %s!\n\n" +
-                        "Для завершения авторизации необходимо " +
-                        "поделиться номером телефона через кнопку ниже",
+                        "Подтвердите вход в приложение, нажав кнопку ниже:",
                 user.getDisplayName());
 
-        // Создаем клавиатуру с кнопкой запроса контакта
-        Map<String, Object> keyboard = Map.of(
-                "keyboard", new Object[][] {
+        // Создаем inline-клавиатуру с кнопками подтверждения
+        Map<String, Object> inlineKeyboard = Map.of(
+                "inline_keyboard", new Object[][] {
                         {
                                 Map.of(
-                                        "text", "📞 Поделиться номером телефона",
-                                        "request_contact", true)
+                                        "text", "✅ Подтвердить вход",
+                                        "callback_data", "confirm_auth_" + authToken),
+                                Map.of(
+                                        "text", "❌ Отменить",
+                                        "callback_data", "cancel_auth_" + authToken)
                         }
-                },
-                "resize_keyboard", true,
-                "one_time_keyboard", true);
+                });
 
-        sendMessage(chatId, message, "Markdown", keyboard);
+        sendMessage(chatId, message, "Markdown", inlineKeyboard);
     }
 
     /**
@@ -247,10 +253,12 @@ public class TelegramWebhookService {
      */
     private void sendAuthSuccessMessage(Long chatId, TelegramUserData user) {
         String message = String.format(
-                "✅ *Аутентификация успешна!*\n\n" +
+                "✅ *Вход подтвержден!*\n\n" +
                         "Добро пожаловать, %s!\n\n" +
-                        "Вы успешно вошли в приложение PizzaNat. " +
-                        "Теперь вы можете вернуться в приложение и продолжить заказ.",
+                        "🍕 Вы успешно вошли в PizzaNat!\n\n" +
+                        "Теперь можете вернуться в приложение и продолжить заказ вкусной пиццы.\n\n" +
+                        "_Если хотите поделиться номером телефона для удобства заказов, " +
+                        "отправьте контакт через кнопку в меню._",
                 user.getDisplayName());
 
         sendMessage(chatId, message, "Markdown", null);

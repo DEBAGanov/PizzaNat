@@ -2,6 +2,8 @@ package com.baganov.pizzanat.util;
 
 import com.baganov.pizzanat.entity.User;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUserData;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,11 +11,14 @@ import org.springframework.stereotype.Component;
  * Следует принципу Single Responsibility из SOLID.
  */
 @Component
+@RequiredArgsConstructor
 public class TelegramUserDataExtractor {
+
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Извлекает данные пользователя из Telegram API update
-     * 
+     *
      * @param telegramUserData данные от Telegram API
      * @return валидированные данные пользователя
      */
@@ -38,7 +43,7 @@ public class TelegramUserDataExtractor {
 
     /**
      * Проверяет валидность данных пользователя Telegram
-     * 
+     *
      * @param userData данные пользователя
      * @return true если данные валидны
      */
@@ -58,7 +63,7 @@ public class TelegramUserDataExtractor {
 
     /**
      * Создает нового пользователя на основе данных Telegram
-     * 
+     *
      * @param telegramData данные от Telegram
      * @return новый пользователь
      */
@@ -67,19 +72,23 @@ public class TelegramUserDataExtractor {
             throw new IllegalArgumentException("Некорректные данные пользователя Telegram");
         }
 
+        String username = generateUsername(telegramData);
+
         return User.builder()
                 .telegramId(telegramData.getId())
                 .telegramUsername(telegramData.getUsername())
                 .firstName(telegramData.getFirstName())
                 .lastName(telegramData.getLastName())
-                .username(generateUsername(telegramData))
+                .username(username)
+                .password(passwordEncoder.encode("tg_temp_" + telegramData.getId())) // Временный пароль для Telegram
+                                                                                     // пользователей
                 .isTelegramVerified(true)
                 .build();
     }
 
     /**
      * Обновляет существующего пользователя данными Telegram
-     * 
+     *
      * @param existingUser существующий пользователь
      * @param telegramData новые данные от Telegram
      * @return обновленный пользователь
@@ -107,7 +116,7 @@ public class TelegramUserDataExtractor {
 
     /**
      * Генерирует username для пользователя на основе Telegram данных
-     * 
+     *
      * @param telegramData данные Telegram
      * @return сгенерированный username
      */
@@ -126,7 +135,7 @@ public class TelegramUserDataExtractor {
 
     /**
      * Проверяет наличие данных для идентификации пользователя
-     * 
+     *
      * @param userData данные пользователя
      * @return true если есть данные для идентификации
      */
@@ -138,7 +147,7 @@ public class TelegramUserDataExtractor {
 
     /**
      * Очищает username от лишних символов
-     * 
+     *
      * @param username исходный username
      * @return очищенный username
      */
@@ -158,7 +167,7 @@ public class TelegramUserDataExtractor {
 
     /**
      * Очищает текстовые поля от потенциально опасного содержимого
-     * 
+     *
      * @param text исходный текст
      * @return очищенный текст
      */

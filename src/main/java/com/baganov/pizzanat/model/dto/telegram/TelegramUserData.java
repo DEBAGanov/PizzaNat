@@ -1,5 +1,6 @@
 package com.baganov.pizzanat.model.dto.telegram;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,9 +25,11 @@ public class TelegramUserData {
     private String username;
 
     @Schema(description = "Имя пользователя в Telegram", example = "Иван")
+    @JsonProperty("first_name")
     private String firstName;
 
     @Schema(description = "Фамилия пользователя в Telegram", example = "Иванов")
+    @JsonProperty("last_name")
     private String lastName;
 
     @Schema(description = "Номер телефона пользователя", example = "+79161234567")
