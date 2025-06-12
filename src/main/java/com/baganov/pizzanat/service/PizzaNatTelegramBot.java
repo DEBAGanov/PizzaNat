@@ -292,7 +292,7 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
     private void removeKeyboard(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("📱 Номер телефона получен!");
+        // message.setText("📱 Номер телефона получен!");
 
         ReplyKeyboardRemove keyboardRemove = new ReplyKeyboardRemove();
         keyboardRemove.setRemoveKeyboard(true);
@@ -311,12 +311,12 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
     private void sendAutoAuthSuccessMessage(Long chatId, TelegramUserData user) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText(String.format(
-                "✅ *Авторизация завершена!*\n\n" +
-                        "Добро пожаловать, %s!\n" +
-                        "Теперь вы можете пользоваться всеми функциями PizzaNat.\n\n" +
-                        "🍕 Приятного аппетита!",
-                user.getDisplayName()));
+        // message.setText(String.format(
+        // "✅ *Авторизация завершена!*\n\n" +
+        // "Добро пожаловать, %s!\n" +
+        // "Теперь вы можете пользоваться всеми функциями PizzaNat.\n\n" +
+        // "🍕 Приятного аппетита!",
+        // user.getDisplayName()));
         message.setParseMode("Markdown");
 
         try {

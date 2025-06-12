@@ -2,7 +2,8 @@
 
 echo "🚀 Comprehensive тестирование PizzaNat API"
 
-BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
+BASE_URL="https://debaganov-pizzanat-d8fb.twc1.net"
+#BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
 #BASE_URL="http://localhost"
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -528,6 +529,73 @@ if [ -n "$JWT_TOKEN" ]; then
 
     # Тест фильтрации по категории с несуществующей категорией
     test_endpoint "/api/v1/products/category/99999" "Продукты несуществующей категории"
+
+    # --- TELEGRAM AUTH TEST ---
+    echo -e "${BLUE}📱 5B. АВТОРИЗАЦИЯ ЧЕРЕЗ TELEGRAM (полуавтоматический сценарий)${NC}"
+
+    TELEGRAM_DEVICE_ID="test_telegram_$(date +%s)"
+    TELEGRAM_INIT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/auth/telegram/init" \
+        -H "Content-Type: application/json" \
+        -d '{"deviceId":"'$TELEGRAM_DEVICE_ID'"}')
+
+    TELEGRAM_AUTH_TOKEN=$(echo "$TELEGRAM_INIT_RESPONSE" | grep -o '"authToken":"[^"]*' | cut -d'"' -f4)
+    TELEGRAM_BOT_URL=$(echo "$TELEGRAM_INIT_RESPONSE" | grep -o '"telegramBotUrl":"[^"]*' | cut -d'"' -f4)
+
+    if [ -z "$TELEGRAM_AUTH_TOKEN" ] || [ -z "$TELEGRAM_BOT_URL" ]; then
+        echo -e "${RED}❌ Не удалось получить Telegram auth token или ссылку${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    else
+        echo -e "${YELLOW}Перейдите по ссылке для авторизации через Telegram:${NC}"
+        echo -e "   ${BLUE}$TELEGRAM_BOT_URL${NC}"
+        echo -e "${YELLOW}После отправки номера телефона в Telegram, тест продолжит работу...${NC}"
+        echo ""
+        # Ожидание авторизации (60 сек)
+        for i in {60..1}; do
+            printf "\r   ⏳ Ожидание завершения авторизации: %2d сек" $i
+            sleep 1
+        done
+        echo ""
+        # Проверка статуса токена
+        TELEGRAM_STATUS_RESPONSE=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$TELEGRAM_AUTH_TOKEN")
+        TELEGRAM_STATUS=$(echo "$TELEGRAM_STATUS_RESPONSE" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        TELEGRAM_JWT_TOKEN=$(echo "$TELEGRAM_STATUS_RESPONSE" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+        if [ "$TELEGRAM_STATUS" = "CONFIRMED" ] && [ -n "$TELEGRAM_JWT_TOKEN" ]; then
+            echo -e "${GREEN}✅ Telegram авторизация успешна, токен получен${NC}"
+            PASSED_TESTS=$((PASSED_TESTS + 1))
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            # Теперь прогоняем все основные тесты для Telegram-пользователя
+            echo -e "${BLUE}▶️  ПРОВЕРКА Telegram-пользователя (как обычного)${NC}"
+            test_endpoint "/api/v1/cart" "Получить пустую корзину (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            cart_add_data='{"productId": 1, "quantity": 2, "selectedOptions": {"size": "large", "extraCheese": true}}'
+            test_endpoint "/api/v1/cart/items" "Добавить товар в корзину с опциями (Telegram)" "POST" "$TELEGRAM_JWT_TOKEN" "$cart_add_data"
+            test_endpoint "/api/v1/cart" "Получить корзину с товарами (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            cart_update_data='{"quantity": 3}'
+            test_endpoint "/api/v1/cart/items/1" "Обновить количество товара (Telegram)" "PUT" "$TELEGRAM_JWT_TOKEN" "$cart_update_data"
+            test_endpoint "/api/v1/cart/items/1" "Удалить товар из корзины (Telegram)" "DELETE" "$TELEGRAM_JWT_TOKEN"
+            cart_add_simple='{"productId": 1, "quantity": 1}'
+            test_endpoint "/api/v1/cart/items" "Добавить товар для заказа (Telegram)" "POST" "$TELEGRAM_JWT_TOKEN" "$cart_add_simple"
+            # Заказ с deliveryLocationId
+            order_data_location='{"deliveryLocationId": 1, "contactName": "Telegram User", "contactPhone": "+79001234567", "comment": "Telegram заказ с пунктом выдачи"}'
+            test_order_creation "$order_data_location" "Создать заказ с пунктом выдачи (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            # Заказ с deliveryAddress
+            order_data_address='{"deliveryAddress": "ул. Telegram, д. 1", "contactName": "Telegram User", "contactPhone": "+79001234567", "notes": "Telegram заказ с адресом"}'
+            test_order_creation "$order_data_address" "Создать заказ с адресом доставки (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            # Заказ с обоими полями
+            order_data_both='{"deliveryLocationId": 1, "deliveryAddress": "ул. Игнорируемая, д. 999", "contactName": "Telegram User", "contactPhone": "+79005555555", "comment": "Telegram заказ", "notes": "Telegram notes"}'
+            test_order_creation "$order_data_both" "Создать заказ с двумя типами адреса (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            test_endpoint "/api/v1/orders" "Получить заказы пользователя (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            test_endpoint "/api/v1/orders/1" "Получить заказ по ID (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            # Проверка формата номера телефона (ручная)
+            echo -e "${YELLOW}Проверьте в БД, что номер телефона Telegram-пользователя сохранён в формате +7...${NC}"
+        else
+            echo -e "${RED}❌ Telegram авторизация не подтверждена или не получен токен${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            echo "Ответ: $TELEGRAM_STATUS_RESPONSE"
+        fi
+    fi
+    # --- END TELEGRAM AUTH TEST ---
 
 else
     echo -e "${RED}❌ Не удалось получить JWT токен${NC}"
