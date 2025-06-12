@@ -41,8 +41,8 @@ public class ExolveConfig {
     public RestTemplate exolveRestTemplate(RestTemplateBuilder builder) {
         return builder
                 .rootUri(exolveApiUrl)
-                .setConnectTimeout(Duration.ofSeconds(exolveTimeoutSeconds))
-                .setReadTimeout(Duration.ofSeconds(exolveTimeoutSeconds))
+                .connectTimeout(Duration.ofSeconds(exolveTimeoutSeconds))
+                .readTimeout(Duration.ofSeconds(exolveTimeoutSeconds))
                 .requestFactory(this::createRequestFactory)
                 .build();
     }

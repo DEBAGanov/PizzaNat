@@ -32,8 +32,8 @@ public class TelegramConfig {
     @Bean("telegramRestTemplate")
     public RestTemplate telegramRestTemplate(RestTemplateBuilder builder) {
         return builder
-                .setConnectTimeout(Duration.ofSeconds(10))
-                .setReadTimeout(Duration.ofSeconds(10))
+                .connectTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ofSeconds(10))
                 .build();
     }
 
@@ -43,8 +43,8 @@ public class TelegramConfig {
     @Bean("telegramAuthRestTemplate")
     public RestTemplate telegramAuthRestTemplate(RestTemplateBuilder builder) {
         return builder
-                .setConnectTimeout(Duration.ofSeconds(15))
-                .setReadTimeout(Duration.ofSeconds(15))
+                .connectTimeout(Duration.ofSeconds(15))
+                .readTimeout(Duration.ofSeconds(15))
                 .build();
     }
 
@@ -55,8 +55,8 @@ public class TelegramConfig {
     @ConditionalOnProperty(value = "telegram.gateway.enabled", havingValue = "true")
     public RestTemplate gatewayRestTemplate(RestTemplateBuilder builder, TelegramGatewayProperties gatewayProperties) {
         return builder
-                .setConnectTimeout(Duration.ofSeconds(gatewayProperties.getTimeoutSeconds()))
-                .setReadTimeout(Duration.ofSeconds(gatewayProperties.getTimeoutSeconds()))
+                .connectTimeout(Duration.ofSeconds(gatewayProperties.getTimeoutSeconds()))
+                .readTimeout(Duration.ofSeconds(gatewayProperties.getTimeoutSeconds()))
                 .build();
     }
 
