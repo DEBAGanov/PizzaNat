@@ -137,7 +137,17 @@ public class TelegramWebhookService {
         }
 
         String data = callbackQuery.getData();
-        Long chatId = callbackQuery.getMessage().getChat().getId();
+
+        // Проверяем наличие сообщения в callback query
+        Long chatId;
+        if (callbackQuery.getMessage() != null && callbackQuery.getMessage().getChat() != null) {
+            chatId = callbackQuery.getMessage().getChat().getId();
+        } else {
+            // Для callback query без сообщения используем ID пользователя как chatId
+            chatId = callbackQuery.getFrom().getId();
+            log.debug("CALLBACK_QUERY: Сообщение отсутствует, используем ID пользователя как chatId: {}", chatId);
+        }
+
         TelegramUserData user = callbackQuery.getFrom();
 
         log.info("CALLBACK_QUERY: Обработка callback query от пользователя {}: {}", user.getId(), data);

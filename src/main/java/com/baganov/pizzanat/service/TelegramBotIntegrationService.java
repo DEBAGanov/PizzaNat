@@ -41,6 +41,21 @@ public class TelegramBotIntegrationService {
     }
 
     /**
+     * Создание или обновление пользователя
+     *
+     * @param userData данные пользователя
+     */
+    public void createOrUpdateUser(TelegramUserData userData) {
+        log.debug("Создание или обновление пользователя {}", userData.getId());
+        try {
+            telegramAuthService.createOrUpdateUser(userData);
+        } catch (Exception e) {
+            log.error("Ошибка создания/обновления пользователя {}: {}", userData.getId(), e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
      * Обновление пользователя с номером телефона
      *
      * @param userData данные пользователя с номером телефона

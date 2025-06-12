@@ -7,6 +7,7 @@
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.config.TelegramConfig;
+import com.baganov.pizzanat.model.dto.telegram.TelegramUpdate;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUserData;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,30 +93,29 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
 
         // Обработка текстовых команд
         if (message.hasText()) {
-            String messageText = message.getText();
+            String messageText = message.getText().trim();
 
-            switch (messageText) {
-                case "/start":
-                    handleStartCommand(chatId, user);
-                    break;
-                case "/help":
-                    handleHelpCommand(chatId);
-                    break;
-                case "/menu":
-                    handleMenuCommand(chatId);
-                    break;
-                default:
-                    handleUnknownCommand(chatId);
-                    break;
+            // Обработка команды /start (с токеном или без)
+            if (messageText.equals("/start") || messageText.startsWith("/start ")) {
+                handleStartCommand(chatId, user, messageText);
+            }
+            // Обработка других команд
+            else if (messageText.equals("/help")) {
+                handleHelpCommand(chatId);
+            } else if (messageText.equals("/menu")) {
+                handleMenuCommand(chatId);
+            } else {
+                handleUnknownCommand(chatId);
             }
         }
     }
 
     /**
-     * Обработка команды /start
+     * Обработка команды /start (с токеном или без)
      */
-    private void handleStartCommand(Long chatId, User user) {
-        log.info("Команда /start от пользователя: {} (ID: {})", user.getFirstName(), user.getId());
+    private void handleStartCommand(Long chatId, User user, String fullCommand) {
+        log.info("Команда /start от пользователя: {} (ID: {}), команда: {}", user.getFirstName(), user.getId(),
+                fullCommand);
 
         // Создаем данные пользователя
         TelegramUserData userData = TelegramUserData.builder()
@@ -125,14 +125,44 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
                 .username(user.getUserName())
                 .build();
 
+        // Проверяем, есть ли токен в команде
+        String authToken = null;
+        if (fullCommand.startsWith("/start ")) {
+            String potentialToken = fullCommand.substring(7).trim(); // 7 = длина "/start "
+
+            // Проверяем, является ли это токеном аутентификации
+            if (potentialToken.startsWith("tg_auth_") && potentialToken.length() > 8) {
+                authToken = potentialToken;
+                log.info("Получен токен аутентификации из команды /start: {}", authToken);
+
+                try {
+                    // Для внешнего токена сразу создаем пользователя в БД
+                    integrationService.createOrUpdateUser(userData);
+                    log.info("Пользователь {} создан/обновлен в БД при внешнем токене", user.getId());
+                } catch (Exception e) {
+                    log.error("Ошибка создания/обновления пользователя {} в БД: {}", user.getId(), e.getMessage());
+                    // Продолжаем, так как пользователь может быть создан позже при отправке
+                    // контакта
+                }
+
+                // Сохраняем внешний токен для пользователя (от приложения)
+                userAuthTokens.put(user.getId().longValue(), authToken);
+
+                // Отправляем сообщение с запросом телефона для завершения авторизации
+                sendPhoneRequestMessage(chatId, userData);
+                return;
+            }
+        }
+
+        // Если токена нет или он некорректный - создаем новый (обычный запуск бота)
         try {
-            // Инициализируем авторизацию через интеграционный сервис
-            String authToken = integrationService.initializeAuth(userData);
+            // Инициализируем новую авторизацию через интеграционный сервис
+            String newAuthToken = integrationService.initializeAuth(userData);
 
             // Сохраняем токен для пользователя
-            userAuthTokens.put(user.getId().longValue(), authToken);
+            userAuthTokens.put(user.getId().longValue(), newAuthToken);
 
-            log.info("Создан токен авторизации для пользователя {}: {}", user.getId(), authToken);
+            log.info("Создан новый токен авторизации для пользователя {}: {}", user.getId(), newAuthToken);
 
             // Отправляем приветственное сообщение с кнопкой отправки телефона
             sendPhoneRequestMessage(chatId, userData);
@@ -208,25 +238,47 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
                     .phoneNumber(contact.getPhoneNumber())
                     .build();
 
-            // Обновляем пользователя с номером телефона
+            // Создаем или обновляем пользователя с номером телефона
             integrationService.updateUserWithPhone(userData);
 
-            // Автоматически подтверждаем авторизацию
-            boolean authSuccess = integrationService.confirmAuth(authToken);
+            // Проверяем, какой тип токена у нас (внешний от приложения или внутренний от
+            // бота)
+            boolean isExternalToken = authToken.startsWith("tg_auth_") && authToken.length() > 20;
 
-            if (authSuccess) {
-                // Убираем клавиатуру и отправляем сообщение об успехе
-                removeKeyboard(chatId);
-                sendAutoAuthSuccessMessage(chatId, userData);
+            if (isExternalToken) {
+                // Это токен от приложения - используем webhook сервис для подтверждения
+                log.info("Обрабатываем внешний токен авторизации: {}", authToken);
 
-                // Удаляем токен из памяти
-                userAuthTokens.remove(userId);
+                try {
+                    // Создаем имитацию callback query для webhook сервиса
+                    TelegramUpdate update = createAuthConfirmationUpdate(userData, chatId, authToken);
+                    integrationService.processUpdateViaWebhook(update);
 
-                log.info("Автоматическая авторизация успешна для пользователя {}", userId);
+                    // Отправляем сообщение об успехе
+                    removeKeyboard(chatId);
+                    sendAutoAuthSuccessMessage(chatId, userData);
+
+                    log.info("Внешняя авторизация успешна для пользователя {}", userId);
+                } catch (Exception e) {
+                    log.error("Ошибка обработки внешней авторизации: {}", e.getMessage());
+                    sendErrorMessage(chatId, "Ошибка завершения авторизации. Попробуйте позже.");
+                }
             } else {
-                sendErrorMessage(chatId, "Ошибка авторизации. Попробуйте позже.");
-                log.error("Ошибка подтверждения авторизации для пользователя {}", userId);
+                // Это внутренний токен бота - используем стандартную логику
+                boolean authSuccess = integrationService.confirmAuth(authToken);
+
+                if (authSuccess) {
+                    removeKeyboard(chatId);
+                    sendAutoAuthSuccessMessage(chatId, userData);
+                    log.info("Внутренняя авторизация успешна для пользователя {}", userId);
+                } else {
+                    sendErrorMessage(chatId, "Ошибка авторизации. Попробуйте позже.");
+                    log.error("Ошибка подтверждения внутренней авторизации для пользователя {}", userId);
+                }
             }
+
+            // Удаляем токен из памяти в любом случае
+            userAuthTokens.remove(userId);
 
         } catch (Exception e) {
             log.error("Ошибка обработки контакта для пользователя {}: {}", userId, e.getMessage());
@@ -372,6 +424,39 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             log.error("Ошибка обработки callback query: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Создание TelegramUpdate для подтверждения авторизации через webhook сервис
+     */
+    private TelegramUpdate createAuthConfirmationUpdate(TelegramUserData userData, Long chatId, String authToken) {
+        // Создаем чат для callback query
+        TelegramUpdate.TelegramChat chat = TelegramUpdate.TelegramChat.builder()
+                .id(chatId)
+                .type("private")
+                .build();
+
+        // Создаем сообщение для callback query
+        TelegramUpdate.TelegramMessage message = TelegramUpdate.TelegramMessage.builder()
+                .messageId(System.currentTimeMillis())
+                .text("/start " + authToken)
+                .date(System.currentTimeMillis() / 1000)
+                .from(userData)
+                .chat(chat)
+                .build();
+
+        // Создаем callback query для подтверждения авторизации
+        TelegramUpdate.TelegramCallbackQuery callbackQuery = TelegramUpdate.TelegramCallbackQuery.builder()
+                .id("longpolling_auth_" + System.currentTimeMillis())
+                .data("confirm_auth_" + authToken)
+                .from(userData)
+                .message(message)
+                .build();
+
+        return TelegramUpdate.builder()
+                .updateId(System.currentTimeMillis())
+                .callbackQuery(callbackQuery)
+                .build();
     }
 
     /**

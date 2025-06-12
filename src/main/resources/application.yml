@@ -43,6 +43,9 @@ telegram:
   enabled: true
   bot-token: 7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
   api-url: https://api.telegram.org/bot7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
+  # Включаем Long Polling бот для dev
+  longpolling:
+    enabled: true
 
 ---
 spring:
@@ -85,3 +88,6 @@ telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN:}
   chat-id: ${TELEGRAM_CHAT_ID:}
   api-url: ${TELEGRAM_API_URL:https://api.telegram.org/bot}
+  # Включаем Long Polling бот
+  longpolling:
+    enabled: ${TELEGRAM_LONGPOLLING_ENABLED:true}

@@ -111,7 +111,46 @@ public class TelegramUserDataExtractor {
             existingUser.setLastName(telegramData.getLastName());
         }
 
+        // Обновляем номер телефона если предоставлен
+        if (telegramData.getPhoneNumber() != null && !telegramData.getPhoneNumber().trim().isEmpty()) {
+            String formattedPhone = formatPhoneNumber(telegramData.getPhoneNumber());
+            existingUser.setPhone(formattedPhone);
+        }
+
         return existingUser;
+    }
+
+    /**
+     * Форматирование номера телефона в +7 формат
+     *
+     * @param phoneNumber исходный номер телефона
+     * @return отформатированный номер в формате +7XXXXXXXXXX
+     */
+    private String formatPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return phoneNumber;
+        }
+
+        // Убираем все символы кроме цифр
+        String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
+
+        // Обработка различных форматов
+        if (cleanPhone.startsWith("7") && cleanPhone.length() == 11) {
+            // Формат: 79161234567 -> +79161234567
+            return "+" + cleanPhone;
+        } else if (cleanPhone.startsWith("8") && cleanPhone.length() == 11) {
+            // Формат: 89161234567 -> +79161234567
+            return "+7" + cleanPhone.substring(1);
+        } else if (cleanPhone.length() == 10) {
+            // Формат: 9161234567 -> +79161234567
+            return "+7" + cleanPhone;
+        } else if (cleanPhone.startsWith("37") && cleanPhone.length() == 12) {
+            // Формат: 379161234567 -> +79161234567 (убираем 3)
+            return "+" + cleanPhone.substring(1);
+        }
+
+        // Если формат не распознан - возвращаем как есть с префиксом +7
+        return "+7" + cleanPhone;
     }
 
     /**

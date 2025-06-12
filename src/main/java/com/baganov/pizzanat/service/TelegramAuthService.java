@@ -383,6 +383,42 @@ public class TelegramAuthService {
     }
 
     /**
+     * Форматирование номера телефона в +7 формат
+     *
+     * @param phoneNumber исходный номер телефона
+     * @return отформатированный номер в формате +7XXXXXXXXXX
+     */
+    private String formatPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return phoneNumber;
+        }
+
+        // Убираем все символы кроме цифр
+        String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
+
+        log.debug("Форматирование номера: '{}' -> '{}'", phoneNumber, cleanPhone);
+
+        // Обработка различных форматов
+        if (cleanPhone.startsWith("7") && cleanPhone.length() == 11) {
+            // Формат: 79161234567 -> +79161234567
+            return "+" + cleanPhone;
+        } else if (cleanPhone.startsWith("8") && cleanPhone.length() == 11) {
+            // Формат: 89161234567 -> +79161234567
+            return "+7" + cleanPhone.substring(1);
+        } else if (cleanPhone.length() == 10) {
+            // Формат: 9161234567 -> +79161234567
+            return "+7" + cleanPhone;
+        } else if (cleanPhone.startsWith("37") && cleanPhone.length() == 12) {
+            // Формат: 379161234567 -> +79161234567 (убираем 3)
+            return "+" + cleanPhone.substring(1);
+        }
+
+        // Если формат не распознан - возвращаем как есть с префиксом +7
+        log.warn("Неизвестный формат номера телефона: '{}', применяем +7", phoneNumber);
+        return "+7" + cleanPhone;
+    }
+
+    /**
      * Создает AuthResponse из JWT токена и пользователя
      *
      * @param jwtToken JWT токен
@@ -423,6 +459,31 @@ public class TelegramAuthService {
     }
 
     /**
+     * Создание или обновление пользователя по данным Telegram
+     *
+     * @param userData данные пользователя
+     */
+    @Transactional
+    public void createOrUpdateUser(TelegramUserData userData) {
+        try {
+            if (userData == null || userData.getId() == null) {
+                throw new IllegalArgumentException("Некорректные данные пользователя");
+            }
+
+            log.info("Создание или обновление пользователя с Telegram ID: {}", userData.getId());
+
+            // Используем метод findOrCreateUser для гарантированного создания пользователя
+            User user = findOrCreateUser(userData);
+
+            log.info("Пользователь {} успешно создан/обновлен (ID в БД: {})", userData.getId(), user.getId());
+
+        } catch (Exception e) {
+            log.error("Ошибка при создании/обновлении пользователя {}: {}", userData.getId(), e.getMessage(), e);
+            throw new RuntimeException("Ошибка создания/обновления пользователя: " + e.getMessage());
+        }
+    }
+
+    /**
      * Обновление пользователя номером телефона из Telegram
      *
      * @param userData данные пользователя с номером телефона
@@ -434,22 +495,24 @@ public class TelegramAuthService {
                 throw new IllegalArgumentException("Некорректные данные пользователя");
             }
 
-            // Ищем пользователя по Telegram ID
+            // Ищем или создаем пользователя по Telegram ID
             Optional<User> userOpt = userRepository.findByTelegramId(userData.getId());
 
+            User user;
             if (userOpt.isEmpty()) {
-                log.warn("Пользователь с Telegram ID {} не найден для обновления номера телефона", userData.getId());
-                return;
+                log.info("Пользователь с Telegram ID {} не найден, создаем нового", userData.getId());
+                user = findOrCreateUser(userData);
+            } else {
+                user = userOpt.get();
             }
-
-            User user = userOpt.get();
 
             // Обновляем номер телефона если он предоставлен - используем поле phone
             if (userData.getPhoneNumber() != null && !userData.getPhoneNumber().trim().isEmpty()) {
-                user.setPhone(userData.getPhoneNumber().trim());
+                String phoneNumber = formatPhoneNumber(userData.getPhoneNumber().trim());
+                user.setPhone(phoneNumber);
                 user.setIsTelegramVerified(true);
-                log.info("Обновлен номер телефона для пользователя {} (Telegram ID: {})",
-                        user.getUsername(), userData.getId());
+                log.info("Обновлен номер телефона для пользователя {} (Telegram ID: {}): {}",
+                        user.getUsername(), userData.getId(), phoneNumber);
             }
 
             // Обновляем другие данные если они предоставлены
