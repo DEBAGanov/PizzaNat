@@ -1,13 +1,12 @@
 /**
  * @file: TelegramBotConfig.java
- * @description: Конфигурация для регистрации Telegram бота в Spring Boot
+ * @description: Конфигурация для автоматической регистрации Telegram бота
  * @dependencies: TelegramBots API, Spring Boot
  * @created: 2025-01-11
  */
 package com.baganov.pizzanat.config;
 
 import com.baganov.pizzanat.service.PizzaNatTelegramBot;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -18,29 +17,20 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 @Slf4j
 @Configuration
-@RequiredArgsConstructor
-@ConditionalOnProperty(name = "telegram.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "telegram.longpolling.enabled", havingValue = "true", matchIfMissing = false)
 public class TelegramBotConfig {
 
-    private final PizzaNatTelegramBot pizzaNatTelegramBot;
-
-    /**
-     * Регистрация Telegram бота
-     */
     @Bean
-    public TelegramBotsApi telegramBotsApi() throws TelegramApiException {
-        log.info("Инициализация Telegram Bots API");
-
-        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-
+    public TelegramBotsApi telegramBotsApi(PizzaNatTelegramBot pizzaNatTelegramBot) {
         try {
+            log.info("Инициализация Telegram Bots API для Long Polling...");
+            TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
             botsApi.registerBot(pizzaNatTelegramBot);
-            log.info("PizzaNat Telegram Bot успешно зарегистрирован");
+            log.info("✅ Telegram бот успешно зарегистрирован для Long Polling");
+            return botsApi;
         } catch (TelegramApiException e) {
-            log.error("Ошибка при регистрации Telegram бота: {}", e.getMessage(), e);
-            throw e;
+            log.error("❌ Ошибка регистрации Telegram бота: {}", e.getMessage());
+            throw new RuntimeException("Не удалось зарегистрировать Telegram бота", e);
         }
-
-        return botsApi;
     }
 }

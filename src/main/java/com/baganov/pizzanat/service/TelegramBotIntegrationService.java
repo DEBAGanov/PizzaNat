@@ -7,6 +7,7 @@
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.model.dto.telegram.TelegramUpdate;
+import com.baganov.pizzanat.model.dto.telegram.TelegramUserData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,55 @@ import org.springframework.stereotype.Service;
 public class TelegramBotIntegrationService {
 
     private final TelegramWebhookService telegramWebhookService;
+    private final TelegramAuthService telegramAuthService;
+
+    /**
+     * Инициализация авторизации для пользователя
+     *
+     * @param userData данные пользователя
+     * @return токен авторизации
+     */
+    public String initializeAuth(TelegramUserData userData) {
+        log.debug("Инициализация авторизации для пользователя: {}", userData.getId());
+        try {
+            return telegramAuthService.initializeAuth(userData);
+        } catch (Exception e) {
+            log.error("Ошибка инициализации авторизации для пользователя {}: {}", userData.getId(), e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Обновление пользователя с номером телефона
+     *
+     * @param userData данные пользователя с номером телефона
+     */
+    public void updateUserWithPhone(TelegramUserData userData) {
+        log.debug("Обновление пользователя {} с номером телефона", userData.getId());
+        try {
+            telegramAuthService.updateUserWithPhoneNumber(userData);
+        } catch (Exception e) {
+            log.error("Ошибка обновления пользователя {} с номером телефона: {}", userData.getId(), e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Подтверждение авторизации
+     *
+     * @param authToken токен авторизации
+     * @return true если авторизация успешна
+     */
+    public boolean confirmAuth(String authToken) {
+        log.debug("Подтверждение авторизации с токеном: {}", authToken);
+        try {
+            telegramAuthService.confirmAuth(authToken);
+            return true;
+        } catch (Exception e) {
+            log.error("Ошибка подтверждения авторизации с токеном {}: {}", authToken, e.getMessage());
+            return false;
+        }
+    }
 
     /**
      * Обработка обновления через webhook сервис
