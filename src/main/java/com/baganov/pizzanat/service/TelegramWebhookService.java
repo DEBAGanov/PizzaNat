@@ -234,10 +234,29 @@ public class TelegramWebhookService {
         String message = String.format(
                 "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
                         "Привет, %s!\n\n" +
-                        "Подтвердите вход в приложение, нажав кнопку ниже:",
+                        "Для завершения авторизации:\n" +
+                        "1️⃣ Нажмите \"📱 Отправить телефон\" для быстрого заказа\n" +
+                        "2️⃣ Подтвердите вход кнопкой \"✅ Подтвердить\"",
                 user.getDisplayName());
 
-        // Создаем inline-клавиатуру с кнопками подтверждения
+        // Создаем обычную клавиатуру с кнопкой отправки контакта
+        Map<String, Object> replyKeyboard = Map.of(
+                "keyboard", new Object[][] {
+                        {
+                                Map.of(
+                                        "text", "📱 Отправить телефон",
+                                        "request_contact", true)
+                        }
+                },
+                "resize_keyboard", true,
+                "one_time_keyboard", true);
+
+        // Отправляем сообщение с обычной клавиатурой
+        sendMessage(chatId, message, "Markdown", replyKeyboard);
+
+        // Затем отправляем inline-кнопки для подтверждения
+        String confirmMessage = "После отправки телефона нажмите кнопку для подтверждения входа:";
+
         Map<String, Object> inlineKeyboard = Map.of(
                 "inline_keyboard", new Object[][] {
                         {
@@ -250,7 +269,7 @@ public class TelegramWebhookService {
                         }
                 });
 
-        sendMessage(chatId, message, "Markdown", inlineKeyboard);
+        sendMessage(chatId, confirmMessage, null, inlineKeyboard);
     }
 
     /**

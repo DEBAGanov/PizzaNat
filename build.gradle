@@ -44,7 +44,7 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
-    
+
     // H2 для тестов
     testRuntimeOnly 'com.h2database:h2'
 
@@ -92,6 +92,9 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.25.1')
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
+
+    // Telegram Bot API
+    implementation 'org.telegram:telegrambots-spring-boot-starter:6.8.0'
 }
 
 tasks.named('test') {

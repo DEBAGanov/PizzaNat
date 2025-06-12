@@ -103,5 +103,10 @@ services:
       # SMS_SENDER_ID: ${SMS_SENDER_ID:1234567890}
       # SMS_RATE_LIMIT_PER_HOUR: 5
 
+      # Telegram Bot настройки
+      TELEGRAM_ENABLED: true
+      bot-token: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
+      api-url: ${TELEGRAM_AUTH_WEBHOOK_URL:-https://api.telegram.org/bot7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
+
     ports:
       - "8080:8080"
