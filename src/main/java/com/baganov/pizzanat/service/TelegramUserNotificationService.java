@@ -214,7 +214,7 @@ public class TelegramUserNotificationService {
     /**
      * Отправка персонального сообщения пользователю
      */
-    private void sendPersonalMessage(Long telegramId, String text) {
+    public void sendPersonalMessage(Long telegramId, String text) {
         try {
             String url = telegramAuthProperties.getApiUrl() + "/sendMessage";
 

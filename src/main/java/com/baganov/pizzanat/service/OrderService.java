@@ -36,6 +36,7 @@ public class OrderService {
     private final PaymentService paymentService;
     private final TelegramBotService telegramBotService;
     private final TelegramUserNotificationService telegramUserNotificationService;
+    private final ScheduledNotificationService scheduledNotificationService;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
@@ -319,11 +320,36 @@ public class OrderService {
                         order.getId());
             }
 
+            // Планирование реферального уведомления при доставке заказа
+            if ("DELIVERED".equalsIgnoreCase(newStatusName)) {
+                scheduleReferralReminderSafely(order);
+            }
+
         } catch (Exception e) {
             log.error("Ошибка отправки Telegram уведомлений об изменении статуса заказа #{}: {}",
                     order.getId(), e.getMessage());
             // Не пробрасываем исключение, чтобы не нарушать основную логику обновления
             // статуса
+        }
+    }
+
+    /**
+     * Безопасное планирование реферального уведомления
+     */
+    private void scheduleReferralReminderSafely(Order order) {
+        try {
+            if (scheduledNotificationService != null) {
+                scheduledNotificationService.scheduleReferralReminder(order);
+                log.info("Запланировано реферальное уведомление для заказа #{} через 1 час", order.getId());
+            } else {
+                log.warn(
+                        "ScheduledNotificationService недоступен, реферальное уведомление не запланировано для заказа #{}",
+                        order.getId());
+            }
+        } catch (Exception e) {
+            log.error("Ошибка планирования реферального уведомления для заказа #{}: {}",
+                    order.getId(), e.getMessage(), e);
+            // Не пробрасываем исключение, чтобы не нарушать основную логику
         }
     }
 
