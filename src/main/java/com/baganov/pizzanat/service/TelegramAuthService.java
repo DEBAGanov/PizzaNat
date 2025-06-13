@@ -173,14 +173,28 @@ public class TelegramAuthService {
 
                 case CONFIRMED:
                     // Если токен подтвержден, возвращаем данные аутентификации
+                    if (token.getTelegramId() == null) {
+                        log.error("Подтвержденный токен не содержит Telegram ID: {}", authToken);
+                        return TelegramStatusResponse.error("Ошибка данных токена");
+                    }
+
                     Optional<User> userOpt = userRepository.findByTelegramId(token.getTelegramId());
                     if (userOpt.isPresent()) {
                         User user = userOpt.get();
+
+                        // Проверяем, что пользователь активен
+                        if (!user.isActive()) {
+                            log.warn("Пользователь неактивен для токена: {}, telegramId: {}", authToken,
+                                    token.getTelegramId());
+                            return TelegramStatusResponse.error("Пользователь неактивен");
+                        }
+
                         String jwtToken = jwtService.generateToken(user);
                         AuthResponse authResponse = createAuthResponse(jwtToken, user);
                         return TelegramStatusResponse.confirmed(authResponse);
                     } else {
-                        log.error("Пользователь не найден для подтвержденного токена: {}", authToken);
+                        log.error("Пользователь не найден для подтвержденного токена: {}, telegramId: {}",
+                                authToken, token.getTelegramId());
                         return TelegramStatusResponse.error("Пользователь не найден");
                     }
 
@@ -426,13 +440,19 @@ public class TelegramAuthService {
      * @return AuthResponse
      */
     private AuthResponse createAuthResponse(String jwtToken, User user) {
-        return AuthResponse.builder()
+        log.debug("Создание AuthResponse для пользователя: id={}, username={}, email={}, firstName={}, lastName={}",
+                user.getId(), user.getUsername(), user.getEmail(), user.getFirstName(), user.getLastName());
+
+        AuthResponse response = AuthResponse.builder()
                 .token(jwtToken)
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .build();
+
+        log.debug("AuthResponse создан успешно");
+        return response;
     }
 
     /**
