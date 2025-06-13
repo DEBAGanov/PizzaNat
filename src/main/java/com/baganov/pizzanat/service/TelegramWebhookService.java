@@ -321,10 +321,15 @@ public class TelegramWebhookService {
      * @param errorMessage сообщение об ошибке
      */
     private void sendAuthErrorMessage(Long chatId, String errorMessage) {
+        // Экранируем специальные символы в сообщении об ошибке для Markdown
+        String safeErrorMessage = errorMessage != null
+                ? errorMessage.replace("_", "\\_").replace("*", "\\*").replace("%", "\\%")
+                : "Неизвестная ошибка";
+
         String message = "❌ *Ошибка аутентификации*\n\n" +
                 "Произошла ошибка при входе в приложение. " +
                 "Попробуйте запросить новую ссылку.\n\n" +
-                "_Детали: " + errorMessage + "_";
+                "_Детали: " + safeErrorMessage + "_";
 
         sendMessage(chatId, message, "Markdown", null);
     }
