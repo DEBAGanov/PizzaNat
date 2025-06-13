@@ -2,6 +2,7 @@
 
 echo "🚀 Comprehensive тестирование PizzaNat API"
 
+#BASE_URL="https://debaganov-pizzanat-d8fb.twc1.net"
 #BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
 BASE_URL="http://localhost:8080"
 GREEN='\033[0;32m'
@@ -324,6 +325,9 @@ if [ -n "$JWT_TOKEN" ]; then
         echo -e "${BLUE}📱 TELEGRAM ИНТЕГРАЦИЯ ТЕСТЫ${NC}"
 
         echo -e "${YELLOW}Создание заказа для Telegram уведомления...${NC}"
+        # Добавляем товар в корзину для Telegram теста
+        cart_add_simple='{"productId": 1, "quantity": 1}'
+        test_endpoint "/api/v1/cart/items" "Добавить товар для Telegram теста" "POST" "$JWT_TOKEN" "$cart_add_simple"
 
         # Создаем заказ (должно отправить Telegram уведомление о новом заказе)
         telegram_order_data='{
@@ -333,70 +337,83 @@ if [ -n "$JWT_TOKEN" ]; then
             "comment": "Тестовый заказ для проверки Telegram уведомлений"
         }'
 
-        # Используем функцию test_order_creation для правильного создания заказа
-        test_order_creation "$telegram_order_data" "Создание заказа с Telegram уведомлением" "$JWT_TOKEN"
+        echo -e "${YELLOW}Тестирование: Создание заказа с Telegram уведомлением${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-        # Получаем ID последнего созданного заказа
-        echo -e "${YELLOW}Получение ID созданного заказа...${NC}"
-        orders_response=$(curl -s -L -X GET "$BASE_URL/api/v1/orders" \
+        telegram_order_response=$(curl -s -L -X POST "$BASE_URL/api/v1/orders" \
+          -H "Content-Type: application/json" \
           -H "Accept: application/json" \
-          -H "Authorization: Bearer $JWT_TOKEN")
+          -H "Authorization: Bearer $JWT_TOKEN" \
+          -d "$telegram_order_data")
 
-        TELEGRAM_ORDER_ID=$(echo "$orders_response" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+        telegram_order_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/orders" \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/json" \
+          -H "Authorization: Bearer $JWT_TOKEN" \
+          -d "$telegram_order_data")
 
-        if [ -n "$TELEGRAM_ORDER_ID" ]; then
-            echo -e "${GREEN}✅ Получен ID заказа для Telegram тестов: $TELEGRAM_ORDER_ID${NC}"
+        if [[ $telegram_order_code -eq 200 ]] || [[ $telegram_order_code -eq 201 ]]; then
+            TELEGRAM_ORDER_ID=$(echo "$telegram_order_response" | grep -o '"id":[0-9]*' | cut -d':' -f2)
 
-            # Тест 1: Изменение статуса на CONFIRMED (должно отправить уведомление)
-            echo -e "${YELLOW}Тестирование: Изменение статуса на CONFIRMED (Telegram уведомление)${NC}"
-            TOTAL_TESTS=$((TOTAL_TESTS + 1))
-
-            status_confirmed_data='{"statusName": "CONFIRMED"}'
-            confirmed_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X PUT "$BASE_URL/api/v1/admin/orders/$TELEGRAM_ORDER_ID/status" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $ADMIN_TOKEN" \
-              -d "$status_confirmed_data")
-
-            if [[ $confirmed_code -eq 200 ]]; then
-                echo -e "${GREEN}✅ УСПЕХ ($confirmed_code) - Статус изменен на CONFIRMED${NC}"
+            if [ -n "$TELEGRAM_ORDER_ID" ]; then
+                echo -e "${GREEN}✅ УСПЕХ ($telegram_order_code) - Заказ #$TELEGRAM_ORDER_ID создан для Telegram теста${NC}"
                 PASSED_TESTS=$((PASSED_TESTS + 1))
+
+                # Тест 1: Изменение статуса на CONFIRMED (должно отправить уведомление)
+                echo -e "${YELLOW}Тестирование: Изменение статуса на CONFIRMED (Telegram уведомление)${NC}"
+                TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+                status_confirmed_data='{"statusName": "CONFIRMED"}'
+                confirmed_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X PUT "$BASE_URL/api/v1/admin/orders/$TELEGRAM_ORDER_ID/status" \
+                  -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" \
+                  -d "$status_confirmed_data")
+
+                if [[ $confirmed_code -eq 200 ]]; then
+                    echo -e "${GREEN}✅ УСПЕХ ($confirmed_code) - Статус изменен на CONFIRMED${NC}"
+                    PASSED_TESTS=$((PASSED_TESTS + 1))
+                else
+                    echo -e "${RED}❌ ОШИБКА ($confirmed_code) - Не удалось изменить статус на CONFIRMED${NC}"
+                    FAILED_TESTS=$((FAILED_TESTS + 1))
+                fi
+                echo "---"
+
+                # Тест 2: Изменение статуса на DELIVERING (еще одно уведомление)
+                echo -e "${YELLOW}Тестирование: Изменение статуса на DELIVERING (Telegram уведомление)${NC}"
+                TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+                status_delivering_data='{"statusName": "DELIVERING"}'
+                delivering_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X PUT "$BASE_URL/api/v1/admin/orders/$TELEGRAM_ORDER_ID/status" \
+                  -H "Content-Type: application/json" \
+                  -H "Authorization: Bearer $ADMIN_TOKEN" \
+                  -d "$status_delivering_data")
+
+                if [[ $delivering_code -eq 200 ]]; then
+                    echo -e "${GREEN}✅ УСПЕХ ($delivering_code) - Статус изменен на DELIVERING${NC}"
+                    PASSED_TESTS=$((PASSED_TESTS + 1))
+                else
+                    echo -e "${RED}❌ ОШИБКА ($delivering_code) - Не удалось изменить статус на DELIVERING${NC}"
+                    FAILED_TESTS=$((FAILED_TESTS + 1))
+                fi
+                echo "---"
+
+                # Информационное сообщение о Telegram уведомлениях
+                echo -e "${BLUE}📱 Telegram уведомления:${NC}"
+                echo -e "${YELLOW}   Если настроены переменные TELEGRAM_ENABLED, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,${NC}"
+                echo -e "${YELLOW}   то в вашем Telegram чате должны появиться 3 уведомления:${NC}"
+                echo -e "${YELLOW}   1. 🍕 Новый заказ #$TELEGRAM_ORDER_ID${NC}"
+                echo -e "${YELLOW}   2. 🔄 Статус изменен: CREATED → CONFIRMED${NC}"
+                echo -e "${YELLOW}   3. 🔄 Статус изменен: CONFIRMED → DELIVERING${NC}"
+                echo "---"
+
             else
-                echo -e "${RED}❌ ОШИБКА ($confirmed_code) - Не удалось изменить статус на CONFIRMED${NC}"
-                FAILED_TESTS=$((FAILED_TESTS + 1))
+                echo -e "${RED}❌ ОШИБКА - Не удалось получить ID созданного заказа${NC}"
+                FAILED_TESTS=$((FAILED_TESTS + 3))  # 3 пропущенных теста
+                TOTAL_TESTS=$((TOTAL_TESTS + 2))     # 2 дополнительных теста
             fi
-            echo "---"
-
-            # Тест 2: Изменение статуса на DELIVERING (еще одно уведомление)
-            echo -e "${YELLOW}Тестирование: Изменение статуса на DELIVERING (Telegram уведомление)${NC}"
-            TOTAL_TESTS=$((TOTAL_TESTS + 1))
-
-            status_delivering_data='{"statusName": "DELIVERING"}'
-            delivering_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X PUT "$BASE_URL/api/v1/admin/orders/$TELEGRAM_ORDER_ID/status" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $ADMIN_TOKEN" \
-              -d "$status_delivering_data")
-
-            if [[ $delivering_code -eq 200 ]]; then
-                echo -e "${GREEN}✅ УСПЕХ ($delivering_code) - Статус изменен на DELIVERING${NC}"
-                PASSED_TESTS=$((PASSED_TESTS + 1))
-            else
-                echo -e "${RED}❌ ОШИБКА ($delivering_code) - Не удалось изменить статус на DELIVERING${NC}"
-                FAILED_TESTS=$((FAILED_TESTS + 1))
-            fi
-            echo "---"
-
-            # Информационное сообщение о Telegram уведомлениях
-            echo -e "${BLUE}📱 Telegram уведомления:${NC}"
-            echo -e "${YELLOW}   Если настроены переменные TELEGRAM_ENABLED, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,${NC}"
-            echo -e "${YELLOW}   то в вашем Telegram чате должны появиться 3 уведомления:${NC}"
-            echo -e "${YELLOW}   1. 🍕 Новый заказ #$TELEGRAM_ORDER_ID${NC}"
-            echo -e "${YELLOW}   2. 🔄 Статус изменен: CREATED → CONFIRMED${NC}"
-            echo -e "${YELLOW}   3. 🔄 Статус изменен: CONFIRMED → DELIVERING${NC}"
-            echo "---"
-
         else
-            echo -e "${RED}❌ ОШИБКА - Не удалось получить ID созданного заказа${NC}"
-            FAILED_TESTS=$((FAILED_TESTS + 2))  # 2 пропущенных теста изменения статуса
+            echo -e "${RED}❌ ОШИБКА ($telegram_order_code) - Не удалось создать заказ для Telegram теста${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 3))  # 3 пропущенных теста
             TOTAL_TESTS=$((TOTAL_TESTS + 2))     # 2 дополнительных теста
         fi
 
@@ -512,6 +529,73 @@ if [ -n "$JWT_TOKEN" ]; then
 
     # Тест фильтрации по категории с несуществующей категорией
     test_endpoint "/api/v1/products/category/99999" "Продукты несуществующей категории"
+
+    # --- TELEGRAM AUTH TEST ---
+    echo -e "${BLUE}📱 5B. АВТОРИЗАЦИЯ ЧЕРЕЗ TELEGRAM (полуавтоматический сценарий)${NC}"
+
+    TELEGRAM_DEVICE_ID="test_telegram_$(date +%s)"
+    TELEGRAM_INIT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/auth/telegram/init" \
+        -H "Content-Type: application/json" \
+        -d '{"deviceId":"'$TELEGRAM_DEVICE_ID'"}')
+
+    TELEGRAM_AUTH_TOKEN=$(echo "$TELEGRAM_INIT_RESPONSE" | grep -o '"authToken":"[^"]*' | cut -d'"' -f4)
+    TELEGRAM_BOT_URL=$(echo "$TELEGRAM_INIT_RESPONSE" | grep -o '"telegramBotUrl":"[^"]*' | cut -d'"' -f4)
+
+    if [ -z "$TELEGRAM_AUTH_TOKEN" ] || [ -z "$TELEGRAM_BOT_URL" ]; then
+        echo -e "${RED}❌ Не удалось получить Telegram auth token или ссылку${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    else
+        echo -e "${YELLOW}Перейдите по ссылке для авторизации через Telegram:${NC}"
+        echo -e "   ${BLUE}$TELEGRAM_BOT_URL${NC}"
+        echo -e "${YELLOW}После отправки номера телефона в Telegram, тест продолжит работу...${NC}"
+        echo ""
+        # Ожидание авторизации (60 сек)
+        for i in {60..1}; do
+            printf "\r   ⏳ Ожидание завершения авторизации: %2d сек" $i
+            sleep 1
+        done
+        echo ""
+        # Проверка статуса токена
+        TELEGRAM_STATUS_RESPONSE=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$TELEGRAM_AUTH_TOKEN")
+        TELEGRAM_STATUS=$(echo "$TELEGRAM_STATUS_RESPONSE" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        TELEGRAM_JWT_TOKEN=$(echo "$TELEGRAM_STATUS_RESPONSE" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+        if [ "$TELEGRAM_STATUS" = "CONFIRMED" ] && [ -n "$TELEGRAM_JWT_TOKEN" ]; then
+            echo -e "${GREEN}✅ Telegram авторизация успешна, токен получен${NC}"
+            PASSED_TESTS=$((PASSED_TESTS + 1))
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            # Теперь прогоняем все основные тесты для Telegram-пользователя
+            echo -e "${BLUE}▶️  ПРОВЕРКА Telegram-пользователя (как обычного)${NC}"
+            test_endpoint "/api/v1/cart" "Получить пустую корзину (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            cart_add_data='{"productId": 1, "quantity": 2, "selectedOptions": {"size": "large", "extraCheese": true}}'
+            test_endpoint "/api/v1/cart/items" "Добавить товар в корзину с опциями (Telegram)" "POST" "$TELEGRAM_JWT_TOKEN" "$cart_add_data"
+            test_endpoint "/api/v1/cart" "Получить корзину с товарами (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            cart_update_data='{"quantity": 3}'
+            test_endpoint "/api/v1/cart/items/1" "Обновить количество товара (Telegram)" "PUT" "$TELEGRAM_JWT_TOKEN" "$cart_update_data"
+            test_endpoint "/api/v1/cart/items/1" "Удалить товар из корзины (Telegram)" "DELETE" "$TELEGRAM_JWT_TOKEN"
+            cart_add_simple='{"productId": 1, "quantity": 1}'
+            test_endpoint "/api/v1/cart/items" "Добавить товар для заказа (Telegram)" "POST" "$TELEGRAM_JWT_TOKEN" "$cart_add_simple"
+            # Заказ с deliveryLocationId
+            order_data_location='{"deliveryLocationId": 1, "contactName": "Telegram User", "contactPhone": "+79001234567", "comment": "Telegram заказ с пунктом выдачи"}'
+            test_order_creation "$order_data_location" "Создать заказ с пунктом выдачи (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            # Заказ с deliveryAddress
+            order_data_address='{"deliveryAddress": "ул. Telegram, д. 1", "contactName": "Telegram User", "contactPhone": "+79001234567", "notes": "Telegram заказ с адресом"}'
+            test_order_creation "$order_data_address" "Создать заказ с адресом доставки (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            # Заказ с обоими полями
+            order_data_both='{"deliveryLocationId": 1, "deliveryAddress": "ул. Игнорируемая, д. 999", "contactName": "Telegram User", "contactPhone": "+79005555555", "comment": "Telegram заказ", "notes": "Telegram notes"}'
+            test_order_creation "$order_data_both" "Создать заказ с двумя типами адреса (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            test_endpoint "/api/v1/orders" "Получить заказы пользователя (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            test_endpoint "/api/v1/orders/1" "Получить заказ по ID (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            # Проверка формата номера телефона (ручная)
+            echo -e "${YELLOW}Проверьте в БД, что номер телефона Telegram-пользователя сохранён в формате +7...${NC}"
+        else
+            echo -e "${RED}❌ Telegram авторизация не подтверждена или не получен токен${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+            TOTAL_TESTS=$((TOTAL_TESTS + 1))
+            echo "Ответ: $TELEGRAM_STATUS_RESPONSE"
+        fi
+    fi
+    # --- END TELEGRAM AUTH TEST ---
 
 else
     echo -e "${RED}❌ Не удалось получить JWT токен${NC}"
