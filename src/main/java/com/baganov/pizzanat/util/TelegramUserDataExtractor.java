@@ -73,6 +73,7 @@ public class TelegramUserDataExtractor {
         }
 
         String username = generateUsername(telegramData);
+        String email = generateEmailForTelegramUser(telegramData);
 
         return User.builder()
                 .telegramId(telegramData.getId())
@@ -80,9 +81,11 @@ public class TelegramUserDataExtractor {
                 .firstName(telegramData.getFirstName())
                 .lastName(telegramData.getLastName())
                 .username(username)
+                .email(email) // Генерируем email для совместимости с мобильным приложением
                 .password(passwordEncoder.encode("tg_temp_" + telegramData.getId())) // Временный пароль для Telegram
                                                                                      // пользователей
                 .isTelegramVerified(true)
+                .isActive(true) // Активируем пользователя сразу
                 .build();
     }
 
@@ -102,6 +105,11 @@ public class TelegramUserDataExtractor {
         existingUser.setTelegramUsername(telegramData.getUsername());
         existingUser.setIsTelegramVerified(true);
 
+        // Генерируем email если его нет (для совместимости с мобильным приложением)
+        if (existingUser.getEmail() == null || existingUser.getEmail().trim().isEmpty()) {
+            existingUser.setEmail(generateEmailForTelegramUser(telegramData));
+        }
+
         // Обновляем имя только если оно не было установлено ранее
         if (existingUser.getFirstName() == null && telegramData.getFirstName() != null) {
             existingUser.setFirstName(telegramData.getFirstName());
@@ -115,6 +123,11 @@ public class TelegramUserDataExtractor {
         if (telegramData.getPhoneNumber() != null && !telegramData.getPhoneNumber().trim().isEmpty()) {
             String formattedPhone = formatPhoneNumber(telegramData.getPhoneNumber());
             existingUser.setPhone(formattedPhone);
+        }
+
+        // Активируем пользователя если он не активен
+        if (!existingUser.isActive()) {
+            existingUser.setActive(true);
         }
 
         return existingUser;
@@ -170,6 +183,19 @@ public class TelegramUserDataExtractor {
         }
 
         return "tg_user_" + telegramData.getId();
+    }
+
+    /**
+     * Генерирует email для пользователя Telegram для совместимости с мобильным
+     * приложением
+     *
+     * @param telegramData данные Telegram
+     * @return сгенерированный email
+     */
+    private String generateEmailForTelegramUser(TelegramUserData telegramData) {
+        // Генерируем email на основе Telegram ID для уникальности
+        // Используем специальный домен для Telegram пользователей
+        return "tg_" + telegramData.getId() + "@telegram.pizzanat.local";
     }
 
     /**
