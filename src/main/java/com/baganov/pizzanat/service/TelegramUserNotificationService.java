@@ -1,0 +1,259 @@
+/**
+ * @file: TelegramUserNotificationService.java
+ * @description: Сервис для отправки персональных уведомлений пользователям в Telegram
+ * @dependencies: Spring Web, Jackson, TelegramConfig
+ * @created: 2025-01-11
+ */
+package com.baganov.pizzanat.service;
+
+import com.baganov.pizzanat.config.TelegramConfig;
+import com.baganov.pizzanat.entity.Order;
+import com.baganov.pizzanat.entity.OrderItem;
+import com.baganov.pizzanat.entity.User;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.format.DateTimeFormatter;
+
+/**
+ * Сервис для отправки персональных уведомлений пользователям в Telegram.
+ * Следует принципу Single Responsibility из SOLID.
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class TelegramUserNotificationService {
+
+    @Qualifier("telegramAuthRestTemplate")
+    private final RestTemplate telegramAuthRestTemplate;
+
+    private final TelegramConfig.TelegramAuthProperties telegramAuthProperties;
+
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+    /**
+     * Отправка персонального уведомления пользователю о создании заказа
+     *
+     * @param order заказ
+     */
+    public void sendPersonalNewOrderNotification(Order order) {
+        if (!isNotificationEnabled() || !hasUserTelegramId(order)) {
+            return;
+        }
+
+        try {
+            String message = formatPersonalNewOrderMessage(order);
+            sendPersonalMessage(order.getUser().getTelegramId(), message);
+
+            log.info("Персональное уведомление о новом заказе #{} отправлено пользователю {} (Telegram ID: {})",
+                    order.getId(), order.getUser().getUsername(), order.getUser().getTelegramId());
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки персонального уведомления о новом заказе #{} пользователю {}: {}",
+                    order.getId(), order.getUser().getUsername(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Отправка персонального уведомления пользователю об изменении статуса заказа
+     *
+     * @param order     заказ
+     * @param oldStatus старый статус
+     * @param newStatus новый статус
+     */
+    public void sendPersonalOrderStatusUpdateNotification(Order order, String oldStatus, String newStatus) {
+        if (!isNotificationEnabled() || !hasUserTelegramId(order)) {
+            return;
+        }
+
+        try {
+            String message = formatPersonalStatusUpdateMessage(order, oldStatus, newStatus);
+            sendPersonalMessage(order.getUser().getTelegramId(), message);
+
+            log.info(
+                    "Персональное уведомление об изменении статуса заказа #{} отправлено пользователю {} (Telegram ID: {})",
+                    order.getId(), order.getUser().getUsername(), order.getUser().getTelegramId());
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки персонального уведомления об изменении статуса заказа #{} пользователю {}: {}",
+                    order.getId(), order.getUser().getUsername(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Проверяет, включены ли уведомления и настроен ли Telegram
+     */
+    private boolean isNotificationEnabled() {
+        if (!telegramAuthProperties.isValid()) {
+            log.debug("Telegram auth не настроен, персональные уведомления отключены");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Проверяет, есть ли у пользователя заказа Telegram ID
+     */
+    private boolean hasUserTelegramId(Order order) {
+        if (order.getUser() == null) {
+            log.debug("Заказ #{} не привязан к пользователю, персональное уведомление не отправляется", order.getId());
+            return false;
+        }
+
+        if (order.getUser().getTelegramId() == null) {
+            log.debug("У пользователя {} нет Telegram ID, персональное уведомление не отправляется",
+                    order.getUser().getUsername());
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Форматирование персонального сообщения о новом заказе
+     */
+    private String formatPersonalNewOrderMessage(Order order) {
+        User user = order.getUser();
+        StringBuilder message = new StringBuilder();
+
+        message.append("🍕 <b>Ваш заказ принят!</b>\n\n");
+
+        message.append("📋 <b>Заказ #").append(order.getId()).append("</b>\n");
+        message.append("📅 <b>Дата:</b> ").append(order.getCreatedAt().format(DATE_FORMATTER)).append("\n");
+        message.append("📋 <b>Статус:</b> ").append(getStatusDisplayName(order.getStatus().getName())).append("\n\n");
+
+        // Адрес доставки
+        if (order.getDeliveryAddress() != null) {
+            message.append("📍 <b>Адрес доставки:</b> ").append(order.getDeliveryAddress()).append("\n");
+        } else if (order.getDeliveryLocation() != null) {
+            message.append("📍 <b>Пункт выдачи:</b> ").append(order.getDeliveryLocation().getAddress()).append("\n");
+        }
+
+        // Комментарий
+        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
+            message.append("💬 <b>Комментарий:</b> ").append(order.getComment()).append("\n");
+        }
+
+        message.append("\n🛒 <b>Состав заказа:</b>\n");
+        for (OrderItem item : order.getItems()) {
+            message.append("• ").append(item.getProduct().getName())
+                    .append(" x").append(item.getQuantity())
+                    .append(" = ").append(item.getPrice()).append(" ₽\n");
+        }
+
+        message.append("\n💰 <b>Итого: ").append(order.getTotalAmount()).append(" ₽</b>\n\n");
+        message.append("Мы уведомим вас об изменении статуса заказа! 🔔");
+
+        return message.toString();
+    }
+
+    /**
+     * Форматирование персонального сообщения об изменении статуса
+     */
+    private String formatPersonalStatusUpdateMessage(Order order, String oldStatus, String newStatus) {
+        StringBuilder message = new StringBuilder();
+
+        message.append("🔄 <b>Статус заказа изменен!</b>\n\n");
+        message.append("📋 <b>Заказ #").append(order.getId()).append("</b>\n");
+        message.append("💰 <b>Сумма:</b> ").append(order.getTotalAmount()).append(" ₽\n\n");
+
+        message.append("📋 <b>Статус изменен:</b>\n");
+        message.append("❌ Было: ").append(getStatusDisplayName(oldStatus)).append("\n");
+        message.append("✅ Стало: ").append(getStatusDisplayName(newStatus)).append("\n\n");
+
+        // Добавляем специальные сообщения для определенных статусов
+        String statusMessage = getStatusSpecialMessage(newStatus);
+        if (statusMessage != null) {
+            message.append(statusMessage);
+        }
+
+        return message.toString();
+    }
+
+    /**
+     * Получение отображаемого названия статуса
+     */
+    private String getStatusDisplayName(String status) {
+        return switch (status.toUpperCase()) {
+            case "CREATED" -> "Создан";
+            case "CONFIRMED" -> "Подтвержден";
+            case "PREPARING" -> "Готовится";
+            case "READY" -> "Готов к выдаче";
+            case "DELIVERING" -> "Доставляется";
+            case "DELIVERED" -> "Доставлен";
+            case "CANCELLED" -> "Отменен";
+            case "PAID" -> "Оплачен";
+            default -> status;
+        };
+    }
+
+    /**
+     * Получение специального сообщения для статуса
+     */
+    private String getStatusSpecialMessage(String status) {
+        return switch (status.toUpperCase()) {
+            case "CONFIRMED" -> "🎉 Отлично! Ваш заказ подтвержден и передан на кухню.";
+            case "PREPARING" -> "👨‍🍳 Наши повара готовят ваш заказ с особой заботой!";
+            case "READY" -> "🍕 Ваш заказ готов! Можете забирать или ожидайте курьера.";
+            case "DELIVERING" -> "🚗 Курьер уже в пути! Скоро будет у вас.";
+            case "DELIVERED" -> "✅ Заказ доставлен! Приятного аппетита! 🍽️\n\nБудем рады видеть вас снова! ❤️";
+            case "CANCELLED" -> "😔 К сожалению, заказ был отменен. Если у вас есть вопросы, обратитесь в поддержку.";
+            default -> null;
+        };
+    }
+
+    /**
+     * Отправка персонального сообщения пользователю
+     */
+    private void sendPersonalMessage(Long telegramId, String text) {
+        try {
+            String url = telegramAuthProperties.getApiUrl() + "/sendMessage";
+
+            TelegramPersonalMessage telegramMessage = new TelegramPersonalMessage();
+            telegramMessage.setChatId(telegramId.toString());
+            telegramMessage.setText(text);
+            telegramMessage.setParseMode("HTML");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<TelegramPersonalMessage> entity = new HttpEntity<>(telegramMessage, headers);
+
+            ResponseEntity<String> response = telegramAuthRestTemplate.postForEntity(url, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.debug("Персональное Telegram сообщение отправлено пользователю: {}", telegramId);
+            } else {
+                log.error("Ошибка отправки персонального Telegram сообщения пользователю {}: {}",
+                        telegramId, response.getStatusCode());
+            }
+
+        } catch (Exception e) {
+            log.error("Ошибка при отправке персонального Telegram сообщения пользователю {}: {}",
+                    telegramId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * DTO для персональных сообщений Telegram API
+     */
+    @Data
+    private static class TelegramPersonalMessage {
+        @JsonProperty("chat_id")
+        private String chatId;
+
+        private String text;
+
+        @JsonProperty("parse_mode")
+        private String parseMode;
+    }
+}

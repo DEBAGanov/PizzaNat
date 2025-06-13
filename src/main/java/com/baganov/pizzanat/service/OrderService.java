@@ -35,6 +35,7 @@ public class OrderService {
     private final NotificationService notificationService;
     private final PaymentService paymentService;
     private final TelegramBotService telegramBotService;
+    private final TelegramUserNotificationService telegramUserNotificationService;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
@@ -109,9 +110,13 @@ public class OrderService {
         cart.getItems().clear();
         cartRepository.save(cart);
 
-        // Отправка Telegram уведомления о новом заказе
+        // Отправка Telegram уведомлений о новом заказе
         try {
+            // Уведомление администраторов
             telegramBotService.sendNewOrderNotification(order);
+
+            // Персональное уведомление пользователю (если у него есть Telegram ID)
+            telegramUserNotificationService.sendPersonalNewOrderNotification(order);
         } catch (Exception e) {
             log.error("Ошибка отправки Telegram уведомления о новом заказе #{}: {}", order.getId(), e.getMessage());
         }
@@ -288,18 +293,34 @@ public class OrderService {
     }
 
     /**
-     * Безопасная отправка Telegram уведомления
+     * Безопасная отправка Telegram уведомлений
      */
     private void sendTelegramNotificationSafely(Order order, String oldStatusName, String newStatusName) {
         try {
+            // Уведомление администраторов
             if (telegramBotService != null) {
                 telegramBotService.sendOrderStatusUpdateNotification(order, oldStatusName, newStatusName);
-                log.debug("Telegram уведомление об изменении статуса заказа #{} успешно отправлено", order.getId());
+                log.debug("Telegram уведомление администраторам об изменении статуса заказа #{} успешно отправлено",
+                        order.getId());
             } else {
-                log.warn("TelegramBotService недоступен, уведомление не отправлено для заказа #{}", order.getId());
+                log.warn("TelegramBotService недоступен, уведомление администраторам не отправлено для заказа #{}",
+                        order.getId());
             }
+
+            // Персональное уведомление пользователю (если у него есть Telegram ID)
+            if (telegramUserNotificationService != null) {
+                telegramUserNotificationService.sendPersonalOrderStatusUpdateNotification(order, oldStatusName,
+                        newStatusName);
+                log.debug("Персональное Telegram уведомление об изменении статуса заказа #{} успешно отправлено",
+                        order.getId());
+            } else {
+                log.warn(
+                        "TelegramUserNotificationService недоступен, персональное уведомление не отправлено для заказа #{}",
+                        order.getId());
+            }
+
         } catch (Exception e) {
-            log.error("Ошибка отправки Telegram уведомления об изменении статуса заказа #{}: {}",
+            log.error("Ошибка отправки Telegram уведомлений об изменении статуса заказа #{}: {}",
                     order.getId(), e.getMessage());
             // Не пробрасываем исключение, чтобы не нарушать основную логику обновления
             // статуса
