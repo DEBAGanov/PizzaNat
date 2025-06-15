@@ -48,6 +48,7 @@ public class SmsAuthMapper {
             // Для неуспешных ответов возвращаем базовый AuthResponse с ошибкой
             return AuthResponse.builder()
                     .token(null)
+                    .userId(null)
                     .username(null)
                     .email(null)
                     .firstName(null)
@@ -58,6 +59,7 @@ public class SmsAuthMapper {
         SmsAuthService.UserInfo user = serviceResponse.getUser();
         return AuthResponse.builder()
                 .token(serviceResponse.getToken())
+                .userId(user.getId())
                 .username(user.getPhoneNumber()) // Используем номер телефона как username
                 .email(user.getEmail())
                 .firstName(user.getFirstName())

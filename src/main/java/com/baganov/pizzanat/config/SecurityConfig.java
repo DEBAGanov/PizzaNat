@@ -37,7 +37,6 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
 @Profile("!test")
 public class SecurityConfig {
 
@@ -62,10 +61,6 @@ public class SecurityConfig {
      * Массив URL-адресов, на которые можно делать запросы без аутентификации
      */
     private static final String[] AUTH_WHITELIST = {
-            // Swagger UI - стандартные пути
-            "/swagger-ui/**",
-            "/swagger-ui.html",
-            "/v3/api-docs/**",
             // Root path
             "/",
             // Auth endpoints (включая новые SMS и Telegram)
@@ -81,6 +76,7 @@ public class SecurityConfig {
             // Health check
             "/health",
             "/api/health",
+            "/api/status",
             // Categories (только GET)
             "/api/v1/categories",
             "/api/v1/categories/*",
@@ -92,7 +88,14 @@ public class SecurityConfig {
             "/api/v1/products/search",
             // Delivery Locations (только GET для Android приложения)
             "/api/v1/delivery-locations",
-            "/api/v1/delivery-locations/*"
+            "/api/v1/delivery-locations/*",
+            // В dev режиме разрешаем все
+            "/api/v1/cart",
+            "/api/v1/cart/**",
+            "/api/v1/orders",
+            "/api/v1/orders/**",
+            "/api/v1/admin/**",
+            "/debug/**"
     };
 
     @Bean
@@ -105,7 +108,7 @@ public class SecurityConfig {
                     .csrf(AbstractHttpConfigurer::disable)
                     .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(AUTH_WHITELIST).permitAll())
+                            .anyRequest().permitAll()) // Разрешаем все запросы в dev режиме
                     .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .build();
         } else {
@@ -129,10 +132,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*"));
+        configuration.setAllowedOriginPatterns(List.of("*")); // Используем patterns вместо origins для поддержки *
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true); // Разрешаем credentials для JWT
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -152,4 +156,22 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+}
+
+/**
+ * Конфигурация для продакшн режима с включенной method security
+ */
+@Configuration
+@EnableMethodSecurity
+@Profile("prod")
+class ProductionSecurityConfig {
+}
+
+/**
+ * Конфигурация для dev режима с отключенной method security
+ */
+@Configuration
+@Profile("dev")
+class DevelopmentSecurityConfig {
+    // Method security отключена для dev режима
 }

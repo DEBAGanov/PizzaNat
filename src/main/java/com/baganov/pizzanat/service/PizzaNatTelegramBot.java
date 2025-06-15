@@ -3,12 +3,15 @@
  * @description: Основной класс Telegram бота для PizzaNat с поддержкой команд и inline кнопок
  * @dependencies: TelegramBots API, Spring Boot, TelegramWebhookService
  * @created: 2025-01-11
+ * @updated: 2025-01-15 - добавлена поддержка условного включения через переменные окружения
  */
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.config.TelegramConfig;
+import com.baganov.pizzanat.entity.TelegramAuthToken;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUpdate;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUserData;
+import com.baganov.pizzanat.repository.TelegramAuthTokenRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -33,23 +36,27 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "telegram.longpolling.enabled", havingValue = "true", matchIfMissing = false)
+@ConditionalOnProperty(name = "telegram.bot.enabled", havingValue = "true", matchIfMissing = false)
 public class PizzaNatTelegramBot extends TelegramLongPollingBot {
 
     private final TelegramConfig.TelegramAuthProperties telegramAuthProperties;
     private final TelegramBotIntegrationService integrationService;
+    private final TelegramAuthTokenRepository tokenRepository;
 
     // Хранение токенов авторизации для пользователей
     private final Map<Long, String> userAuthTokens = new HashMap<>();
 
     @Autowired
     public PizzaNatTelegramBot(TelegramConfig.TelegramAuthProperties telegramAuthProperties,
-            TelegramBotIntegrationService integrationService) {
+            TelegramBotIntegrationService integrationService,
+            TelegramAuthTokenRepository tokenRepository) {
         this.telegramAuthProperties = telegramAuthProperties;
         this.integrationService = integrationService;
+        this.tokenRepository = tokenRepository;
         log.info("🤖 PizzaNat Telegram Bot инициализирован для Long Polling");
     }
 
@@ -238,8 +245,32 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
                     .phoneNumber(contact.getPhoneNumber())
                     .build();
 
-            // Создаем или обновляем пользователя с номером телефона
+            // ИСПРАВЛЕНИЕ: Сначала обновляем пользователя с номером телефона
             integrationService.updateUserWithPhone(userData);
+            log.info("Пользователь {} обновлен с номером телефона", userId);
+
+            // ИСПРАВЛЕНИЕ: Обновляем токен в БД с telegramId пользователя
+            try {
+                // Находим токен в БД и обновляем его с telegramId
+                Optional<TelegramAuthToken> tokenOpt = tokenRepository.findByAuthToken(authToken);
+                if (tokenOpt.isPresent()) {
+                    TelegramAuthToken token = tokenOpt.get();
+                    token.setTelegramId(userId);
+                    token.setTelegramUsername(message.getFrom().getUserName());
+                    token.setTelegramFirstName(contact.getFirstName());
+                    token.setTelegramLastName(contact.getLastName());
+                    tokenRepository.save(token);
+                    log.info("Токен {} обновлен с данными пользователя {}", authToken, userId);
+                } else {
+                    log.error("Токен {} не найден в БД для обновления", authToken);
+                    sendErrorMessage(chatId, "Ошибка обновления токена. Попробуйте заново с команды /start");
+                    return;
+                }
+            } catch (Exception e) {
+                log.error("Ошибка обновления токена {} с данными пользователя: {}", authToken, e.getMessage());
+                sendErrorMessage(chatId, "Ошибка обновления данных. Попробуйте заново с команды /start");
+                return;
+            }
 
             // Проверяем, какой тип токена у нас (внешний от приложения или внутренний от
             // бота)

@@ -30,10 +30,11 @@ public interface ScheduledNotificationRepository extends JpaRepository<Scheduled
      * @return список уведомлений готовых к отправке
      */
     @Query("SELECT sn FROM ScheduledNotification sn " +
-            "WHERE sn.status = 'PENDING' " +
+            "WHERE sn.status = :pendingStatus " +
             "AND sn.scheduledAt <= :now " +
             "ORDER BY sn.scheduledAt ASC")
-    List<ScheduledNotification> findReadyToSend(@Param("now") LocalDateTime now);
+    List<ScheduledNotification> findReadyToSend(@Param("now") LocalDateTime now,
+            @Param("pendingStatus") NotificationStatus pendingStatus);
 
     /**
      * Поиск неудачных уведомлений для повторной отправки
@@ -42,11 +43,12 @@ public interface ScheduledNotificationRepository extends JpaRepository<Scheduled
      * @return список уведомлений для повтора
      */
     @Query("SELECT sn FROM ScheduledNotification sn " +
-            "WHERE sn.status = 'FAILED' " +
+            "WHERE sn.status = :failedStatus " +
             "AND sn.retryCount < sn.maxRetries " +
             "AND sn.scheduledAt <= :now " +
             "ORDER BY sn.updatedAt ASC")
-    List<ScheduledNotification> findFailedForRetry(@Param("now") LocalDateTime now);
+    List<ScheduledNotification> findFailedForRetry(@Param("now") LocalDateTime now,
+            @Param("failedStatus") NotificationStatus failedStatus);
 
     /**
      * Поиск уведомлений по заказу и типу
@@ -94,9 +96,10 @@ public interface ScheduledNotificationRepository extends JpaRepository<Scheduled
     @Modifying
     @Transactional
     @Query("DELETE FROM ScheduledNotification sn " +
-            "WHERE sn.status = 'SENT' " +
+            "WHERE sn.status = :sentStatus " +
             "AND sn.sentAt < :cutoff")
-    void deleteOldSentNotifications(@Param("cutoff") LocalDateTime cutoff);
+    void deleteOldSentNotifications(@Param("cutoff") LocalDateTime cutoff,
+            @Param("sentStatus") NotificationStatus sentStatus);
 
     /**
      * Удаление старых неудачных уведомлений (превысивших лимит попыток)
@@ -106,10 +109,11 @@ public interface ScheduledNotificationRepository extends JpaRepository<Scheduled
     @Modifying
     @Transactional
     @Query("DELETE FROM ScheduledNotification sn " +
-            "WHERE sn.status = 'FAILED' " +
+            "WHERE sn.status = :failedStatus " +
             "AND sn.retryCount >= sn.maxRetries " +
             "AND sn.updatedAt < :cutoff")
-    void deleteOldFailedNotifications(@Param("cutoff") LocalDateTime cutoff);
+    void deleteOldFailedNotifications(@Param("cutoff") LocalDateTime cutoff,
+            @Param("failedStatus") NotificationStatus failedStatus);
 
     /**
      * Отмена всех ожидающих уведомлений для заказа
@@ -119,10 +123,12 @@ public interface ScheduledNotificationRepository extends JpaRepository<Scheduled
     @Modifying
     @Transactional
     @Query("UPDATE ScheduledNotification sn " +
-            "SET sn.status = 'CANCELLED', sn.updatedAt = :now " +
+            "SET sn.status = :cancelledStatus, sn.updatedAt = :now " +
             "WHERE sn.order.id = :orderId " +
-            "AND sn.status = 'PENDING'")
-    void cancelPendingNotificationsByOrderId(@Param("orderId") Integer orderId, @Param("now") LocalDateTime now);
+            "AND sn.status = :pendingStatus")
+    void cancelPendingNotificationsByOrderId(@Param("orderId") Integer orderId, @Param("now") LocalDateTime now,
+            @Param("cancelledStatus") NotificationStatus cancelledStatus,
+            @Param("pendingStatus") NotificationStatus pendingStatus);
 
     /**
      * Поиск статистики по уведомлениям за период

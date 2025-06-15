@@ -1,10 +1,12 @@
 version: "3.8"
 
+# Версия для локальной разработки на основе продакшн конфигурации
+
 services:
   postgres:
-    image: postgres:${POSTGRES_VERSION:-15-alpine}
+    image: postgres:15-alpine
     container_name: pizzanat-postgres-dev
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: pizzanat_db
       POSTGRES_USER: pizzanat_user
@@ -16,87 +18,160 @@ services:
       - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pizzanat_user -d pizzanat_db"]
-      interval: ${HEALTH_CHECK_INTERVAL:-10s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
-      retries: ${HEALTH_CHECK_RETRIES:-5}
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - pizzanat-network
 
-  redis:
-    extends:
-      file: docker-compose.yml
-      service: redis
-
   minio:
-    image: "minio/minio:${MINIO_VERSION:-latest}"
+    image: minio/minio:latest
     container_name: pizzanat-minio-dev
     command: server --console-address ":9001" /data
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      - "MINIO_ROOT_USER=${MINIO_ROOT_USER:-accesskey}"
-      - "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-secretkey}"
-      - "MINIO_SERVER_URL=http://localhost:9000"
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-accesskey}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-secretkey}
+      - MINIO_SERVER_URL=http://localhost:9000
     volumes:
       - minio-data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
-      interval: ${HEALTH_CHECK_INTERVAL:-10s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-5s}
-      retries: ${HEALTH_CHECK_RETRIES:-3}
-    networks:
-      - pizzanat-network
-
-  minio-init:
-    image: minio/mc
-    container_name: pizzanat-minio-init-dev
-    depends_on:
-      minio:
-        condition: service_healthy
-    volumes:
-      - ./src/main/resources/images:/images
-      - ./init-scripts:/scripts
-    entrypoint: >
-      /bin/sh -c "
-        chmod +x /scripts/minio-init.sh &&
-        /scripts/minio-init.sh
-      "
-    environment:
-      - MINIO_HOST=minio:9000
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-accesskey}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-secretkey}
-      - BUCKET_NAME=pizzanat
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/ready"]
-      interval: 15s
-      timeout: 13s
-      retries: 5
-    restart: on-failure
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - pizzanat-network
 
   app:
-    extends:
-      file: docker-compose.yml
-      service: app
+    build:
+      context: .
+      dockerfile: Dockerfile.optimized
+    container_name: pizzanat-app-dev
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
     environment:
+      # Spring настройки для разработки
       SPRING_PROFILES_ACTIVE: dev
+      SERVER_PORT: 8080
+
+      # JVM оптимизация для локальной разработки
+      JAVA_OPTS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70.0
+        -XX:+ExitOnOutOfMemoryError
+        -XX:+UseG1GC
+        -Djava.security.egd=file:/dev/./urandom
+        -Dspring.jmx.enabled=false
+
+      # Локальная база данных PostgreSQL
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pizzanat_db
       SPRING_DATASOURCE_USERNAME: pizzanat_user
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-strong_password_change_me}
+
+      # Пул соединений для разработки
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 5
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: 2
+      SPRING_DATASOURCE_HIKARI_CONNECTION_TIMEOUT: 30000
+      SPRING_DATASOURCE_HIKARI_IDLE_TIMEOUT: 300000
+      SPRING_DATASOURCE_HIKARI_MAX_LIFETIME: 1200000
+      SPRING_DATASOURCE_HIKARI_LEAK_DETECTION_THRESHOLD: 60000
+
+      # S3 MinIO настройки для разработки
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-accesskey}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-secretkey}
       S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
       S3_BUCKET: pizzanat
+      S3_PUBLIC_URL: http://localhost:9000
+
+      # Кэширование (отключено для dev)
+      SPRING_CACHE_TYPE: none
+      SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+      # JWT настройки
+      JWT_SECRET: ${JWT_SECRET:-"YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg=="}
+
+      # Логирование для разработки (более подробное)
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_BAGANOV: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: INFO
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+      # Actuator для мониторинга
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when_authorized
+      MANAGEMENT_ENDPOINT_HEALTH_ENABLED: true
+      MANAGEMENT_SERVER_PORT: 8080
+
+      # Spring Boot настройки для разработки
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: true
+      SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_BATCH_SIZE: 25
+      SPRING_JPA_PROPERTIES_HIBERNATE_ORDER_INSERTS: true
+      SPRING_JPA_PROPERTIES_HIBERNATE_ORDER_UPDATES: true
+      SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_BATCH_VERSIONED_DATA: true
+
+      # Telegram Gateway настройки
+      TELEGRAM_GATEWAY_ENABLED: true
+      TELEGRAM_GATEWAY_ACCESS_TOKEN: ${TELEGRAM_GATEWAY_ACCESS_TOKEN:-AAGCGwAAIlEzNcCeEbrV5r-w65s_0edegXThOhJ2nq-eBw}
+      TELEGRAM_GATEWAY_MESSAGE_TTL: 300
+      TELEGRAM_GATEWAY_CALLBACK_URL: ${TELEGRAM_GATEWAY_CALLBACK_URL:-http://localhost:8080/api/v1/auth/telegram-gateway/callback}
+      TELEGRAM_GATEWAY_TIMEOUT_SECONDS: 10
+      TELEGRAM_GATEWAY_MAX_RETRY_ATTEMPTS: 3
+
+      # Telegram Auth настройки
+      TELEGRAM_AUTH_ENABLED: true
+      TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
+      TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-PizzaNatBot}
+      TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-http://localhost:8080/api/v1/telegram/webhook}
+      TELEGRAM_AUTH_WEBHOOK_ENABLED: true
+      TELEGRAM_AUTH_TOKEN_TTL_MINUTES: 10
+      TELEGRAM_AUTH_RATE_LIMIT_PER_HOUR: 5
+
+      # SMS настройки (отключены для разработки)
+      # SMS_ENABLED: false
+      # SMS_API_KEY: ${SMS_API_KEY:1234567890}
+      # SMS_SENDER_ID: ${SMS_SENDER_ID:1234567890}
+      # SMS_RATE_LIMIT_PER_HOUR: 5
+
+      # Telegram Bot настройки (основные уведомления) - ОТКЛЮЧЕНЫ
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
+      TELEGRAM_API_URL: https://api.telegram.org/bot
+
+      # Telegram Long Polling настройки (команды бота) - ОТКЛЮЧЕНЫ
+      TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-false}
+      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-false}
+
+      # Админский Telegram Bot настройки - ОТКЛЮЧЕН
+      TELEGRAM_ADMIN_BOT_ENABLED: ${TELEGRAM_ADMIN_BOT_ENABLED:-false}
+      TELEGRAM_ADMIN_BOT_TOKEN: ${TELEGRAM_ADMIN_BOT_TOKEN:-8052456616:AAEoAzBfr3jRpylDmxR-azNBSqimthPCHeg}
+      TELEGRAM_ADMIN_BOT_USERNAME: ${TELEGRAM_ADMIN_BOT_USERNAME:-PizzaNatOrders_bot}
+      TELEGRAM_ADMIN_BOT_MAX_RETRIES: 3
+      TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS: 30
+
+    ports:
+      - "8080:8080"
+
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       minio:
         condition: service_healthy
+
+    networks:
+      - pizzanat-network
 
 networks:
   pizzanat-network:
@@ -105,7 +180,5 @@ networks:
 volumes:
   postgres-data:
     name: pizzanat-postgres-data-dev
-  redis-data:
-    name: pizzanat-redis-data-dev
   minio-data:
     name: pizzanat-minio-data-dev

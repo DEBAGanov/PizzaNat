@@ -114,7 +114,8 @@ public class ScheduledNotificationService {
         LocalDateTime now = LocalDateTime.now();
 
         // Получаем уведомления готовые к отправке
-        List<ScheduledNotification> readyNotifications = scheduledNotificationRepository.findReadyToSend(now);
+        List<ScheduledNotification> readyNotifications = scheduledNotificationRepository.findReadyToSend(now,
+                NotificationStatus.PENDING);
 
         if (readyNotifications.isEmpty()) {
             log.debug("Нет уведомлений готовых к отправке");
@@ -128,7 +129,8 @@ public class ScheduledNotificationService {
         }
 
         // Обрабатываем неудачные уведомления для повтора
-        List<ScheduledNotification> failedNotifications = scheduledNotificationRepository.findFailedForRetry(now);
+        List<ScheduledNotification> failedNotifications = scheduledNotificationRepository.findFailedForRetry(now,
+                NotificationStatus.FAILED);
 
         if (!failedNotifications.isEmpty()) {
             log.info("Найдено {} неудачных уведомлений для повтора", failedNotifications.size());
@@ -252,7 +254,8 @@ public class ScheduledNotificationService {
      */
     @Transactional
     public void cancelNotificationsForOrder(Integer orderId) {
-        scheduledNotificationRepository.cancelPendingNotificationsByOrderId(orderId, LocalDateTime.now());
+        scheduledNotificationRepository.cancelPendingNotificationsByOrderId(orderId, LocalDateTime.now(),
+                NotificationStatus.CANCELLED, NotificationStatus.PENDING);
         log.info("Отменены все ожидающие уведомления для заказа #{}", orderId);
     }
 
@@ -266,10 +269,10 @@ public class ScheduledNotificationService {
 
         try {
             // Удаляем старые отправленные уведомления
-            scheduledNotificationRepository.deleteOldSentNotifications(cutoff);
+            scheduledNotificationRepository.deleteOldSentNotifications(cutoff, NotificationStatus.SENT);
 
             // Удаляем старые неудачные уведомления
-            scheduledNotificationRepository.deleteOldFailedNotifications(cutoff);
+            scheduledNotificationRepository.deleteOldFailedNotifications(cutoff, NotificationStatus.FAILED);
 
             log.info("Очистка старых уведомлений завершена");
         } catch (Exception e) {

@@ -11,15 +11,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import com.baganov.pizzanat.event.NewOrderEvent;
 
 @Slf4j
 @Service
@@ -37,6 +41,7 @@ public class OrderService {
     private final TelegramBotService telegramBotService;
     private final TelegramUserNotificationService telegramUserNotificationService;
     private final ScheduledNotificationService scheduledNotificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
@@ -118,6 +123,10 @@ public class OrderService {
 
             // Персональное уведомление пользователю (если у него есть Telegram ID)
             telegramUserNotificationService.sendPersonalNewOrderNotification(order);
+
+            // Публикуем событие о новом заказе для админского бота
+            eventPublisher.publishEvent(new NewOrderEvent(this, order));
+            log.debug("Событие о новом заказе #{} опубликовано", order.getId());
         } catch (Exception e) {
             log.error("Ошибка отправки Telegram уведомления о новом заказе #{}: {}", order.getId(), e.getMessage());
         }
@@ -387,6 +396,70 @@ public class OrderService {
             return cartRepository.findBySessionId(sessionId).orElse(null);
         }
         return null;
+    }
+
+    /**
+     * Поиск заказа по ID для админского бота
+     */
+    @Transactional(readOnly = true)
+    public Optional<Order> findById(Long orderId) {
+        if (orderId == null) {
+            return Optional.empty();
+        }
+        return orderRepository.findById(orderId.intValue());
+    }
+
+    /**
+     * Поиск заказов по диапазону дат
+     */
+    @Transactional(readOnly = true)
+    public List<Order> findOrdersByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        return orderRepository.findByCreatedAtBetween(startDate, endDate);
+    }
+
+    /**
+     * Поиск активных заказов (не доставленных и не отмененных)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> findActiveOrders() {
+        return orderRepository.findActiveOrders();
+    }
+
+    /**
+     * Поиск активных заказов включая новые (для админского бота)
+     */
+    @Transactional(readOnly = true)
+    public List<Order> findActiveOrdersIncludingNew() {
+        return orderRepository.findActiveOrdersIncludingNew();
+    }
+
+    /**
+     * Обновление статуса заказа для админского бота
+     */
+    @Transactional
+    public boolean updateOrderStatus(Long orderId, String statusName) {
+        try {
+            if (orderId == null || statusName == null) {
+                return false;
+            }
+
+            Order order = orderRepository.findById(orderId.intValue()).orElse(null);
+            if (order == null) {
+                return false;
+            }
+
+            OrderStatus newStatus = orderStatusRepository.findByName(statusName.toUpperCase()).orElse(null);
+            if (newStatus == null) {
+                return false;
+            }
+
+            order.setStatus(newStatus);
+            orderRepository.save(order);
+            return true;
+        } catch (Exception e) {
+            log.error("Ошибка обновления статуса заказа {}: {}", orderId, e.getMessage());
+            return false;
+        }
     }
 
     private OrderDTO mapToDTO(Order order) {

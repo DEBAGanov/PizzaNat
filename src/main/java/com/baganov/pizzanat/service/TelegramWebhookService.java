@@ -1,6 +1,7 @@
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.config.TelegramConfig;
+import com.baganov.pizzanat.entity.TelegramAuthToken;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUpdate;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUserData;
 import com.baganov.pizzanat.util.TokenGenerator;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -615,6 +617,29 @@ public class TelegramWebhookService {
 
             // Сохраняем данные пользователя с номером телефона
             telegramAuthService.updateUserWithPhoneNumber(updatedUser);
+
+            // ИСПРАВЛЕНИЕ: Ищем и обновляем токен с telegramId пользователя
+            // Это критически важно для связи контакта с токеном авторизации
+            try {
+                // Ищем PENDING токен без telegramId (недавно созданный)
+                List<TelegramAuthToken> pendingTokens = telegramAuthService.findPendingTokensWithoutTelegramId();
+
+                if (!pendingTokens.isEmpty()) {
+                    // Берем самый свежий токен (последний созданный)
+                    TelegramAuthToken tokenToUpdate = pendingTokens.get(pendingTokens.size() - 1);
+
+                    // Обновляем токен данными пользователя
+                    telegramAuthService.updateTokenWithUserData(tokenToUpdate.getAuthToken(), updatedUser);
+
+                    log.info("Токен {} успешно связан с пользователем {} после получения контакта",
+                            tokenToUpdate.getAuthToken(), user.getId());
+                } else {
+                    log.warn("Не найдено PENDING токенов без telegramId для пользователя {}", user.getId());
+                }
+            } catch (Exception e) {
+                log.error("Ошибка при обновлении токена для пользователя {}: {}", user.getId(), e.getMessage());
+                // Продолжаем выполнение, так как пользователь уже создан
+            }
 
             sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), user.getDisplayName());
 

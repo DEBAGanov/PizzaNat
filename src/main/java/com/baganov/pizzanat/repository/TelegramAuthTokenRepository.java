@@ -124,4 +124,16 @@ public interface TelegramAuthTokenRepository extends JpaRepository<TelegramAuthT
         @Transactional
         @Query("UPDATE TelegramAuthToken t SET t.status = 'EXPIRED' WHERE t.status = 'PENDING' AND t.expiresAt < :now")
         int markExpiredTokens(@Param("now") LocalDateTime now);
+
+        /**
+         * Поиск PENDING токенов без telegramId (недавно созданных)
+         * Используется для связи контакта с токеном авторизации
+         *
+         * @param status статус токенов (PENDING)
+         * @param cutoff время, после которого искать токены
+         * @return список токенов, отсортированных по времени создания
+         */
+        List<TelegramAuthToken> findByStatusAndTelegramIdIsNullAndCreatedAtAfterOrderByCreatedAtAsc(
+                        TokenStatus status,
+                        LocalDateTime cutoff);
 }

@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -228,24 +229,38 @@ public class TelegramAuthService {
                 throw new IllegalArgumentException("Некорректный токен аутентификации");
             }
 
-            // Поиск токена
+            // Поиск токена - ИСПРАВЛЕНИЕ: ищем только по authToken и статусу, без
+            // telegramId
             Optional<TelegramAuthToken> tokenOpt = tokenRepository
                     .findByAuthTokenAndStatusAndExpiresAtAfter(authToken, TokenStatus.PENDING, LocalDateTime.now());
 
             if (tokenOpt.isEmpty()) {
                 log.error("Токен не найден или истек: {}", authToken);
+                // Дополнительная диагностика
+                Optional<TelegramAuthToken> anyTokenOpt = tokenRepository.findByAuthToken(authToken);
+                if (anyTokenOpt.isPresent()) {
+                    TelegramAuthToken existingToken = anyTokenOpt.get();
+                    log.error("Токен найден, но не подходит: статус={}, истекает={}, текущее время={}",
+                            existingToken.getStatus(), existingToken.getExpiresAt(), LocalDateTime.now());
+                } else {
+                    log.error("Токен вообще не найден в БД: {}", authToken);
+                }
                 throw new IllegalArgumentException("Токен не найден или истек");
             }
 
             TelegramAuthToken token = tokenOpt.get();
             log.debug("Токен найден: id={}, telegramId={}", token.getId(), token.getTelegramId());
 
-            // Поиск пользователя по Telegram ID из токена
+            // ИСПРАВЛЕНИЕ: Если telegramId не установлен, это ошибка в логике
             if (token.getTelegramId() == null) {
-                log.error("Токен не содержит Telegram ID: {}", authToken);
-                throw new IllegalArgumentException("Токен не содержит данные пользователя");
+                log.error(
+                        "Токен найден, но не содержит Telegram ID. Это означает, что пользователь еще не отправил контакт: {}",
+                        authToken);
+                throw new IllegalArgumentException(
+                        "Авторизация не завершена. Пожалуйста, отправьте свой номер телефона в боте");
             }
 
+            // Поиск пользователя по Telegram ID из токена
             Optional<User> userOpt = userRepository.findByTelegramId(token.getTelegramId());
             if (userOpt.isEmpty()) {
                 log.error("Пользователь с Telegram ID {} не найден", token.getTelegramId());
@@ -550,6 +565,61 @@ public class TelegramAuthService {
         } catch (Exception e) {
             log.error("Ошибка при обновлении пользователя номером телефона: {}", e.getMessage(), e);
             throw new RuntimeException("Ошибка обновления данных пользователя: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Поиск PENDING токенов без telegramId (недавно созданных)
+     * Используется для связи контакта с токеном авторизации
+     *
+     * @return список PENDING токенов без telegramId
+     */
+    @Transactional(readOnly = true)
+    public List<TelegramAuthToken> findPendingTokensWithoutTelegramId() {
+        try {
+            LocalDateTime cutoff = LocalDateTime.now().minusMinutes(telegramAuthProperties.getTokenTtlMinutes());
+            return tokenRepository.findByStatusAndTelegramIdIsNullAndCreatedAtAfterOrderByCreatedAtAsc(
+                    TelegramAuthToken.TokenStatus.PENDING, cutoff);
+        } catch (Exception e) {
+            log.error("Ошибка при поиске PENDING токенов без telegramId: {}", e.getMessage(), e);
+            return List.of();
+        }
+    }
+
+    /**
+     * Обновление токена данными пользователя
+     * Связывает токен с пользователем после получения контакта
+     *
+     * @param authToken токен авторизации
+     * @param userData  данные пользователя
+     */
+    @Transactional
+    public void updateTokenWithUserData(String authToken, TelegramUserData userData) {
+        try {
+            if (authToken == null || userData == null || userData.getId() == null) {
+                throw new IllegalArgumentException("Некорректные параметры для обновления токена");
+            }
+
+            Optional<TelegramAuthToken> tokenOpt = tokenRepository.findByAuthToken(authToken);
+            if (tokenOpt.isEmpty()) {
+                throw new IllegalArgumentException("Токен не найден: " + authToken);
+            }
+
+            TelegramAuthToken token = tokenOpt.get();
+
+            // Обновляем токен данными пользователя
+            token.setTelegramId(userData.getId());
+            token.setTelegramUsername(userData.getUsername());
+            token.setTelegramFirstName(userData.getFirstName());
+            token.setTelegramLastName(userData.getLastName());
+
+            tokenRepository.save(token);
+
+            log.info("Токен {} успешно обновлен данными пользователя {}", authToken, userData.getId());
+
+        } catch (Exception e) {
+            log.error("Ошибка при обновлении токена {} данными пользователя: {}", authToken, e.getMessage(), e);
+            throw new RuntimeException("Ошибка обновления токена: " + e.getMessage());
         }
     }
 }

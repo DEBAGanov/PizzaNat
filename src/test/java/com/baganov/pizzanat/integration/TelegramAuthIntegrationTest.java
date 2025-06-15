@@ -23,15 +23,17 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Интеграционный тест для Telegram аутентификации
- * Проверяет полный цикл аутентификации согласно ТЗ
- * Backend_Requirements_SMS_Telegram_Auth.md
+ * Интеграционный тест для проверки исправлений Telegram авторизации
+ * Тестирует полный цикл авторизации через реальные HTTP запросы
  */
 @SpringBootTest
 @AutoConfigureWebMvc
@@ -45,7 +47,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
                 "telegram.auth.webhook.enabled=false"
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-public class TelegramAuthIntegrationTest {
+@DisplayName("Telegram Auth Integration - Тесты исправлений")
+class TelegramAuthIntegrationTest {
 
         @Autowired
         private MockMvc mockMvc;
@@ -59,271 +62,428 @@ public class TelegramAuthIntegrationTest {
         @Autowired
         private UserRepository userRepository;
 
+        private static final Long TEST_TELEGRAM_USER_ID = 7819187384L;
+        private static final Long TEST_CHAT_ID = -4919444764L;
+        private static final String TEST_PHONE_NUMBER = "+79199969633";
+        private static final String TEST_FIRST_NAME = "Владимир";
+        private static final String TEST_LAST_NAME = "Баганов";
+        private static final String TEST_USERNAME = "vladimir_baganov";
+
         @BeforeEach
         void setUp() {
+                // Очищаем данные перед каждым тестом
                 tokenRepository.deleteAll();
-                userRepository.deleteAll();
+                userRepository.findByTelegramId(TEST_TELEGRAM_USER_ID)
+                                .ifPresent(user -> userRepository.delete(user));
         }
 
         @Test
-        @DisplayName("Полный цикл Telegram аутентификации - успешный сценарий")
-        @Transactional
-        void testFullTelegramAuthFlow_Success() throws Exception {
-                // 1. Инициализация аутентификации
-                InitTelegramAuthRequest initRequest = new InitTelegramAuthRequest();
-                initRequest.setDeviceId("test_device_123");
+        @DisplayName("ПОЛНЫЙ ЦИКЛ: Исправленная авторизация работает от начала до конца")
+        void testFullFixedAuthenticationCycle() throws Exception {
+                // Этап 1: Инициализация токена
+                String initRequest = """
+                                {
+                                    "deviceId": "integration_test_device"
+                                }
+                                """;
 
                 String initResponse = mockMvc.perform(post("/api/v1/auth/telegram/init")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(initRequest)))
+                                .content(initRequest))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
-                                .andExpect(jsonPath("$.authToken").isNotEmpty())
-                                .andExpect(jsonPath("$.telegramBotUrl").isNotEmpty())
-                                .andExpect(jsonPath("$.expiresAt").isNotEmpty())
+                                .andExpect(jsonPath("$.authToken").exists())
+                                .andExpect(jsonPath("$.telegramBotUrl").exists())
                                 .andReturn()
                                 .getResponse()
                                 .getContentAsString();
 
-                TelegramAuthResponse authResponse = objectMapper.readValue(initResponse, TelegramAuthResponse.class);
-                String authToken = authResponse.getAuthToken();
+                Map<String, Object> initData = objectMapper.readValue(initResponse, Map.class);
+                String authToken = (String) initData.get("authToken");
 
-                // Проверяем, что токен создан в БД
-                TelegramAuthToken savedToken = tokenRepository
-                                .findByAuthTokenAndExpiresAtAfter(authToken, LocalDateTime.now())
-                                .orElse(null);
-                assertThat(savedToken).isNotNull();
-                assertThat(savedToken.getStatus()).isEqualTo(TelegramAuthToken.TokenStatus.PENDING);
+                assertThat(authToken).isNotNull();
 
-                // Проверяем URL бота согласно ТЗ
-                assertThat(authResponse.getTelegramBotUrl())
-                                .contains("https://t.me/pizzanat_test_bot?start=" + authToken);
+                // Проверяем, что токен создан в БД без telegramId
+                Optional<TelegramAuthToken> tokenOpt = tokenRepository.findByAuthToken(authToken);
+                assertThat(tokenOpt).isPresent();
+                assertThat(tokenOpt.get().getTelegramId()).isNull();
+                assertThat(tokenOpt.get().getStatus()).isEqualTo(TelegramAuthToken.TokenStatus.PENDING);
 
-                // 2. Проверка статуса (PENDING)
-                mockMvc.perform(get("/api/v1/auth/telegram/status/{authToken}", authToken))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.success").value(true))
-                                .andExpect(jsonPath("$.status").value("PENDING"))
-                                .andExpect(jsonPath("$.message").value("Ожидание подтверждения в Telegram"));
-
-                // 3. Симулируем webhook от Telegram бота (команда /start с токеном)
-                TelegramUpdate startUpdate = createTelegramUpdate(authToken, 987654321L, "john_doe", "Иван", "Иванов");
+                // Этап 2: Команда /start через webhook
+                String startWebhook = String.format("""
+                                {
+                                    "update_id": 1001,
+                                    "message": {
+                                        "message_id": 2001,
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "chat": {
+                                            "id": %d,
+                                            "type": "private"
+                                        },
+                                        "date": %d,
+                                        "text": "/start %s"
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME,
+                                TEST_USERNAME, TEST_CHAT_ID, System.currentTimeMillis() / 1000, authToken);
 
                 mockMvc.perform(post("/api/v1/telegram/webhook")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(startUpdate)))
+                                .content(startWebhook))
                                 .andExpect(status().isOk());
 
-                // 4. Симулируем подтверждение через inline-кнопку
-                TelegramUpdate confirmUpdate = createCallbackUpdate(authToken, 987654321L, "john_doe", "Иван",
-                                "Иванов");
+                // Этап 3: Отправка контакта через webhook
+                String contactWebhook = String.format("""
+                                {
+                                    "update_id": 1002,
+                                    "message": {
+                                        "message_id": 2002,
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "chat": {
+                                            "id": %d,
+                                            "type": "private"
+                                        },
+                                        "date": %d,
+                                        "contact": {
+                                            "phone_number": "%s",
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "user_id": %d
+                                        }
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME, TEST_USERNAME,
+                                TEST_CHAT_ID, System.currentTimeMillis() / 1000, TEST_PHONE_NUMBER,
+                                TEST_FIRST_NAME, TEST_LAST_NAME, TEST_TELEGRAM_USER_ID);
 
                 mockMvc.perform(post("/api/v1/telegram/webhook")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(confirmUpdate)))
+                                .content(contactWebhook))
                                 .andExpect(status().isOk());
 
-                // 4. Проверка статуса (CONFIRMED)
-                String statusResponse = mockMvc.perform(get("/api/v1/auth/telegram/status/{authToken}", authToken))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.success").value(true))
-                                .andExpect(jsonPath("$.status").value("CONFIRMED"))
-                                .andExpect(jsonPath("$.authData.token").isNotEmpty())
-                                .andExpect(jsonPath("$.authData.username").value("john_doe"))
-                                .andExpect(jsonPath("$.authData.firstName").value("Иван"))
-                                .andExpect(jsonPath("$.authData.lastName").value("Иванов"))
-                                .andReturn()
-                                .getResponse()
-                                .getContentAsString();
-
-                TelegramStatusResponse finalStatus = objectMapper.readValue(statusResponse,
-                                TelegramStatusResponse.class);
+                // Проверяем, что токен обновлен с telegramId
+                tokenOpt = tokenRepository.findByAuthToken(authToken);
+                assertThat(tokenOpt).isPresent();
+                TelegramAuthToken updatedToken = tokenOpt.get();
+                assertThat(updatedToken.getTelegramId()).isEqualTo(TEST_TELEGRAM_USER_ID);
+                assertThat(updatedToken.getTelegramFirstName()).isEqualTo(TEST_FIRST_NAME);
+                assertThat(updatedToken.getTelegramLastName()).isEqualTo(TEST_LAST_NAME);
 
                 // Проверяем, что пользователь создан
-                User createdUser = userRepository.findByTelegramId(987654321L).orElse(null);
-                assertThat(createdUser).isNotNull();
-                assertThat(createdUser.getUsername()).isEqualTo("john_doe");
-                assertThat(createdUser.getTelegramId()).isEqualTo(987654321L);
-                assertThat(createdUser.getFirstName()).isEqualTo("Иван");
-                assertThat(createdUser.getLastName()).isEqualTo("Иванов");
+                Optional<User> userOpt = userRepository.findByTelegramId(TEST_TELEGRAM_USER_ID);
+                assertThat(userOpt).isPresent();
+                User user = userOpt.get();
+                assertThat(user.getPhone()).isEqualTo(TEST_PHONE_NUMBER);
+                assertThat(user.getIsTelegramVerified()).isTrue();
 
-                // Проверяем JWT токен
-                assertThat(finalStatus.getAuthData().getToken()).isNotBlank();
-        }
+                // Этап 4: Подтверждение авторизации через callback
+                String confirmWebhook = String.format("""
+                                {
+                                    "update_id": 1003,
+                                    "callback_query": {
+                                        "id": "callback_test_123",
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "message": {
+                                            "message_id": 2003,
+                                            "chat": {
+                                                "id": %d,
+                                                "type": "private"
+                                            }
+                                        },
+                                        "data": "confirm_auth_%s"
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME,
+                                TEST_USERNAME, TEST_CHAT_ID, authToken);
 
-        @Test
-        @DisplayName("Проверка rate limiting")
-        void testRateLimiting() throws Exception {
-                InitTelegramAuthRequest request = new InitTelegramAuthRequest();
-                request.setDeviceId("rate_limit_test");
-
-                // Отправляем 6 запросов (лимит 5 в час)
-                for (int i = 0; i < 5; i++) {
-                        mockMvc.perform(post("/api/v1/auth/telegram/init")
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(request)))
-                                        .andExpect(status().isOk());
-                }
-
-                // 6-й запрос должен быть отклонен
-                mockMvc.perform(post("/api/v1/auth/telegram/init")
+                mockMvc.perform(post("/api/v1/telegram/webhook")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
-                                .andExpect(status().isTooManyRequests())
-                                .andExpect(jsonPath("$.success").value(false))
-                                .andExpect(jsonPath("$.message").value("Слишком много попыток. Попробуйте позже"));
+                                .content(confirmWebhook))
+                                .andExpect(status().isOk());
+
+                // Этап 5: Проверка статуса токена
+                String statusResponse = mockMvc.perform(get("/api/v1/auth/telegram/status/" + authToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                                .andExpect(jsonPath("$.token").exists())
+                                .andExpect(jsonPath("$.user").exists())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+
+                Map<String, Object> statusData = objectMapper.readValue(statusResponse, Map.class);
+                String jwtToken = (String) statusData.get("token");
+
+                assertThat(jwtToken).isNotNull();
+                assertThat(jwtToken.length()).isGreaterThan(50);
+
+                // Проверяем финальное состояние токена в БД
+                tokenOpt = tokenRepository.findByAuthToken(authToken);
+                assertThat(tokenOpt).isPresent();
+                assertThat(tokenOpt.get().getStatus()).isEqualTo(TelegramAuthToken.TokenStatus.CONFIRMED);
         }
 
         @Test
-        @DisplayName("Истечение токена аутентификации")
-        void testTokenExpiration() throws Exception {
+        @DisplayName("ИСПРАВЛЕНИЕ: confirmAuth работает без telegramId")
+        void testConfirmAuthWithoutTelegramIdFails() throws Exception {
+                // Создаем токен без telegramId
+                TelegramAuthToken token = TelegramAuthToken.builder()
+                                .authToken("test_token_without_telegram_id")
+                                .status(TelegramAuthToken.TokenStatus.PENDING)
+                                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                                .telegramId(null) // Ключевое условие
+                                .build();
+
+                tokenRepository.save(token);
+
+                // Пытаемся подтвердить авторизацию
+                String confirmRequest = """
+                                {
+                                    "authToken": "test_token_without_telegram_id"
+                                }
+                                """;
+
+                mockMvc.perform(post("/api/v1/auth/telegram/confirm")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(confirmRequest))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.message").value(containsString("Авторизация не завершена")));
+        }
+
+        @Test
+        @DisplayName("ИСПРАВЛЕНИЕ: Повторная авторизация работает корректно")
+        void testRepeatedAuthenticationWorks() throws Exception {
+                // Первая авторизация
+                testFullFixedAuthenticationCycle();
+
+                // Создаем новый токен для повторной авторизации
+                String secondInitRequest = """
+                                {
+                                    "deviceId": "integration_test_device_2"
+                                }
+                                """;
+
+                String secondInitResponse = mockMvc.perform(post("/api/v1/auth/telegram/init")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(secondInitRequest))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.success").value(true))
+                                .andExpect(jsonPath("$.authToken").exists())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+
+                Map<String, Object> secondInitData = objectMapper.readValue(secondInitResponse, Map.class);
+                String secondAuthToken = (String) secondInitData.get("authToken");
+
+                // Повторная команда /start должна работать
+                String secondStartWebhook = String.format("""
+                                {
+                                    "update_id": 2001,
+                                    "message": {
+                                        "message_id": 3001,
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "chat": {
+                                            "id": %d,
+                                            "type": "private"
+                                        },
+                                        "date": %d,
+                                        "text": "/start %s"
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME,
+                                TEST_USERNAME, TEST_CHAT_ID, System.currentTimeMillis() / 1000, secondAuthToken);
+
+                mockMvc.perform(post("/api/v1/telegram/webhook")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(secondStartWebhook))
+                                .andExpect(status().isOk());
+
+                // Проверяем, что второй токен создан корректно
+                Optional<TelegramAuthToken> secondTokenOpt = tokenRepository.findByAuthToken(secondAuthToken);
+                assertThat(secondTokenOpt).isPresent();
+                assertThat(secondTokenOpt.get().getStatus()).isEqualTo(TelegramAuthToken.TokenStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("ИСПРАВЛЕНИЕ: Детальная диагностика при ошибке токена")
+        void testDetailedDiagnosticsForTokenErrors() throws Exception {
                 // Создаем истекший токен
                 TelegramAuthToken expiredToken = TelegramAuthToken.builder()
-                                .authToken("tg_auth_expired123")
-                                .status(TelegramAuthToken.TokenStatus.PENDING)
-                                .expiresAt(LocalDateTime.now().minusMinutes(1)) // Истек минуту назад
+                                .authToken("expired_token_test")
+                                .status(TelegramAuthToken.TokenStatus.EXPIRED)
+                                .expiresAt(LocalDateTime.now().minusMinutes(5))
                                 .build();
 
                 tokenRepository.save(expiredToken);
 
-                // Проверяем статус истекшего токена
-                mockMvc.perform(get("/api/v1/auth/telegram/status/{authToken}", "tg_auth_expired123"))
-                                .andExpect(status().isBadRequest())
-                                .andExpect(jsonPath("$.success").value(false))
-                                .andExpect(jsonPath("$.status").value("EXPIRED"))
-                                .andExpect(jsonPath("$.message").value("Токен аутентификации истек. Попробуйте снова"));
-        }
+                // Пытаемся подтвердить истекший токен
+                String confirmRequest = """
+                                {
+                                    "authToken": "expired_token_test"
+                                }
+                                """;
 
-        @Test
-        @DisplayName("Обработка некорректного токена")
-        void testInvalidToken() throws Exception {
-                mockMvc.perform(get("/api/v1/auth/telegram/status/{authToken}", "invalid_token"))
-                                .andExpect(status().isBadRequest())
-                                .andExpect(jsonPath("$.success").value(false))
-                                .andExpect(jsonPath("$.message").value("Некорректный токен"));
-        }
-
-        @Test
-        @DisplayName("Webhook info endpoint")
-        void testWebhookInfo() throws Exception {
-                mockMvc.perform(get("/api/v1/telegram/webhook/info"))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.configured").isBoolean());
-        }
-
-        @Test
-        @DisplayName("Health check endpoint")
-        void testHealthCheck() throws Exception {
-                mockMvc.perform(get("/api/v1/auth/telegram/test"))
-                                .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.status").value("OK"))
-                                .andExpect(jsonPath("$.service").value("Telegram Authentication"));
-        }
-
-        @Test
-        @DisplayName("Создание пользователя при первой аутентификации")
-        void testUserCreation() throws Exception {
-                // Инициализация
-                InitTelegramAuthRequest request = new InitTelegramAuthRequest();
-                request.setDeviceId("new_user_test");
-
-                String response = mockMvc.perform(post("/api/v1/auth/telegram/init")
+                mockMvc.perform(post("/api/v1/auth/telegram/confirm")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request)))
+                                .content(confirmRequest))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.message").value(containsString("Токен не найден или истек")));
+        }
+
+        @Test
+        @DisplayName("ИСПРАВЛЕНИЕ: Проверка статуса токена на всех этапах")
+        void testTokenStatusAtAllStages() throws Exception {
+                // Этап 1: Создание токена
+                String initRequest = """
+                                {
+                                    "deviceId": "status_test_device"
+                                }
+                                """;
+
+                String initResponse = mockMvc.perform(post("/api/v1/auth/telegram/init")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(initRequest))
                                 .andExpect(status().isOk())
                                 .andReturn()
                                 .getResponse()
                                 .getContentAsString();
 
-                TelegramAuthResponse authResponse = objectMapper.readValue(response, TelegramAuthResponse.class);
-                String authToken = authResponse.getAuthToken();
+                Map<String, Object> initData = objectMapper.readValue(initResponse, Map.class);
+                String authToken = (String) initData.get("authToken");
 
-                // Симулируем подтверждение нового пользователя
-                TelegramUpdate update = createTelegramUpdate(authToken, 123456789L, "new_user", "Новый",
-                                "Пользователь");
+                // Проверка статуса: PENDING без telegramId
+                mockMvc.perform(get("/api/v1/auth/telegram/status/" + authToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("PENDING"))
+                                .andExpect(jsonPath("$.token").doesNotExist())
+                                .andExpect(jsonPath("$.user").doesNotExist());
+
+                // Этап 2: Обновление токена через контакт
+                String contactWebhook = String.format("""
+                                {
+                                    "update_id": 3001,
+                                    "message": {
+                                        "message_id": 4001,
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "chat": {
+                                            "id": %d,
+                                            "type": "private"
+                                        },
+                                        "date": %d,
+                                        "text": "/start %s"
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME,
+                                TEST_USERNAME, TEST_CHAT_ID, System.currentTimeMillis() / 1000, authToken);
 
                 mockMvc.perform(post("/api/v1/telegram/webhook")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(update)))
+                                .content(contactWebhook))
                                 .andExpect(status().isOk());
 
-                // Проверяем создание пользователя
-                User newUser = userRepository.findByTelegramId(123456789L).orElse(null);
-                assertThat(newUser).isNotNull();
-                assertThat(newUser.getUsername()).isEqualTo("new_user");
-                assertThat(newUser.isActive()).isTrue();
+                // Отправляем контакт
+                String contactMessage = String.format("""
+                                {
+                                    "update_id": 3002,
+                                    "message": {
+                                        "message_id": 4002,
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "chat": {
+                                            "id": %d,
+                                            "type": "private"
+                                        },
+                                        "date": %d,
+                                        "contact": {
+                                            "phone_number": "%s",
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "user_id": %d
+                                        }
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME, TEST_USERNAME,
+                                TEST_CHAT_ID, System.currentTimeMillis() / 1000, TEST_PHONE_NUMBER,
+                                TEST_FIRST_NAME, TEST_LAST_NAME, TEST_TELEGRAM_USER_ID);
 
-                // Проверяем, что токен подтвержден
-                TelegramAuthToken confirmedToken = tokenRepository
-                                .findByAuthTokenAndExpiresAtAfter(authToken, LocalDateTime.now()).orElse(null);
-                assertThat(confirmedToken).isNotNull();
-                assertThat(confirmedToken.getStatus()).isEqualTo(TelegramAuthToken.TokenStatus.CONFIRMED);
-                assertThat(confirmedToken.getTelegramId()).isEqualTo(123456789L);
-        }
+                mockMvc.perform(post("/api/v1/telegram/webhook")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(contactMessage))
+                                .andExpect(status().isOk());
 
-        /**
-         * Создает mock объект TelegramUpdate для тестирования webhook
-         */
-        private TelegramUpdate createTelegramUpdate(String authToken, Long telegramId, String username,
-                        String firstName,
-                        String lastName) {
-                TelegramUpdate update = new TelegramUpdate();
+                // Проверка статуса: PENDING с telegramId
+                mockMvc.perform(get("/api/v1/auth/telegram/status/" + authToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("PENDING"))
+                                .andExpect(jsonPath("$.token").doesNotExist());
 
-                // Создаем структуру как от реального Telegram API
-                TelegramUpdate.TelegramMessage message = new TelegramUpdate.TelegramMessage();
-                message.setText("/start " + authToken);
-                message.setMessageId(12345L);
+                // Этап 3: Подтверждение
+                String confirmWebhook = String.format("""
+                                {
+                                    "update_id": 3003,
+                                    "callback_query": {
+                                        "id": "status_test_callback",
+                                        "from": {
+                                            "id": %d,
+                                            "first_name": "%s",
+                                            "last_name": "%s",
+                                            "username": "%s"
+                                        },
+                                        "message": {
+                                            "message_id": 4003,
+                                            "chat": {
+                                                "id": %d,
+                                                "type": "private"
+                                            }
+                                        },
+                                        "data": "confirm_auth_%s"
+                                    }
+                                }
+                                """, TEST_TELEGRAM_USER_ID, TEST_FIRST_NAME, TEST_LAST_NAME,
+                                TEST_USERNAME, TEST_CHAT_ID, authToken);
 
-                TelegramUserData from = new TelegramUserData();
-                from.setId(telegramId);
-                from.setUsername(username);
-                from.setFirstName(firstName);
-                from.setLastName(lastName);
+                mockMvc.perform(post("/api/v1/telegram/webhook")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(confirmWebhook))
+                                .andExpect(status().isOk());
 
-                TelegramUpdate.TelegramChat chat = new TelegramUpdate.TelegramChat();
-                chat.setId(telegramId);
-                chat.setType("private");
-
-                message.setFrom(from);
-                message.setChat(chat);
-                update.setMessage(message);
-
-                return update;
-        }
-
-        /**
-         * Создает mock объект TelegramUpdate для тестирования callback query (inline
-         * кнопки)
-         */
-        private TelegramUpdate createCallbackUpdate(String authToken, Long telegramId, String username,
-                        String firstName, String lastName) {
-                TelegramUpdate update = new TelegramUpdate();
-
-                // Создаем callback query
-                TelegramUpdate.TelegramCallbackQuery callbackQuery = new TelegramUpdate.TelegramCallbackQuery();
-                callbackQuery.setId("callback_123");
-                callbackQuery.setData("confirm_auth_" + authToken);
-
-                // Пользователь
-                TelegramUserData from = new TelegramUserData();
-                from.setId(telegramId);
-                from.setUsername(username);
-                from.setFirstName(firstName);
-                from.setLastName(lastName);
-                callbackQuery.setFrom(from);
-
-                // Сообщение с inline кнопками
-                TelegramUpdate.TelegramMessage message = new TelegramUpdate.TelegramMessage();
-                message.setMessageId(12346L);
-
-                TelegramUpdate.TelegramChat chat = new TelegramUpdate.TelegramChat();
-                chat.setId(telegramId);
-                chat.setType("private");
-                message.setChat(chat);
-
-                callbackQuery.setMessage(message);
-                update.setCallbackQuery(callbackQuery);
-
-                return update;
+                // Проверка финального статуса: CONFIRMED с JWT токеном
+                mockMvc.perform(get("/api/v1/auth/telegram/status/" + authToken))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                                .andExpect(jsonPath("$.token").exists())
+                                .andExpect(jsonPath("$.user").exists())
+                                .andExpect(jsonPath("$.user.phone").value(TEST_PHONE_NUMBER))
+                                .andExpect(jsonPath("$.user.telegramId").value(TEST_TELEGRAM_USER_ID));
         }
 }

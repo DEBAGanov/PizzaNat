@@ -1,8 +1,9 @@
 /**
  * @file: TelegramBotService.java
- * @description: Сервис для отправки уведомлений в Telegram бот
+ * @description: Сервис для отправки уведомлений в Telegram бот с поддержкой условного включения
  * @dependencies: Spring Web, Jackson
  * @created: 2025-05-31
+ * @updated: 2025-01-15 - добавлена поддержка условного включения ботов
  */
 package com.baganov.pizzanat.service;
 
@@ -13,6 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -31,14 +33,20 @@ public class TelegramBotService {
     private final TelegramConfig.TelegramProperties telegramProperties;
     private final RestTemplate telegramRestTemplate;
 
+    @Value("${telegram.enabled:true}")
+    private boolean telegramEnabled;
+
+    @Value("${telegram.bot.enabled:true}")
+    private boolean mainBotEnabled;
+
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     /**
      * Отправка уведомления о создании нового заказа
      */
     public void sendNewOrderNotification(Order order) {
-        if (!telegramProperties.isEnabled()) {
-            log.debug("Telegram уведомления отключены");
+        if (!isTelegramNotificationsEnabled()) {
+            log.debug("🚫 Telegram уведомления отключены");
             return;
         }
 
@@ -50,13 +58,35 @@ public class TelegramBotService {
      * Отправка уведомления об изменении статуса заказа
      */
     public void sendOrderStatusUpdateNotification(Order order, String oldStatus, String newStatus) {
-        if (!telegramProperties.isEnabled()) {
-            log.debug("Telegram уведомления отключены");
+        if (!isTelegramNotificationsEnabled()) {
+            log.debug("🚫 Telegram уведомления отключены");
             return;
         }
 
         String message = formatStatusUpdateMessage(order, oldStatus, newStatus);
         sendMessage(message);
+    }
+
+    /**
+     * Проверяет, включены ли Telegram уведомления
+     */
+    private boolean isTelegramNotificationsEnabled() {
+        if (!telegramEnabled) {
+            log.debug("Telegram полностью отключен (TELEGRAM_ENABLED=false)");
+            return false;
+        }
+
+        if (!mainBotEnabled) {
+            log.debug("Основной Telegram бот отключен (TELEGRAM_BOT_ENABLED=false)");
+            return false;
+        }
+
+        if (!telegramProperties.isEnabled()) {
+            log.debug("Telegram уведомления отключены в конфигурации");
+            return false;
+        }
+
+        return true;
     }
 
     /**
