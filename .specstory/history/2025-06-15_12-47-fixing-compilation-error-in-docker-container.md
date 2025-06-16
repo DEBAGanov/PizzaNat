@@ -1382,6 +1382,578 @@ _**Assistant**_
 
 ---
 
+Теперь давайте проверим, какие сервисы отвечают за отправку уведомлений об изменении статуса:
+
+---
+
+<details>
+            <summary>Grep search for "sendPersonalOrderStatusUpdateNotification" • **2** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/a123/Cursor/PizzaNat/src/main/java/com/baganov/pizzanat/service/OrderService.java` | L321 | `telegramUserNotificationService.sendPersonalOrderStatusUpdateNotification(order, oldStatusName,` |
+| `file:///Users/a123/Cursor/PizzaNat/src/main/java/com/baganov/pizzanat/service/TelegramUserNotificationService.java` | L72 | `public void sendPersonalOrderStatusUpdateNotification(Order order, String oldStatus, String newStatus) {` |
+
+</details>
+
+---
+
+Теперь проверим, вызывается ли метод изменения статуса в `OrderService` при изменении статуса через админский бот:
+
+---
+
+<details>
+            <summary>Searched codebase "AdminBotService updateOrderStatus" • **25** results</summary>
+        
+| File | Lines |
+|------|-------|
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L110-147 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L388-434 |
+| `src/main/java/com/baganov/pizzanat/service/OrderService.java` | L422-463 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L325-365 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L1-28 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L147-188 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L246-279 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L365-388 |
+| `src/main/java/com/baganov/pizzanat/controller/AdminOrderController.java` | L53-65 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L188-219 |
+| `src/main/java/com/baganov/pizzanat/telegram/AdminBotCallbackHandler.java` | L1-40 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L434-473 |
+| `src/main/java/com/baganov/pizzanat/service/TelegramBotService.java` | L152-185 |
+| `src/main/java/com/baganov/pizzanat/service/TelegramUserNotificationService.java` | L161-201 |
+| `src/main/java/com/baganov/pizzanat/service/OrderService.java` | L307-337 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L279-325 |
+| `src/test/java/com/baganov/pizzanat/integration/OrderIntegrationTest.java` | L215-228 |
+| `src/main/java/com/baganov/pizzanat/service/OrderService.java` | L26-48 |
+| `src/main/java/com/baganov/pizzanat/service/TelegramAdminNotificationServiceImpl.java` | L78-114 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L219-246 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L73-110 |
+| `src/main/java/com/baganov/pizzanat/telegram/PizzaNatAdminBot.java` | L239-280 |
+| `src/main/java/com/baganov/pizzanat/service/OrderService.java` | L288-307 |
+| `src/main/java/com/baganov/pizzanat/service/OrderService.java` | L370-422 |
+| `src/main/java/com/baganov/pizzanat/service/AdminBotService.java` | L28-73 |
+
+</details>
+
+---
+
+Теперь я понимаю проблему! Давайте проверим, какой именно метод вызывается в `AdminBotService` при изменении статуса:
+
+---
+
+Read file: src/main/java/com/baganov/pizzanat/service/AdminBotService.java
+
+---
+
+Теперь я вижу проблему! В `AdminBotService.handleOrderStatusChange()` вызывается метод `orderService.updateOrderStatus(orderId, newStatusStr)`, но это **другой метод**, чем тот, который отправляет уведомления пользователям!
+
+Есть два разных метода в `OrderService`:
+
+1. **`updateOrderStatus(Integer orderId, String statusName)`** - основной метод, который отправляет уведомления пользователям
+2. **`updateOrderStatus(Long orderId, String statusName)`** - упрощенный метод для админского бота, который НЕ отправляет уведомления
+
+Давайте посмотрим на упрощенный метод:
+
+---
+
+Read file: src/main/java/com/baganov/pizzanat/service/OrderService.java
+
+---
+
+Вот проблема! В строке 440-463 есть упрощенный метод `updateOrderStatus(Long orderId, String statusName)`, который **НЕ отправляет уведомления пользователям**. Он только обновляет статус в базе данных.
+
+Нужно исправить `AdminBotService`, чтобы он вызывал основной метод с уведомлениями. Давайте исправим это:
+
+---
+
+
+
+---
+
+Нужно исправить ошибки линтера. Добавим импорт для `OrderDTO` и создадим метод `getStatusDisplayNameByString`:
+
+---
+
+
+
+---
+
+Давайте найдем правильный путь к `OrderDTO`:
+
+---
+
+<details>
+            <summary>Searched codebase "OrderDTO.java" • **5** results</summary>
+        
+| File |
+|------|
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+| `undefined` |
+
+</details>
+
+---
+
+Теперь исправим импорт и добавим недостающий метод:
+
+---
+
+
+
+---
+
+Теперь добавим недостающий метод `getStatusDisplayNameByString`:
+
+---
+
+
+
+---
+
+Отлично! Теперь давайте пересоберем приложение и протестируем исправление:
+
+---
+
+```bash
+docker compose -f docker-compose.dev.yml build app
+```
+
+---
+
+Теперь давайте перезапустим приложение:
+
+---
+
+```bash
+docker compose -f docker-compose.dev.yml restart app
+```
+
+---
+
+Теперь обновим документацию:
+
+---
+
+```diff
+  - **Активные боты в dev**: Только @PizzaNatOrders_bot (админский бот с токеном `8052456616:AAEoAzBfr3jRpylDmxR-azNBSqimthPCHeg`)
+  - **Статус**: ✅ Ошибки 409 устранены, приложение работает стабильно
++ 
++ ## [2025-01-16] - Исправление уведомлений пользователей через админский бот
++ 
++ ### Исправлено
++ - **🔥 КРИТИЧЕСКОЕ: Исправлена проблема с отсутствием уведомлений пользователям при изменении статуса заказа через админский бот**
++   - AdminBotService теперь вызывает основной метод updateOrderStatus() с отправкой уведомлений
++   - Пользователи теперь получают персональные уведомления об изменении статуса заказа в @PizzaNatBot
++   - Добавлен метод getStatusDisplayNameByString() для корректного отображения статусов
++   - Улучшено сообщение администратору с подтверждением отправки уведомления пользователю
++ 
++ ### Изменено
++ - **AdminBotService.handleOrderStatusChange()** - изменен вызов с упрощенного метода на полный с уведомлениями
++ - **AdminBotService** - добавлен импорт OrderDTO и метод getStatusDisplayNameByString()
++ - **Логирование** - добавлена информация об отправке уведомлений пользователям
++ 
++ ### Техническая информация
++ - **Корень проблемы**: AdminBotService вызывал упрощенный метод updateOrderStatus(Long, String), который только обновлял статус в БД
++ - **Решение**: Изменен вызов на основной метод updateOrderStatus(Integer, String), который отправляет уведомления через TelegramUserNotificationService
++ - **Результат**: Пользователи получают красивые персональные уведомления с эмодзи и специальными сообщениями для каждого статуса
+  
+```
+
+---
+
+```diff
+    - Конфликт токенов устранен
+  - **Дата завершения**: 16.01.2025
++ 
++ ## Новые задачи
++ 
++ ## Задача: Исправление уведомлений пользователей через админский бот
++ - **Статус**: Завершена ✅
++ - **Приоритет**: Критический
++ - **Описание**: Исправление проблемы с отсутствием персональных уведомлений пользователям при изменении статуса заказа через админский Telegram бот
++ - **Шаги выполнения**:
++   - [x] **Анализ проблемы**:
++     - [x] Выявлено: статусы изменяются в БД, но уведомления пользователям не приходят
++     - [x] Найдена причина: AdminBotService вызывает упрощенный метод updateOrderStatus(Long, String)
++     - [x] Упрощенный метод только обновляет БД, не отправляет уведомления
++     - [x] Основной метод updateOrderStatus(Integer, String) отправляет уведомления через TelegramUserNotificationService
++   - [x] **Исправление кода**:
++     - [x] Изменен вызов в AdminBotService.handleOrderStatusChange() на основной метод с уведомлениями
++     - [x] Добавлен импорт OrderDTO в AdminBotService
++     - [x] Создан метод getStatusDisplayNameByString() для корректного отображения статусов
++     - [x] Улучшено сообщение администратору с подтверждением отправки уведомления
++   - [x] **Тестирование**:
++     - [x] Код успешно компилируется без ошибок
++     - [x] Готов к тестированию в реальном окружении
++ - **Зависимости**: Связано с задачей "Исправление ошибки компиляции AuthResponse"
++ - **Результат**: Пользователи будут получать персональные уведомления об изменении статуса заказа с красивым форматированием и эмодзи
++ 
++ ## Задача: Исправление ошибки 409 Telegram бота
+  
+  
+```
+
+---
+
+## ✅ Проблема с уведомлениями пользователей решена!
+
+### 🔍 Анализ проблемы
+
+**Корень проблемы**: В `AdminBotService` при изменении статуса заказа через кнопки админского бота вызывался **упрощенный метод** `updateOrderStatus(Long orderId, String statusName)`, который:
+- ✅ Обновлял статус в базе данных  
+- ❌ **НЕ отправлял уведомления пользователям**
+
+**Основной метод** `updateOrderStatus(Integer orderId, String statusName)` содержит полную логику:
+- ✅ Обновляет статус в БД
+- ✅ Отправляет уведомления администраторам  
+- ✅ **Отправляет персональные уведомления пользователям**
+- ✅ Планирует реферальные уведомления при доставке
+
+### 🛠️ Решение
+
+**Изменил вызов в `AdminBotService.handleOrderStatusChange()`**:
+```java
+// БЫЛО (только обновление БД):
+boolean updated = orderService.updateOrderStatus(orderId, newStatusStr);
+
+// СТАЛО (полная логика с уведомлениями):
+OrderDTO updatedOrder = orderService.updateOrderStatus(orderId.intValue(), newStatusStr);
+```
+
+**Дополнительные улучшения**:
+- ✅ Добавлен импорт `OrderDTO`
+- ✅ Создан метод `getStatusDisplayNameByString()` для корректного отображения статусов
+- ✅ Улучшено сообщение администратору с подтверждением отправки уведомления пользователю
+
+### 📱 Результат
+
+Теперь при изменении статуса заказа через админский бот @PizzaNatOrders_bot:
+
+1. **Статус обновляется в БД** ✅
+2. **Администратор получает подтверждение** ✅  
+3. **Пользователь получает красивое персональное уведомление** в @PizzaNatBot ✅
+
+**Пример уведомления пользователю**:
+```
+🔄 Статус заказа изменен!
+
+📋 Заказ #19
+💰 Сумма: 649.00 ₽
+
+📋 Статус изменен:
+❌ Было: Готов к выдаче
+✅ Стало: Доставлен
+
+✅ Заказ доставлен! Приятного аппетита! 🍽️
+
+Будем рады видеть вас снова! ❤️
+```
+
+### 🎯 Следующие шаги
+
+Для полного тестирования рекомендую:
+1. Пересобрать и перезапустить приложение
+2. Создать тестовый заказ через приложение
+3. Изменить статус через админский бот @PizzaNatOrders_bot
+4. Проверить, что уведомление пришло пользователю в @PizzaNatBot
+
+Хотите, чтобы я помог с тестированием или есть другие вопросы?
+
+---
+
+_**User**_
+
+Пожалуйста, внесите изменения в Dockerfile, что бы запросы передавали на 80\443 порт.
+
+
+---
+
+_**Assistant**_
+
+Понял! Нужно изменить Dockerfile, чтобы приложение работало на стандартных HTTP/HTTPS портах (80/443) вместо 8080. Давайте сначала посмотрим на текущий Dockerfile:
+
+---
+
+Read file: Dockerfile
+
+---
+
+Теперь посмотрим на docker-compose файлы, чтобы понять текущую конфигурацию портов:
+
+---
+
+<details>
+            <summary>Grep search for "ports:" • **7** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L14 | `#   ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L33 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L49 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L144 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L166 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L208 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.TimewebCloud.yml` | L36 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.TimewebCloud.yml` | L79 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L121 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.debug.yml` | L72 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L16 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L30 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L163 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L16 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L30 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L163 | `ports:` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L121 | `ports:` |
+
+</details>
+
+---
+
+Давайте посмотрим на конфигурацию портов в основных docker-compose файлах:
+
+---
+
+<details>
+            <summary>Grep search for "8080" • **7** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.debug.yml` | L15 | `SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.debug.yml` | L73 | `- "8080:8080"` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.debug.yml` | L77 | `test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.TimewebCloud.yml` | L31 | `SERVER_PORT: ${SERVER_PORT:-8080}` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.TimewebCloud.yml` | L37 | `- "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.TimewebCloud.yml` | L39 | `test: ["CMD", "nc", "-z", "localhost", "${SERVER_PORT:-8080}"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.TimewebCloud.yml` | L57 | `server app:8080;` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L13 | `test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L22 | `SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L72 | `MANAGEMENT_SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L122 | `- "8080:8080"` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L56 | `test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L65 | `SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L114 | `MANAGEMENT_SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L128 | `TELEGRAM_GATEWAY_CALLBACK_URL: ${TELEGRAM_GATEWAY_CALLBACK_URL:-http://localhost:8080/api/v1/auth/telegram-gateway/callback}` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L136 | `TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-http://localhost:8080/api/v1/telegram/webhook}` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L164 | `- "8080:8080"` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L139 | `SERVER_PORT: ${SERVER_PORT:-8080}` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L145 | `- "${SERVER_PORT:-8080}:${SERVER_PORT:-8080}"` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L147 | `test: ["CMD", "nc", "-z", "localhost", "${SERVER_PORT:-8080}"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.base.yml` | L186 | `server app:8080;` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L56 | `test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L65 | `SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L114 | `MANAGEMENT_SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L128 | `TELEGRAM_GATEWAY_CALLBACK_URL: ${TELEGRAM_GATEWAY_CALLBACK_URL:-http://localhost:8080/api/v1/auth/telegram-gateway/callback}` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L136 | `TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-http://localhost:8080/api/v1/telegram/webhook}` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.dev.yml` | L164 | `- "8080:8080"` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L13 | `test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L22 | `SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L72 | `MANAGEMENT_SERVER_PORT: 8080` |
+| `file:///Users/a123/Cursor/PizzaNat/docker-compose.yml` | L122 | `- "8080:8080"` |
+
+</details>
+
+---
+
+Теперь посмотрим на application.properties, чтобы понять текущую конфигурацию Spring Boot:
+
+---
+
+<details>
+            <summary>Grep search for "server.port" • **2** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///Users/a123/Cursor/PizzaNat/src/main/resources/application-dev.properties` | L21 | `server.port=8080` |
+| `file:///Users/a123/Cursor/PizzaNat/src/main/resources/application.properties` | L99 | `server.port=8080` |
+
+</details>
+
+---
+
+Отлично! Теперь я понимаю текущую архитектуру. Для изменения портов на 80/443 нужно внести изменения в несколько файлов. Давайте начнем:
+
+## 1. Обновим Dockerfile
+
+---
+
+Cancelled
+
+---
+
+## 2. Обновим application.properties для использования порта 80
+
+---
+
+
+
+---
+
+## 3. Обновим application-dev.properties
+
+---
+
+
+
+---
+
+## 4. Обновим docker-compose.dev.yml
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+## 5. Обновим docker-compose.yml (production)
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+## 6. Обновим другие docker-compose файлы
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+Исправим ошибку с отступами в YAML:
+
+---
+
+
+
+---
+
+
+
+---
+
+Read file: docker-compose.base.yml
+
+---
+
+Теперь нужно исправить nginx конфигурацию, которая все еще ссылается на порт 8080:
+
+---
+
+Cancelled
+
+---
+
+## 7. Обновим TimewebCloud конфигурацию
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+
+
+---
+
+_**User**_
+
+При депое на сервер выдает ошибку. В чем проблема с @docker-compose.yml  APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Failed to bind properties under 'spring.datasource.hikari.connection' to java.sql.Connection:
+
+    Reason: org.postgresql.util.PSQLException: FATAL: password authentication failed for user "user"
+
+Action:
+
+Update your application's configuration
+
+Starting PizzaNat application...
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.5)
+
+2025-06-16 12:08:42.264 [main] INFO  c.b.pizzanat.PizzaNatApplication - Starting PizzaNatApplication v0.0.1-SNAPSHOT using Java 17.0.2 with PID 7 (/app/app.jar started by pizzanat in /app)
+2025-06-16 12:08:42.268 [main] INFO  c.b.pizzanat.PizzaNatApplication - The following 1 profile is active: "prod"
+2025-06-16 12:08:48.961 [main] WARN  o.s.b.w.s.c.AnnotationConfigServletWebServerApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'flyway' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'flyway' defined in class path resource [org/springframework/boot/autoconfigure/flyway/FlywayAutoConfiguration$FlywayConfiguration.class]: Failed to instantiate [org.flywaydb.core.Flyway]: Factory method 'flyway' threw exception with message: Error creating bean with name 'dataSource': Could not bind properties to 'HikariDataSource' : prefix=spring.datasource.hikari, ignoreInvalidFields=false, ignoreUnknownFields=true
+2025-06-16 12:08:49.056 [main] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Failed to bind properties under 'spring.datasource.hikari.connection' to java.sql.Connection:
+
+    Reason: org.postgresql.util.PSQLException: FATAL: password authentication failed for user "user"
+
+Action:
+
+Update your application's configuration
+
+---
+
+_**Assistant**_
+
 
 
 ---
