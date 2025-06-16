@@ -120,4 +120,7 @@ services:
       TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS: 30
 
     ports:
-      - "8080:8080"
+      - "80:80"
+      - "443:443"
+    # ports:
+    #   - "8080:8080"
