@@ -1,7 +1,6 @@
 version: "3.8"
 
-# Оптимизированная версия для Timeweb Cloud
-
+# Оптимизированная версия для Timeweb Clou
 services:
   app:
     build:
