@@ -460,6 +460,7 @@ public class TelegramAuthService {
 
         AuthResponse response = AuthResponse.builder()
                 .token(jwtToken)
+                .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .firstName(user.getFirstName())

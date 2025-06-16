@@ -9,6 +9,7 @@ package com.baganov.pizzanat.service;
 import com.baganov.pizzanat.entity.Order;
 import com.baganov.pizzanat.entity.OrderItem;
 import com.baganov.pizzanat.entity.OrderStatus;
+import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.entity.TelegramAdminUser;
 import com.baganov.pizzanat.repository.TelegramAdminUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -124,27 +125,26 @@ public class AdminBotService {
             Long orderId = Long.parseLong(parts[2]);
             String newStatusStr = parts[3];
 
-            // Обновляем статус заказа
-            boolean updated = orderService.updateOrderStatus(orderId, newStatusStr);
+            // Обновляем статус заказа с отправкой уведомлений пользователям
+            try {
+                OrderDTO updatedOrder = orderService.updateOrderStatus(orderId.intValue(), newStatusStr);
 
-            if (updated) {
-                // Получаем заказ для отображения статуса
-                Optional<Order> orderOpt = orderService.findById(orderId);
-                String statusDisplayName = orderOpt.isPresent()
-                        ? getStatusDisplayName(orderOpt.get().getStatus())
-                        : newStatusStr;
+                String statusDisplayName = getStatusDisplayNameByString(newStatusStr);
 
                 String successMessage = String.format(
                         "✅ *Статус заказа #%d изменен*\n\n" +
                                 "Новый статус: %s\n" +
-                                "Изменено: %s",
+                                "Изменено: %s\n\n" +
+                                "📱 Уведомление отправлено пользователю",
                         orderId,
                         statusDisplayName,
                         LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
                 telegramAdminNotificationService.sendMessage(chatId, successMessage, true);
 
-                log.info("Статус заказа #{} изменен на {} администратором chatId={}", orderId, newStatusStr, chatId);
-            } else {
+                log.info("Статус заказа #{} изменен на {} администратором chatId={} (с уведомлением пользователю)",
+                        orderId, newStatusStr, chatId);
+            } catch (Exception e) {
+                log.error("Ошибка при изменении статуса заказа #{}: {}", orderId, e.getMessage());
                 telegramAdminNotificationService.sendMessage(chatId, "❌ Ошибка при изменении статуса заказа", false);
             }
 
@@ -391,7 +391,18 @@ public class AdminBotService {
             return "❓ Неизвестно";
         }
 
-        switch (status.getName().toUpperCase()) {
+        return getStatusDisplayNameByString(status.getName());
+    }
+
+    /**
+     * Получение отображаемого названия статуса по строке
+     */
+    private String getStatusDisplayNameByString(String statusName) {
+        if (statusName == null) {
+            return "❓ Неизвестно";
+        }
+
+        switch (statusName.toUpperCase()) {
             case "PENDING":
                 return "🆕 Новый";
             case "CONFIRMED":
@@ -413,7 +424,7 @@ public class AdminBotService {
             case "PAID":
                 return "💰 Оплачен";
             default:
-                return status.getDescription() != null ? status.getDescription() : status.getName();
+                return statusName;
         }
     }
 

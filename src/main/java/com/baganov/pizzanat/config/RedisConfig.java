@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Configuration
 @EnableCaching
-@Profile({ "dev" }) // Только для prod профиля (Redis недоступен в dev) поменять на dev при деплое
+@Profile({ "dev" }) // Только для prod профиля (Redis недоступен в dev)
 public class RedisConfig {
 
         @Bean
