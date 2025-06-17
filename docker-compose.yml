@@ -35,7 +35,7 @@ services:
       #SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.95.235.22:5432/default_db}
       SPRING_DATASOURCE_URL: ${TIMEWEB_DB_URL:-jdbc:postgresql://45.10.41.59:5432/default_db}
       SPRING_DATASOURCE_USERNAME: ${TIMEWEB_DB_USER:-gen_user}
-      SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-strong_password_change_me}
+      SPRING_DATASOURCE_PASSWORD: ${TIMEWEB_DB_PASSWORD:-bv12345!}
 
       # Пул соединений оптимизированный для облака
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: 8
