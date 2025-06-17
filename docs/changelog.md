@@ -1857,3 +1857,27 @@ PUT    /api/v1/admin/orders/{id}/status - Изменение статуса (с 
 - **Корень проблемы**: AdminBotService вызывал упрощенный метод updateOrderStatus(Long, String), который только обновлял статус в БД
 - **Решение**: Изменен вызов на основной метод updateOrderStatus(Integer, String), который отправляет уведомления через TelegramUserNotificationService
 - **Результат**: Пользователи получают красивые персональные уведомления с эмодзи и специальными сообщениями для каждого статуса
+
+## [Unreleased]
+
+### Added
+- Полная интеграция с Exolve SMS API для авторизации пользователей
+- Тестовый скрипт для проверки SMS авторизации (`scripts/test_exolve_sms_auth.sh`)
+- Нормализация номеров телефонов для совместимости с Exolve API (формат 79XXXXXXXXX)
+
+### Fixed  
+- Исправлена логика проверки успешности отправки SMS в ExolveService (проверка message_id)
+- Исправлена десериализация JSON ответов от Exolve API (@JsonIgnoreProperties)
+- Исправлена сериализация LocalDateTime в SmsCodeResponse (конвертация в String)
+- Решена проблема с двойным сообщением об ошибке авторизации в Telegram ботах
+- Устранен конфликт между Webhook и Long Polling Telegram ботов
+
+### Changed
+- Обновлена конфигурация docker-compose.yml для корректной работы с Exolve API
+- Настроены переменные окружения для Exolve: EXOLVE_API_KEY, EXOLVE_SENDER_NAME
+- Отключен Webhook режим для Telegram авторизации в пользу Long Polling
+
+### Technical Notes
+- Exolve API требует номера в формате 79XXXXXXXXX (без символа +)
+- При успешной отправке SMS Exolve возвращает только message_id, без поля success
+- Использованы тестовые данные: получатель +7 906 138-28-68, отправитель +7 930 441-07-50

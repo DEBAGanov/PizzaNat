@@ -1,6 +1,7 @@
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.config.ExolveConfig;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,9 +67,13 @@ public class ExolveService {
         }
 
         try {
+            // Нормализуем номер телефона для Exolve API (формат: 79XXXXXXXXX)
+            String normalizedPhone = normalizePhoneForExolve(phoneNumber);
+            String normalizedSender = normalizePhoneForExolve(exolveConfig.getExolveSenderName());
+
             ExolveRequest request = new ExolveRequest(
-                    exolveConfig.getExolveSenderName(),
-                    phoneNumber,
+                    normalizedSender,
+                    normalizedPhone,
                     message);
 
             HttpHeaders headers = new HttpHeaders();
@@ -77,7 +82,7 @@ public class ExolveService {
 
             HttpEntity<ExolveRequest> entity = new HttpEntity<>(request, headers);
 
-            logger.debug("Отправка SMS на номер {} через Exolve API", phoneNumber);
+            logger.debug("Отправка SMS на номер {} (нормализован: {}) через Exolve API", phoneNumber, normalizedPhone);
 
             ResponseEntity<ExolveResponse> response = exolveRestTemplate.exchange(
                     "/SendSMS",
@@ -132,6 +137,40 @@ public class ExolveService {
      */
     public String generateSmsMessage(String code) {
         return String.format("Ваш код для входа в PizzaNat: %s. Не сообщайте его никому!", code);
+    }
+
+    /**
+     * Нормализует номер телефона для Exolve API
+     * Убирает '+' и оставляет только цифры, начинающиеся с '79'
+     * 
+     * @param phoneNumber номер в формате +7XXXXXXXXXX или 7XXXXXXXXXX
+     * @return номер в формате 79XXXXXXXXX
+     */
+    private String normalizePhoneForExolve(String phoneNumber) {
+        if (phoneNumber == null) {
+            return null;
+        }
+
+        // Убираем все символы кроме цифр
+        String digitsOnly = phoneNumber.replaceAll("[^0-9]", "");
+
+        // Если номер начинается с '8', заменяем на '7'
+        if (digitsOnly.startsWith("8")) {
+            digitsOnly = "7" + digitsOnly.substring(1);
+        }
+
+        // Если номер начинается с '7', оставляем как есть
+        if (digitsOnly.startsWith("7") && digitsOnly.length() == 11) {
+            return digitsOnly;
+        }
+
+        // Если номер имеет 10 цифр (без '7' в начале), добавляем '7'
+        if (digitsOnly.length() == 10) {
+            return "7" + digitsOnly;
+        }
+
+        logger.warn("Неожиданный формат номера телефона для Exolve: {}", phoneNumber);
+        return digitsOnly;
     }
 
     // === DTO классы для Exolve API ===
@@ -193,6 +232,7 @@ public class ExolveService {
     /**
      * Ответ от Exolve API
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ExolveResponse {
         @JsonProperty("success")
         private Boolean success;
@@ -203,13 +243,24 @@ public class ExolveService {
         @JsonProperty("error")
         private String error;
 
-        @JsonProperty("messageId")
+        @JsonProperty("message_id")
         private String messageId;
 
         public ExolveResponse() {
         }
 
         public Boolean isSuccess() {
+            // Если есть messageId, значит SMS отправлено успешно
+            // Если есть explicit success=true, тоже считаем успешным
+            // Если есть error, считаем неуспешным
+            if (error != null && !error.trim().isEmpty()) {
+                return false;
+            }
+
+            if (messageId != null && !messageId.trim().isEmpty()) {
+                return true;
+            }
+
             return success != null && success;
         }
 

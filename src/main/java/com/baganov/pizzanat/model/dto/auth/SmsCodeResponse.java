@@ -1,6 +1,5 @@
 package com.baganov.pizzanat.model.dto.auth;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -9,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * DTO для ответа при отправке SMS кода.
@@ -28,9 +28,8 @@ public class SmsCodeResponse {
     @Schema(description = "Сообщение о результате", example = "SMS код отправлен")
     private String message;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Schema(description = "Время истечения кода", example = "2025-01-15 14:30:00")
-    private LocalDateTime expiresAt;
+    @Schema(description = "Время истечения кода", example = "2025-01-15T14:30:00")
+    private String expiresAt;
 
     @Schema(description = "Длина SMS кода", example = "4")
     private Integer codeLength;
@@ -45,10 +44,12 @@ public class SmsCodeResponse {
      * Создание успешного ответа
      */
     public static SmsCodeResponse success(LocalDateTime expiresAt, Integer codeLength, String maskedPhoneNumber) {
+        String formattedExpiresAt = expiresAt != null ? expiresAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) : null;
+
         return SmsCodeResponse.builder()
                 .success(true)
                 .message("SMS код отправлен")
-                .expiresAt(expiresAt)
+                .expiresAt(formattedExpiresAt)
                 .codeLength(codeLength)
                 .maskedPhoneNumber(maskedPhoneNumber)
                 .build();
