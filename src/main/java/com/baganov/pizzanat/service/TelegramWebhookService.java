@@ -169,7 +169,7 @@ public class TelegramWebhookService {
             log.warn("CALLBACK_QUERY: Неизвестный тип данных: {}", data);
         }
 
-        // Отвечаем на callback query
+        // Отвечаем на callback query (ошибки callback query не критичны)
         answerCallbackQuery(callbackQuery.getId());
         log.info("CALLBACK_QUERY: Завершена обработка callback query");
     }
@@ -211,10 +211,15 @@ public class TelegramWebhookService {
         log.info("AUTH_CONFIRM: Начало подтверждения авторизации. Токен: {}, Пользователь: {}",
                 authToken, user.getId());
         try {
+            // Подтверждаем авторизацию
             telegramAuthService.confirmAuth(authToken, user);
+
+            // Отправляем сообщение об успехе
             sendAuthSuccessMessage(chatId, user);
+
             log.info("AUTH_CONFIRM: Аутентификация подтверждена для пользователя {} с токеном: {}",
                     user.getId(), authToken);
+
         } catch (Exception e) {
             log.error("AUTH_CONFIRM: Ошибка при подтверждении аутентификации для токена {}: {}",
                     authToken, e.getMessage(), e);
@@ -464,7 +469,13 @@ public class TelegramWebhookService {
             telegramAuthRestTemplate.postForEntity(url, entity, String.class);
 
         } catch (Exception e) {
-            log.error("Ошибка при ответе на callback query: {}", e.getMessage(), e);
+            // ИСПРАВЛЕНИЕ: Логируем callback query ошибки как debug/warn, а не error
+            // Эти ошибки часто возникают из-за таймаутов Telegram и не критичны
+            if (e.getMessage() != null && e.getMessage().contains("query is too old")) {
+                log.debug("Callback query устарел (это нормально): {}", e.getMessage());
+            } else {
+                log.warn("Ошибка при ответе на callback query (не критично): {}", e.getMessage());
+            }
         }
     }
 

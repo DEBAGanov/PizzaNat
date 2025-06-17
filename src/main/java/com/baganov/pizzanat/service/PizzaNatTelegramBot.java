@@ -292,7 +292,8 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
                     log.info("Внешняя авторизация успешна для пользователя {}", userId);
                 } catch (Exception e) {
                     log.error("Ошибка обработки внешней авторизации: {}", e.getMessage());
-                    sendErrorMessage(chatId, "Ошибка завершения авторизации. Попробуйте позже.");
+                    // sendErrorMessage(chatId, "Ошибка завершения авторизации. Попробуйте позже.");
+                    // sendErrorMessage(chatId, "Ошибка ");
                 }
             } else {
                 // Это внутренний токен бота - используем стандартную логику
