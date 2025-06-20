@@ -426,11 +426,11 @@ dependencies {
 class ApiClient {
     companion object {
         private const val BASE_URL = "https://ваш-домен.com/"
-        
+
         private val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
-        
+
         private val authInterceptor = Interceptor { chain ->
             val token = TokenManager.getToken()
             val request = if (token != null) {
@@ -442,12 +442,12 @@ class ApiClient {
             }
             chain.proceed(request)
         }
-        
+
         private val okHttpClient = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(authInterceptor)
             .build()
-        
+
         val retrofit: Retrofit = Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
@@ -464,13 +464,13 @@ class ApiClient {
 interface AuthApi {
     @POST("api/v1/auth/sms/send-code")
     suspend fun sendSmsCode(@Body request: SendSmsCodeRequest): SmsCodeResponse
-    
+
     @POST("api/v1/auth/sms/verify-code")
     suspend fun verifySmsCode(@Body request: VerifySmsCodeRequest): AuthResponse
-    
+
     @POST("api/v1/auth/telegram/init")
     suspend fun initTelegramAuth(@Body request: InitTelegramAuthRequest): TelegramAuthResponse
-    
+
     @GET("api/v1/auth/telegram/status/{authToken}")
     suspend fun getTelegramAuthStatus(@Path("authToken") authToken: String): TelegramStatusResponse
 }
@@ -479,10 +479,10 @@ interface AuthApi {
 interface ProductApi {
     @GET("api/v1/categories")
     suspend fun getCategories(): List<CategoryDTO>
-    
+
     @GET("api/v1/products")
     suspend fun getProducts(@Query("page") page: Int = 0, @Query("size") size: Int = 20): Page<ProductDTO>
-    
+
     @GET("api/v1/products/{id}")
     suspend fun getProduct(@Path("id") id: Int): ProductDTO
 }
@@ -491,13 +491,13 @@ interface ProductApi {
 interface CartApi {
     @GET("api/v1/cart")
     suspend fun getCart(): CartDTO
-    
+
     @POST("api/v1/cart/items")
     suspend fun addToCart(@Body request: AddToCartRequest): CartDTO
-    
+
     @PUT("api/v1/cart/items/{productId}")
     suspend fun updateCartItem(@Path("productId") productId: Int, @Body request: UpdateCartItemRequest): CartDTO
-    
+
     @DELETE("api/v1/cart/items/{productId}")
     suspend fun removeFromCart(@Path("productId") productId: Int): CartDTO
 }
@@ -584,7 +584,7 @@ data class CartItemDTO(
 // AuthRepository.kt
 class AuthRepository {
     private val authApi = ApiClient.retrofit.create(AuthApi::class.java)
-    
+
     suspend fun sendSmsCode(phoneNumber: String): Result<SmsCodeResponse> {
         return try {
             val response = authApi.sendSmsCode(SendSmsCodeRequest(phoneNumber))
@@ -593,7 +593,7 @@ class AuthRepository {
             Result.failure(e)
         }
     }
-    
+
     suspend fun verifySmsCode(phoneNumber: String, code: String): Result<AuthResponse> {
         return try {
             val response = authApi.verifySmsCode(VerifySmsCodeRequest(phoneNumber, code))
@@ -603,7 +603,7 @@ class AuthRepository {
             Result.failure(e)
         }
     }
-    
+
     suspend fun initTelegramAuth(userData: TelegramUserData): Result<TelegramAuthResponse> {
         return try {
             val response = authApi.initTelegramAuth(InitTelegramAuthRequest(userData))
@@ -612,7 +612,7 @@ class AuthRepository {
             Result.failure(e)
         }
     }
-    
+
     suspend fun checkTelegramAuthStatus(authToken: String): Result<TelegramStatusResponse> {
         return try {
             val response = authApi.getTelegramAuthStatus(authToken)
@@ -634,23 +634,23 @@ class AuthRepository {
 object TokenManager {
     private const val PREF_NAME = "auth_prefs"
     private const val TOKEN_KEY = "jwt_token"
-    
+
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     }
-    
+
     fun saveToken(context: Context, token: String) {
         getPrefs(context).edit().putString(TOKEN_KEY, token).apply()
     }
-    
+
     fun getToken(context: Context): String? {
         return getPrefs(context).getString(TOKEN_KEY, null)
     }
-    
+
     fun clearToken(context: Context) {
         getPrefs(context).edit().remove(TOKEN_KEY).apply()
     }
-    
+
     fun isLoggedIn(context: Context): Boolean {
         return getToken(context) != null
     }
@@ -663,13 +663,13 @@ object TokenManager {
 // SmsAuthActivity.kt
 class SmsAuthActivity : AppCompatActivity() {
     private val authRepository = AuthRepository()
-    
+
     private fun sendSmsCode(phoneNumber: String) {
         lifecycleScope.launch {
             try {
                 showLoading(true)
                 val result = authRepository.sendSmsCode(phoneNumber)
-                
+
                 result.onSuccess { response ->
                     if (response.success) {
                         showCodeInput()
@@ -685,13 +685,13 @@ class SmsAuthActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private fun verifySmsCode(phoneNumber: String, code: String) {
         lifecycleScope.launch {
             try {
                 showLoading(true)
                 val result = authRepository.verifySmsCode(phoneNumber, code)
-                
+
                 result.onSuccess { authResponse ->
                     // Авторизация успешна
                     navigateToMainScreen()
@@ -714,14 +714,14 @@ class TelegramAuthActivity : AppCompatActivity() {
     private val authRepository = AuthRepository()
     private var authToken: String? = null
     private var statusCheckJob: Job? = null
-    
+
     private fun initTelegramAuth() {
         lifecycleScope.launch {
             try {
                 // Получаем данные пользователя из Telegram SDK или Intent
                 val userData = getTelegramUserData()
                 val result = authRepository.initTelegramAuth(userData)
-                
+
                 result.onSuccess { response ->
                     if (response.success) {
                         authToken = response.authToken
@@ -738,12 +738,12 @@ class TelegramAuthActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private fun startStatusChecking() {
         statusCheckJob = lifecycleScope.launch {
             while (authToken != null) {
                 delay(2000) // Проверяем каждые 2 секунды
-                
+
                 val result = authRepository.checkTelegramAuthStatus(authToken!!)
                 result.onSuccess { statusResponse ->
                     when (statusResponse.status) {
@@ -768,7 +768,7 @@ class TelegramAuthActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     override fun onDestroy() {
         super.onDestroy()
         statusCheckJob?.cancel()
@@ -799,6 +799,6 @@ class TelegramAuthActivity : AppCompatActivity() {
 
 ---
 
-**Дата создания**: 2025-01-17  
-**Версия**: 1.0  
+**Дата создания**: 2025-01-17
+**Версия**: 1.0
 **Автор**: PizzaNat Development Team

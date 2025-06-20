@@ -11,17 +11,20 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * Webhook контроллер для обработки обновлений от Telegram Bot API.
  * Следует принципу Single Responsibility из SOLID.
+ * Включается только когда включен webhook режим.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/telegram")
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "telegram.auth.webhook-enabled", havingValue = "true", matchIfMissing = false)
 @Tag(name = "Telegram Webhook", description = "Webhook для обработки обновлений от Telegram Bot API")
 public class TelegramWebhookController {
 

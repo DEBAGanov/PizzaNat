@@ -102,15 +102,33 @@ public class TelegramAuthService {
     @Transactional
     public TelegramAuthResponse initAuth(String deviceId) {
         try {
-            // Проверяем конфигурацию
+            log.info("Инициализация Telegram аутентификации для устройства: {}", deviceId);
+
+            // Проверяем общую конфигурацию
             if (!telegramAuthProperties.isValid()) {
-                log.error("Telegram аутентификация не настроена");
+                log.error(
+                        "Telegram аутентификация отключена или неправильно настроена. enabled={}, botToken={}, botUsername={}",
+                        telegramAuthProperties.isEnabled(),
+                        telegramAuthProperties.getBotToken() != null ? "***" : "null",
+                        telegramAuthProperties.getBotUsername());
+                return TelegramAuthResponse.error("Telegram аутентификация недоступна");
+            }
+
+            // Проверяем конфигурацию - теперь проверяем только базовые настройки
+            if (telegramAuthProperties.getBotToken() == null || telegramAuthProperties.getBotToken().trim().isEmpty()) {
+                log.error("Telegram бот токен не настроен");
+                return TelegramAuthResponse.error("Telegram аутентификация недоступна");
+            }
+
+            if (telegramAuthProperties.getBotUsername() == null
+                    || telegramAuthProperties.getBotUsername().trim().isEmpty()) {
+                log.error("Telegram бот username не настроен");
                 return TelegramAuthResponse.error("Telegram аутентификация недоступна");
             }
 
             // Проверяем rate limiting
             String rateLimitKey = deviceId != null ? deviceId : "unknown";
-            if (!rateLimitService.isAllowed(rateLimitKey, RateLimitType.TELEGRAM_INIT)) {
+            if (!rateLimitService.isAllowed(rateLimitKey, RateLimitService.RateLimitType.TELEGRAM_INIT)) {
                 log.warn("Rate limit превышен для устройства: {}", rateLimitKey);
                 return TelegramAuthResponse.error("Слишком много попыток. Попробуйте позже");
             }
@@ -131,9 +149,9 @@ public class TelegramAuthService {
             tokenRepository.save(token);
 
             // Записываем попытку для rate limiting
-            rateLimitService.recordAttempt(rateLimitKey, RateLimitType.TELEGRAM_INIT);
+            rateLimitService.recordAttempt(rateLimitKey, RateLimitService.RateLimitType.TELEGRAM_INIT);
 
-            // Формируем URL для бота
+            // Формируем URL для бота - теперь всегда используем Long Polling бота
             String telegramBotUrl = telegramAuthProperties.getStartAuthUrl(authToken);
 
             log.info("Создан Telegram auth токен: {} для устройства: {}", authToken, deviceId);

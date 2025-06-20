@@ -8,6 +8,7 @@ import com.baganov.pizzanat.util.TokenGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,10 +23,12 @@ import java.util.Map;
 /**
  * Сервис для обработки Telegram webhook и управления ботом.
  * Следует принципу Single Responsibility из SOLID.
+ * Включается только когда включен webhook режим.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "telegram.auth.webhook-enabled", havingValue = "true", matchIfMissing = false)
 public class TelegramWebhookService {
 
     @Qualifier("telegramAuthRestTemplate")

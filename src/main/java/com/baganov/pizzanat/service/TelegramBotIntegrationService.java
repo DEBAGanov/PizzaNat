@@ -1,7 +1,7 @@
 /**
  * @file: TelegramBotIntegrationService.java
  * @description: Сервис для интеграции Long Polling бота с существующим webhook сервисом
- * @dependencies: PizzaNatTelegramBot, TelegramWebhookService
+ * @dependencies: PizzaNatTelegramBot, TelegramWebhookService (опционально)
  * @created: 2025-01-11
  */
 package com.baganov.pizzanat.service;
@@ -10,19 +10,26 @@ import com.baganov.pizzanat.model.dto.telegram.TelegramUpdate;
 import com.baganov.pizzanat.model.dto.telegram.TelegramUserData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
  * Сервис для интеграции между Long Polling ботом и webhook сервисом.
  * Позволяет использовать оба подхода одновременно.
+ * TelegramWebhookService теперь опциональная зависимость.
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TelegramBotIntegrationService {
 
-    private final TelegramWebhookService telegramWebhookService;
+    @Autowired(required = false)
+    private TelegramWebhookService telegramWebhookService;
+
     private final TelegramAuthService telegramAuthService;
+
+    public TelegramBotIntegrationService(TelegramAuthService telegramAuthService) {
+        this.telegramAuthService = telegramAuthService;
+    }
 
     /**
      * Инициализация авторизации для пользователя
@@ -88,17 +95,40 @@ public class TelegramBotIntegrationService {
     }
 
     /**
+     * Подтверждение авторизации с данными пользователя (для Long Polling)
+     *
+     * @param authToken токен авторизации
+     * @param userData  данные пользователя от Telegram
+     * @return AuthResponse с JWT токеном
+     */
+    public void confirmAuth(String authToken, TelegramUserData userData) {
+        log.debug("Подтверждение авторизации с токеном: {} и данными пользователя: {}", authToken, userData.getId());
+        try {
+            telegramAuthService.confirmAuth(authToken, userData);
+        } catch (Exception e) {
+            log.error("Ошибка подтверждения авторизации с токеном {} и данными пользователя: {}", authToken,
+                    e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
      * Обработка обновления через webhook сервис
      * Используется для совместимости с существующей логикой
+     * Теперь работает только если webhook сервис доступен
      *
      * @param update обновление от Telegram
      */
     public void processUpdateViaWebhook(TelegramUpdate update) {
-        log.debug("Передача обновления {} в webhook сервис", update.getUpdateId());
-        try {
-            telegramWebhookService.processUpdate(update);
-        } catch (Exception e) {
-            log.error("Ошибка при обработке обновления через webhook сервис: {}", e.getMessage(), e);
+        if (telegramWebhookService != null) {
+            log.debug("Передача обновления {} в webhook сервис", update.getUpdateId());
+            try {
+                telegramWebhookService.processUpdate(update);
+            } catch (Exception e) {
+                log.error("Ошибка при обработке обновления через webhook сервис: {}", e.getMessage(), e);
+            }
+        } else {
+            log.warn("Webhook сервис недоступен, обновление {} пропущено", update.getUpdateId());
         }
     }
 

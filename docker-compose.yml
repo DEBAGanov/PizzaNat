@@ -87,8 +87,8 @@ services:
       TELEGRAM_GATEWAY_TIMEOUT_SECONDS: 10
       TELEGRAM_GATEWAY_MAX_RETRY_ATTEMPTS: 3
 
-      # Telegram Auth настройки - ОТКЛЮЧЕНЫ в пользу Long Polling
-      TELEGRAM_AUTH_ENABLED: false
+      # Telegram Auth настройки - ВКЛЮЧЕНЫ для Long Polling авторизации
+      TELEGRAM_AUTH_ENABLED: true
       TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
       TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-PizzaNatBot}
       TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-https://debaganov-pizzanat-0177.twc1.net/api/v1/telegram/webhook}
