@@ -22,7 +22,8 @@ import java.time.Duration;
 @Configuration
 @EnableConfigurationProperties({
         TelegramConfig.TelegramProperties.class,
-        TelegramConfig.TelegramAuthProperties.class
+        TelegramConfig.TelegramAuthProperties.class,
+        TelegramConfig.TelegramBotProperties.class
 })
 public class TelegramConfig {
 
@@ -127,6 +128,60 @@ public class TelegramConfig {
             return webhookEnabled &&
                     webhookUrl != null &&
                     !webhookUrl.trim().isEmpty();
+        }
+
+        /**
+         * Проверить, включен ли Long Polling (для замещения webhook)
+         */
+        public boolean isLongPollingEnabled() {
+            // Проверяем через системные свойства, так как Long Polling настраивается
+            // отдельно
+            String botEnabled = System.getProperty("telegram.bot.enabled", System.getenv("TELEGRAM_BOT_ENABLED"));
+            String longPollingEnabled = System.getProperty("telegram.longpolling.enabled",
+                    System.getenv("TELEGRAM_LONGPOLLING_ENABLED"));
+
+            return "true".equalsIgnoreCase(botEnabled) && "true".equalsIgnoreCase(longPollingEnabled);
+        }
+    }
+
+    /**
+     * Конфигурация для Long Polling бота (отдельно от webhook auth)
+     */
+    @Data
+    @ConfigurationProperties(prefix = "telegram.bot")
+    public static class TelegramBotProperties {
+
+        private boolean enabled = false;
+        private String token;
+        private String username = "PizzaNatBot";
+        private String apiUrl = "https://api.telegram.org/bot";
+
+        public String getApiUrl() {
+            return apiUrl + token;
+        }
+
+        public String getBotToken() {
+            return token;
+        }
+
+        public String getBotUsername() {
+            return username;
+        }
+
+        /**
+         * Получить URL для старта аутентификации
+         */
+        public String getStartAuthUrl(String authToken) {
+            return String.format("https://t.me/%s?start=%s", username, authToken);
+        }
+
+        /**
+         * Проверить валидность конфигурации
+         */
+        public boolean isValid() {
+            return enabled &&
+                    token != null && !token.trim().isEmpty() &&
+                    username != null && !username.trim().isEmpty();
         }
     }
 }

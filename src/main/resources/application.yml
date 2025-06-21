@@ -40,12 +40,21 @@ spring:
 
 # Telegram Bot настройки для dev
 telegram:
-  enabled: true
-  bot-token: 7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
-  api-url: https://api.telegram.org/bot7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
+  enabled: ${TELEGRAM_ENABLED:true}
+  bot-token: ${TELEGRAM_AUTH_BOT_TOKEN:}
   # Включаем Long Polling бот для dev
   longpolling:
-    enabled: true
+    enabled: ${TELEGRAM_LONGPOLLING_ENABLED:true}
+  # Конфигурация основного Long Polling бота для dev
+  bot:
+    enabled: ${TELEGRAM_BOT_ENABLED:true}
+    token: ${TELEGRAM_BOT_TOKEN:}
+    username: ${TELEGRAM_BOT_USERNAME:PizzaNatBot}
+  # Конфигурация админского бота для dev
+  admin-bot:
+    enabled: ${TELEGRAM_ADMIN_BOT_ENABLED:true}
+    token: ${TELEGRAM_ADMIN_BOT_TOKEN:}
+    username: ${TELEGRAM_ADMIN_BOT_USERNAME:PizzaNatOrders_bot}
 
 ---
 spring:
@@ -91,3 +100,15 @@ telegram:
   # Включаем Long Polling бот
   longpolling:
     enabled: ${TELEGRAM_LONGPOLLING_ENABLED:true}
+  # Конфигурация основного Long Polling бота
+  bot:
+    enabled: ${TELEGRAM_BOT_ENABLED:true}
+    token: ${TELEGRAM_BOT_TOKEN:}
+    username: ${TELEGRAM_BOT_USERNAME:PizzaNatBot}
+  # Конфигурация админского бота
+  admin-bot:
+    enabled: ${TELEGRAM_ADMIN_BOT_ENABLED:true}
+    token: ${TELEGRAM_ADMIN_BOT_TOKEN:}
+    username: ${TELEGRAM_ADMIN_BOT_USERNAME:PizzaNatOrders_bot}
+    max-retries: ${TELEGRAM_ADMIN_BOT_MAX_RETRIES:3}
+    timeout-seconds: ${TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS:30}

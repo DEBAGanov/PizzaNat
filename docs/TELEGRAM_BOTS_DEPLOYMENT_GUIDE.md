@@ -111,12 +111,35 @@ environment:
 
 ## Проблемы и решения
 
-### ❌ Проблема: "Conflict: terminated by other getUpdates request"
-**Причина**: Один токен используется для webhook и long polling одновременно
-**Решение**: 
-- Использовать webhook для prod окружения
-- Использовать long polling только для dev/test
-- Убедиться что не запущено несколько экземпляров с одним токеном
+### ✅ РЕШЕНО: "Conflict: terminated by other getUpdates request" (ошибка 409)
+
+**Проблема**: Конфликт токенов между TelegramWebhookService и PizzaNatTelegramBot  
+**Причина**: Один токен нельзя использовать одновременно для Webhook и Long Polling  
+**Решение**: Полный переход на Long Polling архитектуру
+
+#### Архитектурные изменения:
+- ❌ **TelegramWebhookService** - полностью отключен
+- ✅ **PizzaNatTelegramBot** - единственный обработчик токена `7819187384:...`
+- ✅ **PizzaNatAdminBot** - работает независимо с токеном `8052456616:...`
+
+#### Конфигурация для решения:
+```yaml
+# Production конфигурация
+TELEGRAM_AUTH_ENABLED: false              # Webhook отключен
+TELEGRAM_AUTH_WEBHOOK_ENABLED: false      # Webhook endpoint отключен
+TELEGRAM_BOT_ENABLED: true                # Long Polling включен
+TELEGRAM_LONGPOLLING_ENABLED: true        # Long Polling сервис активен
+TELEGRAM_ADMIN_BOT_ENABLED: true          # Админский бот работает отдельно
+```
+
+#### Проверка решения:
+```bash
+# Тестирование решения
+./test_telegram_longpolling_final.sh
+
+# Проверка отсутствия ошибок 409 в логах
+docker logs pizzanat-app | grep -i "409\|conflict"
+```
 
 ### ❌ Проблема: Персональные уведомления не приходят пользователям
 **Причина**: Отключен TELEGRAM_BOT_ENABLED или проблемы с TelegramUserNotificationService

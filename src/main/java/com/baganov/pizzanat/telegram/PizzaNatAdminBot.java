@@ -37,6 +37,12 @@ public class PizzaNatAdminBot extends TelegramLongPollingBot {
     public PizzaNatAdminBot(TelegramAdminBotConfig botConfig) {
         super(botConfig.getToken());
         this.botConfig = botConfig;
+
+        // ДИАГНОСТИКА: Логируем токен админского бота
+        String token = botConfig.getCleanToken();
+        log.info("🔍 ДИАГНОСТИКА: Админский бот (PizzaNatAdminBot) использует токен: {}...",
+                token != null && token.length() > 10 ? token.substring(0, 10) : "NULL");
+        log.info("🤖 PizzaNat Admin Bot инициализирован для Long Polling");
     }
 
     @Override

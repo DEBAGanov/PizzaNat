@@ -43,7 +43,7 @@ import java.util.Optional;
 @ConditionalOnProperty(name = "telegram.bot.enabled", havingValue = "true", matchIfMissing = false)
 public class PizzaNatTelegramBot extends TelegramLongPollingBot {
 
-    private final TelegramConfig.TelegramAuthProperties telegramAuthProperties;
+    private final TelegramConfig.TelegramBotProperties telegramBotProperties;
     private final TelegramBotIntegrationService integrationService;
     private final TelegramAuthTokenRepository tokenRepository;
 
@@ -51,23 +51,28 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
     private final Map<Long, String> userAuthTokens = new HashMap<>();
 
     @Autowired
-    public PizzaNatTelegramBot(TelegramConfig.TelegramAuthProperties telegramAuthProperties,
+    public PizzaNatTelegramBot(TelegramConfig.TelegramBotProperties telegramBotProperties,
             TelegramBotIntegrationService integrationService,
             TelegramAuthTokenRepository tokenRepository) {
-        this.telegramAuthProperties = telegramAuthProperties;
+        this.telegramBotProperties = telegramBotProperties;
         this.integrationService = integrationService;
         this.tokenRepository = tokenRepository;
+
+        // ДИАГНОСТИКА: Логируем токен для отладки
+        String token = telegramBotProperties.getBotToken();
+        log.info("🔍 ДИАГНОСТИКА: Основной бот использует токен: {}...",
+                token != null && token.length() > 10 ? token.substring(0, 10) : "NULL");
         log.info("🤖 PizzaNat Telegram Bot инициализирован для Long Polling");
     }
 
     @Override
     public String getBotUsername() {
-        return telegramAuthProperties.getBotUsername();
+        return telegramBotProperties.getBotUsername();
     }
 
     @Override
     public String getBotToken() {
-        return telegramAuthProperties.getBotToken();
+        return telegramBotProperties.getBotToken();
     }
 
     @Override
@@ -155,12 +160,15 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         log.info("Обработка токена аутентификации от мобильного приложения для пользователя: {}", userData.getId());
 
         try {
+            // Сохраняем токен для пользователя
+            userAuthTokens.put(userData.getId(), authToken);
+
             // Создаем/обновляем пользователя в БД
             integrationService.createOrUpdateUser(userData);
             log.info("Пользователь {} создан/обновлен в БД", userData.getId());
 
-            // Отправляем сообщение с подтверждением авторизации
-            sendAuthConfirmationMessage(chatId, authToken, userData);
+            // Отправляем сообщение с запросом контакта
+            sendContactRequestMessage(chatId, authToken, userData);
 
         } catch (Exception e) {
             log.error("Ошибка обработки токена аутентификации для пользователя {}: {}", userData.getId(),
@@ -170,15 +178,55 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
+     * Отправка сообщения с запросом контакта (с кнопкой отправки телефона)
+     */
+    private void sendContactRequestMessage(Long chatId, String authToken, TelegramUserData userData) {
+        String message = String.format(
+                "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
+                        "Привет, %s!\n\n" +
+                        "Для завершения авторизации:\n" +
+                        "1️⃣ Нажмите \"📱 Отправить телефон\" для быстрого заказа\n" +
+                        "2️⃣ Подтвердите вход кнопкой \"✅ Подтвердить\"",
+                userData.getDisplayName());
+
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(message);
+        sendMessage.setParseMode("Markdown");
+
+        // Создаем обычную клавиатуру с кнопкой отправки контакта
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        KeyboardRow row = new KeyboardRow();
+        KeyboardButton contactButton = new KeyboardButton("📱 Отправить телефон");
+        contactButton.setRequestContact(true);
+        row.add(contactButton);
+
+        keyboard.add(row);
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true);
+        keyboardMarkup.setOneTimeKeyboard(true);
+
+        sendMessage.setReplyMarkup(keyboardMarkup);
+
+        try {
+            execute(sendMessage);
+            log.info("Сообщение с запросом контакта отправлено пользователю {}", userData.getId());
+
+            // Затем отправляем inline-кнопки для подтверждения
+            sendAuthConfirmationMessage(chatId, authToken, userData);
+
+        } catch (TelegramApiException e) {
+            log.error("Ошибка отправки сообщения с запросом контакта: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Отправка сообщения с подтверждением авторизации (с inline кнопками)
      */
     private void sendAuthConfirmationMessage(Long chatId, String authToken, TelegramUserData userData) {
-        String message = String.format(
-                "🍕 *Подтверждение входа в PizzaNat*\n\n" +
-                        "Привет, %s!\n\n" +
-                        "Подтвердите вход в мобильное приложение PizzaNat?\n\n" +
-                        "ℹ️ Если это не вы, нажмите \"Отменить\"",
-                userData.getDisplayName());
+        String message = "После отправки телефона нажмите кнопку для подтверждения входа:";
 
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId);
@@ -312,7 +360,7 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
 
                     // Отправляем сообщение об успехе
                     removeKeyboard(chatId);
-                    sendAutoAuthSuccessMessage(chatId, userData);
+                    sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), userData.getDisplayName());
 
                     log.info("Внешняя авторизация успешна для пользователя {}", userId);
                 } catch (Exception e) {
@@ -326,7 +374,7 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
 
                 if (authSuccess) {
                     removeKeyboard(chatId);
-                    sendAutoAuthSuccessMessage(chatId, userData);
+                    sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), userData.getDisplayName());
                     log.info("Внутренняя авторизация успешна для пользователя {}", userId);
                 } else {
                     sendErrorMessage(chatId, "Ошибка авторизации. Попробуйте позже.");
@@ -344,12 +392,38 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
     }
 
     /**
+     * Отправка сообщения об успешном получении номера телефона
+     */
+    private void sendPhoneReceivedMessage(Long chatId, String phoneNumber, String userName) {
+        // Маскируем номер для безопасности
+        String maskedPhone = phoneNumber.replaceAll("(\\d{1,3})(\\d{3})(\\d{3})(\\d+)", "$1***$2***$4");
+
+        String message = String.format(
+                "✅ *Номер телефона получен!*\n\n" +
+                        "Спасибо, %s!\n\n" +
+                        "Ваш номер: %s\n\n" +
+                        "Теперь можете вернуться в приложение для завершения авторизации.",
+                userName, maskedPhone);
+
+        SendMessage sendMessage = new SendMessage();
+        sendMessage.setChatId(chatId);
+        sendMessage.setText(message);
+        sendMessage.setParseMode("Markdown");
+
+        try {
+            execute(sendMessage);
+        } catch (TelegramApiException e) {
+            log.error("Ошибка отправки сообщения о получении номера: {}", e.getMessage());
+        }
+    }
+
+    /**
      * Удаление клавиатуры
      */
     private void removeKeyboard(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        // message.setText("📱 Номер телефона получен!");
+        message.setText("🔄 Обработка...");
 
         ReplyKeyboardRemove keyboardRemove = new ReplyKeyboardRemove();
         keyboardRemove.setRemoveKeyboard(true);

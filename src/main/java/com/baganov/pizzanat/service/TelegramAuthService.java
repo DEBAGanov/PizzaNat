@@ -104,17 +104,14 @@ public class TelegramAuthService {
         try {
             log.info("Инициализация Telegram аутентификации для устройства: {}", deviceId);
 
-            // Проверяем общую конфигурацию
-            if (!telegramAuthProperties.isValid()) {
+            // Проверяем, что Long Polling бот включен (заменяем проверку webhook)
+            if (!isLongPollingEnabled()) {
                 log.error(
-                        "Telegram аутентификация отключена или неправильно настроена. enabled={}, botToken={}, botUsername={}",
-                        telegramAuthProperties.isEnabled(),
-                        telegramAuthProperties.getBotToken() != null ? "***" : "null",
-                        telegramAuthProperties.getBotUsername());
-                return TelegramAuthResponse.error("Telegram аутентификация недоступна");
+                        "Telegram Long Polling бот отключен. Проверьте настройки: TELEGRAM_BOT_ENABLED и TELEGRAM_LONGPOLLING_ENABLED");
+                return TelegramAuthResponse.error("Telegram аутентификация недоступна - Long Polling бот отключен");
             }
 
-            // Проверяем конфигурацию - теперь проверяем только базовые настройки
+            // Проверяем базовые настройки бота
             if (telegramAuthProperties.getBotToken() == null || telegramAuthProperties.getBotToken().trim().isEmpty()) {
                 log.error("Telegram бот токен не настроен");
                 return TelegramAuthResponse.error("Telegram аутентификация недоступна");
@@ -640,5 +637,17 @@ public class TelegramAuthService {
             log.error("Ошибка при обновлении токена {} данными пользователя: {}", authToken, e.getMessage(), e);
             throw new RuntimeException("Ошибка обновления токена: " + e.getMessage());
         }
+    }
+
+    /**
+     * Проверяет, включен ли Long Polling бот для обработки авторизации
+     */
+    private boolean isLongPollingEnabled() {
+        // Проверяем через системные свойства
+        String botEnabled = System.getProperty("telegram.bot.enabled", System.getenv("TELEGRAM_BOT_ENABLED"));
+        String longPollingEnabled = System.getProperty("telegram.longpolling.enabled",
+                System.getenv("TELEGRAM_LONGPOLLING_ENABLED"));
+
+        return "true".equalsIgnoreCase(botEnabled) && "true".equalsIgnoreCase(longPollingEnabled);
     }
 }

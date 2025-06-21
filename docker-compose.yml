@@ -87,8 +87,8 @@ services:
       TELEGRAM_GATEWAY_TIMEOUT_SECONDS: 10
       TELEGRAM_GATEWAY_MAX_RETRY_ATTEMPTS: 3
 
-      # Telegram Auth настройки - ВКЛЮЧЕНЫ для Long Polling авторизации
-      TELEGRAM_AUTH_ENABLED: true
+      # Telegram Auth настройки - ОТКЛЮЧЕНЫ для полного перехода на Long Polling
+      TELEGRAM_AUTH_ENABLED: false
       TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
       TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-PizzaNatBot}
       TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-https://debaganov-pizzanat-0177.twc1.net/api/v1/telegram/webhook}
@@ -115,7 +115,7 @@ services:
       SMS_RATE_LIMIT_PER_HOUR: 3
       SMS_MAX_ATTEMPTS: 3
 
-      # Telegram Bot настройки (основные уведомления) - ВКЛЮЧЕНЫ для Long Polling
+      # Telegram Bot настройки (основные уведомления) - ИСПОЛЬЗУЕМ TELEGRAM_AUTH_BOT_TOKEN
       TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-true}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
       TELEGRAM_API_URL: https://api.telegram.org/bot
@@ -123,6 +123,7 @@ services:
       # Telegram Long Polling настройки (команды бота) - ВКЛЮЧЕНЫ для авторизации и уведомлений
       TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-true}
       TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-true}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-PizzaNatBot}
 
       # Админский Telegram Bot настройки - ВКЛЮЧЕН для административных уведомлений
       TELEGRAM_ADMIN_BOT_ENABLED: ${TELEGRAM_ADMIN_BOT_ENABLED:-true}
