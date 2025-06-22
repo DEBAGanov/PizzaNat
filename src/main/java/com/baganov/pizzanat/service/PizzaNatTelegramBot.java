@@ -17,17 +17,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Contact;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -80,8 +76,6 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         try {
             if (update.hasMessage()) {
                 handleMessage(update.getMessage());
-            } else if (update.hasCallbackQuery()) {
-                handleCallbackQuery(update.getCallbackQuery());
             }
         } catch (Exception e) {
             log.error("Ошибка обработки обновления: {}", e.getMessage(), e);
@@ -173,7 +167,7 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         } catch (Exception e) {
             log.error("Ошибка обработки токена аутентификации для пользователя {}: {}", userData.getId(),
                     e.getMessage());
-            sendAuthErrorMessage(chatId, "Ошибка обработки токена: " + e.getMessage());
+            sendErrorMessage(chatId, "Ошибка обработки токена: " + e.getMessage());
         }
     }
 
@@ -184,9 +178,7 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         String message = String.format(
                 "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
                         "Привет, %s!\n\n" +
-                        "Для завершения авторизации:\n" +
-                        "1️⃣ Нажмите \"📱 Отправить телефон\" для быстрого заказа\n" +
-                        "2️⃣ Подтвердите вход кнопкой \"✅ Подтвердить\"",
+                        "Для завершения авторизации нажмите кнопку ниже и поделитесь номером телефона:",
                 userData.getDisplayName());
 
         SendMessage sendMessage = new SendMessage();
@@ -214,54 +206,8 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
             execute(sendMessage);
             log.info("Сообщение с запросом контакта отправлено пользователю {}", userData.getId());
 
-            // Затем отправляем inline-кнопки для подтверждения
-            sendAuthConfirmationMessage(chatId, authToken, userData);
-
         } catch (TelegramApiException e) {
             log.error("Ошибка отправки сообщения с запросом контакта: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Отправка сообщения с подтверждением авторизации (с inline кнопками)
-     */
-    private void sendAuthConfirmationMessage(Long chatId, String authToken, TelegramUserData userData) {
-        String message = "После отправки телефона нажмите кнопку для подтверждения входа:";
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId);
-        sendMessage.setText(message);
-        sendMessage.setParseMode("Markdown");
-
-        // Создаем inline клавиатуру с кнопками подтверждения
-        InlineKeyboardMarkup keyboardMarkup = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-
-        // Первая строка - кнопка подтверждения
-        List<InlineKeyboardButton> row1 = new ArrayList<>();
-        InlineKeyboardButton confirmButton = new InlineKeyboardButton();
-        confirmButton.setText("✅ Подтвердить вход");
-        confirmButton.setCallbackData("confirm_auth_" + authToken);
-        row1.add(confirmButton);
-
-        // Вторая строка - кнопка отмены
-        List<InlineKeyboardButton> row2 = new ArrayList<>();
-        InlineKeyboardButton cancelButton = new InlineKeyboardButton();
-        cancelButton.setText("❌ Отменить");
-        cancelButton.setCallbackData("cancel_auth_" + authToken);
-        row2.add(cancelButton);
-
-        keyboard.add(row1);
-        keyboard.add(row2);
-        keyboardMarkup.setKeyboard(keyboard);
-
-        sendMessage.setReplyMarkup(keyboardMarkup);
-
-        try {
-            execute(sendMessage);
-            log.info("Сообщение с подтверждением авторизации отправлено пользователю {}", userData.getId());
-        } catch (TelegramApiException e) {
-            log.error("Ошибка отправки сообщения с подтверждением авторизации: {}", e.getMessage());
         }
     }
 
@@ -345,41 +291,21 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
                 return;
             }
 
-            // Проверяем, какой тип токена у нас (внешний от приложения или внутренний от
-            // бота)
-            boolean isExternalToken = authToken.startsWith("tg_auth_") && authToken.length() > 20;
+            // Используем прямое подтверждение авторизации (без webhook)
+            log.info("Подтверждаем авторизацию для токена: {}", authToken);
 
-            if (isExternalToken) {
-                // Это токен от приложения - используем webhook сервис для подтверждения
-                log.info("Обрабатываем внешний токен авторизации: {}", authToken);
+            try {
+                // Подтверждаем авторизацию с данными пользователя
+                integrationService.confirmAuth(authToken, userData);
 
-                try {
-                    // Создаем имитацию callback query для webhook сервиса
-                    TelegramUpdate update = createAuthConfirmationUpdate(userData, chatId, authToken);
-                    integrationService.processUpdateViaWebhook(update);
+                // Отправляем сообщение об успехе
+                removeKeyboard(chatId);
+                sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), userData.getDisplayName());
 
-                    // Отправляем сообщение об успехе
-                    removeKeyboard(chatId);
-                    sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), userData.getDisplayName());
-
-                    log.info("Внешняя авторизация успешна для пользователя {}", userId);
-                } catch (Exception e) {
-                    log.error("Ошибка обработки внешней авторизации: {}", e.getMessage());
-                    // sendErrorMessage(chatId, "Ошибка завершения авторизации. Попробуйте позже.");
-                    // sendErrorMessage(chatId, "Ошибка ");
-                }
-            } else {
-                // Это внутренний токен бота - используем стандартную логику
-                boolean authSuccess = integrationService.confirmAuth(authToken);
-
-                if (authSuccess) {
-                    removeKeyboard(chatId);
-                    sendPhoneReceivedMessage(chatId, contact.getPhoneNumber(), userData.getDisplayName());
-                    log.info("Внутренняя авторизация успешна для пользователя {}", userId);
-                } else {
-                    sendErrorMessage(chatId, "Ошибка авторизации. Попробуйте позже.");
-                    log.error("Ошибка подтверждения внутренней авторизации для пользователя {}", userId);
-                }
+                log.info("Авторизация успешна для пользователя {}", userId);
+            } catch (Exception e) {
+                log.error("Ошибка подтверждения авторизации: {}", e.getMessage());
+                sendErrorMessage(chatId, "Ошибка завершения авторизации. Попробуйте позже.");
             }
 
             // Удаляем токен из памяти в любом случае
@@ -517,191 +443,6 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             log.error("Ошибка отправки сообщения о неизвестной команде: {}", e.getMessage());
         }
-    }
-
-    /**
-     * Обработка callback query (inline кнопки)
-     */
-    private void handleCallbackQuery(CallbackQuery callbackQuery) {
-        Long chatId = callbackQuery.getMessage().getChatId();
-        String data = callbackQuery.getData();
-        User user = callbackQuery.getFrom();
-
-        log.info("Получен callback query от пользователя {} (ID: {}): {}", user.getFirstName(), user.getId(), data);
-
-        // Создаем данные пользователя
-        TelegramUserData userData = TelegramUserData.builder()
-                .id(user.getId().longValue())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .username(user.getUserName())
-                .build();
-
-        try {
-            // Обработка подтверждения аутентификации
-            if (data.startsWith("confirm_auth_")) {
-                String authToken = data.substring(13); // убираем "confirm_auth_"
-                log.info("Обработка подтверждения авторизации для токена: {}", authToken);
-                handleAuthConfirmation(authToken, chatId, userData);
-            }
-            // Обработка отмены аутентификации
-            else if (data.startsWith("cancel_auth_")) {
-                String authToken = data.substring(12); // убираем "cancel_auth_"
-                log.info("Обработка отмены авторизации для токена: {}", authToken);
-                handleAuthCancellation(authToken, chatId, userData);
-            } else {
-                log.warn("Неизвестный тип callback data: {}", data);
-            }
-
-            // Отвечаем на callback query
-            AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
-            answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
-            answerCallbackQuery.setText("✅ Обработано");
-            execute(answerCallbackQuery);
-
-        } catch (Exception e) {
-            log.error("Ошибка обработки callback query: {}", e.getMessage(), e);
-
-            // Отвечаем на callback query с ошибкой
-            try {
-                AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
-                answerCallbackQuery.setCallbackQueryId(callbackQuery.getId());
-                answerCallbackQuery.setText("❌ Ошибка обработки");
-                execute(answerCallbackQuery);
-            } catch (TelegramApiException ex) {
-                log.error("Ошибка отправки ответа на callback query: {}", ex.getMessage());
-            }
-        }
-    }
-
-    /**
-     * Обработка подтверждения аутентификации
-     */
-    private void handleAuthConfirmation(String authToken, Long chatId, TelegramUserData userData) {
-        log.info("Начало подтверждения авторизации для токена: {} пользователем: {}", authToken, userData.getId());
-        try {
-            // Подтверждаем авторизацию через сервис
-            integrationService.confirmAuth(authToken, userData);
-
-            // Отправляем сообщение об успехе
-            sendAuthSuccessMessage(chatId, userData);
-
-            // Убираем клавиатуру
-            removeKeyboard(chatId);
-
-            log.info("Аутентификация подтверждена для пользователя {} с токеном: {}", userData.getId(), authToken);
-
-        } catch (Exception e) {
-            log.error("Ошибка при подтверждении аутентификации для токена {}: {}", authToken, e.getMessage(), e);
-            sendAuthErrorMessage(chatId, "Ошибка подтверждения авторизации: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Обработка отмены аутентификации
-     */
-    private void handleAuthCancellation(String authToken, Long chatId, TelegramUserData userData) {
-        sendAuthCancelledMessage(chatId);
-        removeKeyboard(chatId);
-        log.info("Аутентификация отменена пользователем {} для токена: {}", userData.getId(), authToken);
-    }
-
-    /**
-     * Отправка сообщения об успешной аутентификации
-     */
-    private void sendAuthSuccessMessage(Long chatId, TelegramUserData userData) {
-        String message = String.format(
-                "✅ *Вход подтвержден!*\n\n" +
-                        "Добро пожаловать, %s!\n\n" +
-                        "🍕 Вы успешно вошли в PizzaNat!\n\n" +
-                        "Теперь можете вернуться в приложение и продолжить заказ вкусной пиццы.",
-                userData.getDisplayName());
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId);
-        sendMessage.setText(message);
-        sendMessage.setParseMode("Markdown");
-
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка отправки сообщения об успешной авторизации: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Отправка сообщения об отмене аутентификации
-     */
-    private void sendAuthCancelledMessage(Long chatId) {
-        String message = "❌ *Вход отменен*\n\n" +
-                "Авторизация была отменена.\n\n" +
-                "Если хотите войти позже, просто перейдите по ссылке из приложения снова.";
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId);
-        sendMessage.setText(message);
-        sendMessage.setParseMode("Markdown");
-
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка отправки сообщения об отмене авторизации: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Отправка сообщения об ошибке аутентификации
-     */
-    private void sendAuthErrorMessage(Long chatId, String errorMessage) {
-        String message = String.format(
-                "❌ *Ошибка авторизации*\n\n" +
-                        "Произошла ошибка: %s\n\n" +
-                        "Попробуйте еще раз или обратитесь в поддержку.",
-                errorMessage);
-
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId);
-        sendMessage.setText(message);
-        sendMessage.setParseMode("Markdown");
-
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            log.error("Ошибка отправки сообщения об ошибке авторизации: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Создание TelegramUpdate для подтверждения авторизации через webhook сервис
-     */
-    private TelegramUpdate createAuthConfirmationUpdate(TelegramUserData userData, Long chatId, String authToken) {
-        // Создаем чат для callback query
-        TelegramUpdate.TelegramChat chat = TelegramUpdate.TelegramChat.builder()
-                .id(chatId)
-                .type("private")
-                .build();
-
-        // Создаем сообщение для callback query
-        TelegramUpdate.TelegramMessage message = TelegramUpdate.TelegramMessage.builder()
-                .messageId(System.currentTimeMillis())
-                .text("/start " + authToken)
-                .date(System.currentTimeMillis() / 1000)
-                .from(userData)
-                .chat(chat)
-                .build();
-
-        // Создаем callback query для подтверждения авторизации
-        TelegramUpdate.TelegramCallbackQuery callbackQuery = TelegramUpdate.TelegramCallbackQuery.builder()
-                .id("longpolling_auth_" + System.currentTimeMillis())
-                .data("confirm_auth_" + authToken)
-                .from(userData)
-                .message(message)
-                .build();
-
-        return TelegramUpdate.builder()
-                .updateId(System.currentTimeMillis())
-                .callbackQuery(callbackQuery)
-                .build();
     }
 
     /**

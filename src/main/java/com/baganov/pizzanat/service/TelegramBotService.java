@@ -98,27 +98,35 @@ public class TelegramBotService {
 
         message.append("📅 <b>Дата:</b> ").append(order.getCreatedAt().format(DATE_FORMATTER)).append("\n");
 
-        // Информация о пользователе
+        // Информация о пользователе системы
         if (order.getUser() != null) {
-            message.append("👤 <b>Пользователь:</b> ").append(order.getUser().getFirstName());
+            message.append("👤 <b>ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ</b>\n");
+            message.append("Имя: ").append(order.getUser().getFirstName());
             if (order.getUser().getLastName() != null) {
                 message.append(" ").append(order.getUser().getLastName());
             }
-            message.append(" (@").append(order.getUser().getUsername()).append(")\n");
+            message.append("\n");
 
-            if (order.getUser().getPhoneNumber() != null) {
-                message.append("📱 <b>Телефон пользователя:</b> ").append(order.getUser().getPhoneNumber())
-                        .append("\n");
+            if (order.getUser().getUsername() != null) {
+                message.append("Username: @").append(order.getUser().getUsername()).append("\n");
+            }
+
+            if (order.getUser().getPhone() != null) {
+                message.append("Телефон пользователя: ").append(order.getUser().getPhone()).append("\n");
+            } else if (order.getUser().getPhoneNumber() != null) {
+                message.append("Телефон пользователя: ").append(order.getUser().getPhoneNumber()).append("\n");
             }
 
             if (order.getUser().getEmail() != null) {
-                message.append("📧 <b>Email:</b> ").append(order.getUser().getEmail()).append("\n");
+                message.append("Email: ").append(order.getUser().getEmail()).append("\n");
             }
+            message.append("\n");
         }
 
         // Контактные данные заказа
-        message.append("👤 <b>Контактное лицо:</b> ").append(order.getContactName()).append("\n");
-        message.append("📞 <b>Контактный телефон:</b> ").append(order.getContactPhone()).append("\n");
+        message.append("📞 <b>КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА</b>\n");
+        message.append("Имя: ").append(order.getContactName()).append("\n");
+        message.append("Телефон: ").append(order.getContactPhone()).append("\n");
 
         // Адрес доставки
         if (order.getDeliveryAddress() != null) {
@@ -154,23 +162,31 @@ public class TelegramBotService {
         StringBuilder message = new StringBuilder();
         message.append("🔄 <b>ИЗМЕНЕНИЕ СТАТУСА ЗАКАЗА #").append(order.getId()).append("</b>\n\n");
 
-        // Информация о пользователе
+        // Информация о пользователе системы
         if (order.getUser() != null) {
-            message.append("👤 <b>Пользователь:</b> ").append(order.getUser().getFirstName());
+            message.append("👤 <b>ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ</b>\n");
+            message.append("Имя: ").append(order.getUser().getFirstName());
             if (order.getUser().getLastName() != null) {
                 message.append(" ").append(order.getUser().getLastName());
             }
-            message.append(" (@").append(order.getUser().getUsername()).append(")\n");
+            message.append("\n");
 
-            if (order.getUser().getPhoneNumber() != null) {
-                message.append("📱 <b>Телефон пользователя:</b> ").append(order.getUser().getPhoneNumber())
-                        .append("\n");
+            if (order.getUser().getUsername() != null) {
+                message.append("Username: @").append(order.getUser().getUsername()).append("\n");
             }
+
+            if (order.getUser().getPhone() != null) {
+                message.append("Телефон пользователя: ").append(order.getUser().getPhone()).append("\n");
+            } else if (order.getUser().getPhoneNumber() != null) {
+                message.append("Телефон пользователя: ").append(order.getUser().getPhoneNumber()).append("\n");
+            }
+            message.append("\n");
         }
 
         // Контактные данные заказа
-        message.append("👤 <b>Контактное лицо:</b> ").append(order.getContactName()).append("\n");
-        message.append("📞 <b>Контактный телефон:</b> ").append(order.getContactPhone()).append("\n");
+        message.append("📞 <b>КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА</b>\n");
+        message.append("Имя: ").append(order.getContactName()).append("\n");
+        message.append("Телефон: ").append(order.getContactPhone()).append("\n");
         message.append("💰 <b>Сумма:</b> ").append(order.getTotalAmount()).append(" ₽\n\n");
 
         message.append("📋 <b>Статус изменен:</b>\n");

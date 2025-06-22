@@ -80,54 +80,86 @@ test_order_creation() {
     echo -e "${YELLOW}Тестирование: $description${NC}"
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-    # Автоматически добавляем товар в корзину перед заказом
-    cart_add_simple='{"productId": 1, "quantity": 1}'
-    local cart_add_cmd="curl -s -L -o /dev/null -w '%{http_code}' -X POST '$BASE_URL/api/v1/cart/items'"
-    cart_add_cmd="$cart_add_cmd -H 'Content-Type: application/json' -H 'Accept: application/json'"
+    # Проверяем корзину и добавляем товар если нужно
+    local cart_check_response=""
     if [ -n "$token" ]; then
-        cart_add_cmd="$cart_add_cmd -H 'Authorization: Bearer $token'"
+        cart_check_response=$(curl -s -X GET "$BASE_URL/api/v1/cart" -H "Authorization: Bearer $token")
+    else
+        cart_check_response=$(curl -s -X GET "$BASE_URL/api/v1/cart")
     fi
-    cart_add_cmd="$cart_add_cmd -d '$cart_add_simple'"
-
-    # Добавляем товар в корзину
-    local cart_code=$(eval $cart_add_cmd)
-    if [[ $cart_code -ne 200 ]] && [[ $cart_code -ne 201 ]]; then
-        echo -e "${RED}❌ ОШИБКА ($cart_code) - не удалось добавить товар в корзину${NC}"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
-        echo "---"
-        return
+    
+    # Проверяем, есть ли товары в корзине
+    local cart_total=$(echo "$cart_check_response" | grep -o '"totalAmount":[0-9.]*' | cut -d':' -f2)
+    
+    # Если корзина пуста, добавляем товар
+    if [ "$cart_total" = "0" ] || [ -z "$cart_total" ]; then
+        echo -e "${YELLOW}Корзина пуста, добавляем товар...${NC}"
+        cart_add_simple='{"productId": 1, "quantity": 1}'
+        local cart_code
+        
+        # Добавляем товар в корзину
+        if [ -n "$token" ]; then
+            cart_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/cart/items" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -H "Authorization: Bearer $token" \
+              -d "$cart_add_simple")
+        else
+            cart_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/cart/items" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -d "$cart_add_simple")
+        fi
+        if [[ $cart_code -ne 200 ]] && [[ $cart_code -ne 201 ]]; then
+            echo -e "${RED}❌ ОШИБКА ($cart_code) - не удалось добавить товар в корзину${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+            echo "---"
+            return
+        fi
+        echo -e "${GREEN}✓ Товар добавлен в корзину${NC}"
+    else
+        echo -e "${GREEN}✓ В корзине уже есть товары (сумма: $cart_total)${NC}"
     fi
 
-    # Теперь создаем заказ
-    local order_cmd="curl -s -L -o /dev/null -w '%{http_code}' -X POST '$BASE_URL/api/v1/orders'"
-    order_cmd="$order_cmd -H 'Content-Type: application/json' -H 'Accept: application/json'"
+    # Теперь создаем заказ (единый запрос для получения и кода, и ответа)
+    local temp_file=$(mktemp)
+    local http_code
+    local order_response
+    
     if [ -n "$token" ]; then
-        order_cmd="$order_cmd -H 'Authorization: Bearer $token'"
+        http_code=$(curl -s -w '%{http_code}' -o "$temp_file" -X POST "$BASE_URL/api/v1/orders" \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/json" \
+          -H "Authorization: Bearer $token" \
+          -d "$order_data")
+    else
+        http_code=$(curl -s -w '%{http_code}' -o "$temp_file" -X POST "$BASE_URL/api/v1/orders" \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/json" \
+          -d "$order_data")
     fi
-    order_cmd="$order_cmd -d '$order_data'"
-
-    local http_code=$(eval $order_cmd)
+    
+    order_response=$(cat "$temp_file")
+    rm -f "$temp_file"
 
     if [[ $http_code -eq 200 ]] || [[ $http_code -eq 201 ]]; then
-        echo -e "${GREEN}✅ УСПЕХ ($http_code)${NC}"
+        # Извлекаем ID заказа из ответа
+        local order_id=$(echo "$order_response" | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -n1 | tr -d '\n\r')
+        echo -e "${GREEN}✅ УСПЕХ ($http_code) - Заказ #$order_id создан${NC}"
         PASSED_TESTS=$((PASSED_TESTS + 1))
+        
+        # Возвращаем ID заказа через глобальную переменную
+        LAST_CREATED_ORDER_ID="$order_id"
     else
         echo -e "${RED}❌ ОШИБКА ($http_code)${NC}"
 
         # Получаем тело ответа для анализа ошибки
-        local response_cmd="curl -s -L -X POST '$BASE_URL/api/v1/orders'"
-        response_cmd="$response_cmd -H 'Content-Type: application/json' -H 'Accept: application/json'"
-        if [ -n "$token" ]; then
-            response_cmd="$response_cmd -H 'Authorization: Bearer $token'"
-        fi
-        response_cmd="$response_cmd -d '$order_data'"
-
-        local body=$(eval $response_cmd)
-        if [ -n "$body" ]; then
-            echo "Ответ: $(echo "$body" | head -c 150)..."
+        if [ -n "$order_response" ]; then
+            echo "Ответ: $(echo "$order_response" | head -c 150)..."
         fi
 
         FAILED_TESTS=$((FAILED_TESTS + 1))
+        LAST_CREATED_ORDER_ID=""
     fi
     echo "---"
 }
@@ -228,7 +260,7 @@ if [ -n "$JWT_TOKEN" ]; then
     }'
     test_order_creation "$order_data_location" "Создать заказ с пунктом выдачи" "$JWT_TOKEN"
 
-    # Тест 2: Заказ с deliveryAddress (Android способ)
+    # Тест 2: Заказ с deliveryAddress (Android способ)  
     order_data_address='{
         "deliveryAddress": "ул. Тестовая, д. 123, кв. 45",
         "contactName": "Android Пользователь",
@@ -250,7 +282,13 @@ if [ -n "$JWT_TOKEN" ]; then
 
     # Получение заказов
     test_endpoint "/api/v1/orders" "Получить заказы пользователя" "GET" "$JWT_TOKEN"
-    test_endpoint "/api/v1/orders/1" "Получить заказ по ID" "GET" "$JWT_TOKEN"
+    
+    # Получаем заказ по ID последнего созданного заказа
+    if [ -n "$LAST_CREATED_ORDER_ID" ]; then
+        test_endpoint "/api/v1/orders/$LAST_CREATED_ORDER_ID" "Получить заказ #$LAST_CREATED_ORDER_ID по ID" "GET" "$JWT_TOKEN"
+    else
+        echo -e "${YELLOW}⚠️ Не удалось создать заказы, пропускаем тест получения по ID${NC}"
+    fi
 
     # 8. АДМИНИСТРАТИВНЫЙ API
     echo -e "${BLUE}8. АДМИНИСТРАТИВНЫЙ API${NC}"
@@ -575,17 +613,42 @@ if [ -n "$JWT_TOKEN" ]; then
             test_endpoint "/api/v1/cart/items/1" "Удалить товар из корзины (Telegram)" "DELETE" "$TELEGRAM_JWT_TOKEN"
             cart_add_simple='{"productId": 1, "quantity": 1}'
             test_endpoint "/api/v1/cart/items" "Добавить товар для заказа (Telegram)" "POST" "$TELEGRAM_JWT_TOKEN" "$cart_add_simple"
+            
+            # Создаем заказы и сохраняем их ID
+            TELEGRAM_ORDER_IDS=()
+            
             # Заказ с deliveryLocationId
             order_data_location='{"deliveryLocationId": 1, "contactName": "Telegram User", "contactPhone": "+79001234567", "comment": "Telegram заказ с пунктом выдачи"}'
             test_order_creation "$order_data_location" "Создать заказ с пунктом выдачи (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            if [ -n "$LAST_CREATED_ORDER_ID" ]; then
+                TELEGRAM_ORDER_IDS+=("$LAST_CREATED_ORDER_ID")
+            fi
+            
             # Заказ с deliveryAddress
             order_data_address='{"deliveryAddress": "ул. Telegram, д. 1", "contactName": "Telegram User", "contactPhone": "+79001234567", "notes": "Telegram заказ с адресом"}'
             test_order_creation "$order_data_address" "Создать заказ с адресом доставки (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            if [ -n "$LAST_CREATED_ORDER_ID" ]; then
+                TELEGRAM_ORDER_IDS+=("$LAST_CREATED_ORDER_ID")
+            fi
+            
             # Заказ с обоими полями
             order_data_both='{"deliveryLocationId": 1, "deliveryAddress": "ул. Игнорируемая, д. 999", "contactName": "Telegram User", "contactPhone": "+79005555555", "comment": "Telegram заказ", "notes": "Telegram notes"}'
             test_order_creation "$order_data_both" "Создать заказ с двумя типами адреса (Telegram)" "$TELEGRAM_JWT_TOKEN"
+            if [ -n "$LAST_CREATED_ORDER_ID" ]; then
+                TELEGRAM_ORDER_IDS+=("$LAST_CREATED_ORDER_ID")
+            fi
+            
+            # Тестируем получение заказов
             test_endpoint "/api/v1/orders" "Получить заказы пользователя (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
-            test_endpoint "/api/v1/orders/1" "Получить заказ по ID (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            
+            # Тестируем получение конкретного заказа (используем первый созданный)
+            if [ ${#TELEGRAM_ORDER_IDS[@]} -gt 0 ]; then
+                FIRST_TELEGRAM_ORDER_ID="${TELEGRAM_ORDER_IDS[0]}"
+                test_endpoint "/api/v1/orders/$FIRST_TELEGRAM_ORDER_ID" "Получить заказ #$FIRST_TELEGRAM_ORDER_ID по ID (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
+            else
+                echo -e "${YELLOW}⚠️ Не удалось создать заказы для Telegram пользователя, пропускаем тест получения по ID${NC}"
+            fi
+            
             # Проверка формата номера телефона (ручная)
             echo -e "${YELLOW}Проверьте в БД, что номер телефона Telegram-пользователя сохранён в формате +7...${NC}"
         else

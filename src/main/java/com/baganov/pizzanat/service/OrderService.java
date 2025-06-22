@@ -118,8 +118,9 @@ public class OrderService {
 
         // Отправка Telegram уведомлений о новом заказе
         try {
-            // Уведомление администраторов
-            telegramBotService.sendNewOrderNotification(order);
+            // Уведомление администраторов через AdminBotService (правильный способ)
+            // TelegramBotService отключен из-за неправильной конфигурации chat ID
+            // telegramBotService.sendNewOrderNotification(order);
 
             // Персональное уведомление пользователю (если у него есть Telegram ID)
             telegramUserNotificationService.sendPersonalNewOrderNotification(order);
@@ -127,6 +128,7 @@ public class OrderService {
             // Публикуем событие о новом заказе для админского бота
             eventPublisher.publishEvent(new NewOrderEvent(this, order));
             log.debug("Событие о новом заказе #{} опубликовано", order.getId());
+            log.debug("Уведомления администраторам отправляются через AdminBotService автоматически");
         } catch (Exception e) {
             log.error("Ошибка отправки Telegram уведомления о новом заказе #{}: {}", order.getId(), e.getMessage());
         }
@@ -307,15 +309,22 @@ public class OrderService {
      */
     private void sendTelegramNotificationSafely(Order order, String oldStatusName, String newStatusName) {
         try {
-            // Уведомление администраторов
-            if (telegramBotService != null) {
-                telegramBotService.sendOrderStatusUpdateNotification(order, oldStatusName, newStatusName);
-                log.debug("Telegram уведомление администраторам об изменении статуса заказа #{} успешно отправлено",
-                        order.getId());
-            } else {
-                log.warn("TelegramBotService недоступен, уведомление администраторам не отправлено для заказа #{}",
-                        order.getId());
-            }
+            // Уведомление администраторов через AdminBotService (правильный способ)
+            // TelegramBotService отключен из-за неправильной конфигурации chat ID
+            // if (telegramBotService != null) {
+            // telegramBotService.sendOrderStatusUpdateNotification(order, oldStatusName,
+            // newStatusName);
+            // log.debug("Telegram уведомление администраторам об изменении статуса заказа
+            // #{} успешно отправлено",
+            // order.getId());
+            // } else {
+            // log.warn("TelegramBotService недоступен, уведомление администраторам не
+            // отправлено для заказа #{}",
+            // order.getId());
+            // }
+
+            log.debug(
+                    "Уведомления администраторам отправляются через AdminBotService автоматически при изменении статуса");
 
             // Персональное уведомление пользователю (если у него есть Telegram ID)
             if (telegramUserNotificationService != null) {

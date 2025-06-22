@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -101,13 +102,24 @@ public class PizzaNatAdminBot extends TelegramLongPollingBot {
         Long chatId = callbackQuery.getMessage().getChatId();
         Integer messageId = callbackQuery.getMessage().getMessageId();
         String callbackData = callbackQuery.getData();
+        String callbackQueryId = callbackQuery.getId();
 
         log.debug("Получен callback: chatId={}, data={}", chatId, callbackData);
 
-        if (callbackHandler != null) {
-            callbackHandler.handleCallback(chatId, messageId, callbackData);
-        } else {
-            log.warn("AdminBotCallbackHandler не инициализирован");
+        try {
+            // Отвечаем на callback query для предотвращения дублированных вызовов
+            AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
+            answerCallbackQuery.setCallbackQueryId(callbackQueryId);
+            answerCallbackQuery.setText("Обрабатываем...");
+            execute(answerCallbackQuery);
+
+            if (callbackHandler != null) {
+                callbackHandler.handleCallback(chatId, messageId, callbackData);
+            } else {
+                log.warn("AdminBotCallbackHandler не инициализирован");
+            }
+        } catch (TelegramApiException e) {
+            log.error("Ошибка обработки callback query: {}", e.getMessage());
         }
     }
 

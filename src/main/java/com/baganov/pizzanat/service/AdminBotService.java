@@ -127,6 +127,27 @@ public class AdminBotService {
 
             // Обновляем статус заказа с отправкой уведомлений пользователям
             try {
+                // Проверяем текущий статус заказа перед изменением
+                Optional<Order> orderOpt = orderService.findById(orderId);
+                if (orderOpt.isPresent()) {
+                    Order currentOrder = orderOpt.get();
+                    String currentStatus = currentOrder.getStatus().getName();
+
+                    // Если статус уже установлен, не выполняем изменение
+                    if (newStatusStr.equalsIgnoreCase(currentStatus)) {
+                        String alreadySetMessage = String.format(
+                                "ℹ️ *Статус заказа #%d уже установлен*\n\n" +
+                                        "Текущий статус: %s\n" +
+                                        "Изменений не требуется",
+                                orderId,
+                                getStatusDisplayNameByString(newStatusStr));
+                        telegramAdminNotificationService.sendMessage(chatId, alreadySetMessage, true);
+
+                        log.info("Статус заказа #{} уже установлен на {}, пропускаем изменение", orderId, newStatusStr);
+                        return;
+                    }
+                }
+
                 OrderDTO updatedOrder = orderService.updateOrderStatus(orderId.intValue(), newStatusStr);
 
                 String statusDisplayName = getStatusDisplayNameByString(newStatusStr);
@@ -275,47 +296,96 @@ public class AdminBotService {
     }
 
     /**
+     * Экранирование специальных символов для Markdown
+     */
+    private String escapeMarkdown(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        // Экранируем специальные символы Markdown
+        return text.replace("_", "\\_")
+                .replace("*", "\\*")
+                .replace("[", "\\[")
+                .replace("]", "\\]")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replace("~", "\\~")
+                .replace("`", "\\`")
+                .replace(">", "\\>")
+                .replace("#", "\\#")
+                .replace("+", "\\+")
+                .replace("-", "\\-")
+                .replace("=", "\\=")
+                .replace("|", "\\|")
+                .replace("{", "\\{")
+                .replace("}", "\\}")
+                .replace(".", "\\.")
+                .replace("!", "\\!");
+    }
+
+    /**
      * Форматирование сообщения о новом заказе
      */
     private String formatNewOrderMessage(Order order) {
         StringBuilder message = new StringBuilder();
         message.append("🆕 *НОВЫЙ ЗАКАЗ #").append(order.getId()).append("*\n\n");
 
-        // Информация о клиенте
+        message.append("🕐 *Время заказа:* ")
+                .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
+
+        // Информация о пользователе из системы
         if (order.getUser() != null) {
-            message.append("👤 *Клиент:* ").append(order.getUser().getFirstName());
+            message.append("👤 *ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ*\n");
+            message.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()));
             if (order.getUser().getLastName() != null) {
-                message.append(" ").append(order.getUser().getLastName());
+                message.append(" ").append(escapeMarkdown(order.getUser().getLastName()));
             }
             message.append("\n");
 
-            if (order.getUser().getPhone() != null) {
-                message.append("📞 *Телефон:* ").append(order.getUser().getPhone()).append("\n");
+            if (order.getUser().getUsername() != null) {
+                message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
             }
+
+            if (order.getUser().getPhone() != null) {
+                message.append("Телефон: ").append(escapeMarkdown(order.getUser().getPhone())).append("\n");
+            }
+
+            if (order.getUser().getEmail() != null) {
+                message.append("Email: ").append(escapeMarkdown(order.getUser().getEmail())).append("\n");
+            }
+            message.append("\n");
         }
+
+        // Контактные данные заказа
+        message.append("📞 *КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА*\n");
+        message.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
+        message.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
 
         // Адрес доставки
         if (order.getDeliveryAddress() != null) {
-            message.append("📍 *Адрес:* ").append(order.getDeliveryAddress()).append("\n");
+            message.append("📍 *ДОСТАВКА*\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n\n");
+        } else if (order.getDeliveryLocation() != null) {
+            message.append("📍 *ПУНКТ ВЫДАЧИ*\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryLocation().getAddress())).append("\n\n");
         }
 
-        message.append("\n*Состав заказа:*\n");
+        // Комментарий
+        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
+            message.append("💬 *Комментарий:* ").append(escapeMarkdown(order.getComment())).append("\n\n");
+        }
 
-        // Товары в заказе
+        // Состав заказа
+        message.append("🛒 *СОСТАВ ЗАКАЗА*\n");
         for (OrderItem item : order.getItems()) {
-            message.append("• ").append(item.getProduct().getName())
+            message.append("• ").append(escapeMarkdown(item.getProduct().getName()))
                     .append(" x").append(item.getQuantity())
                     .append(" = ").append(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
                     .append(" ₽\n");
         }
 
-        message.append("\n💰 *Общая сумма:* ").append(order.getTotalAmount()).append(" ₽\n");
-        message.append("🕐 *Время заказа:* ")
-                .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
-
-        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
-            message.append("\n\n💬 *Комментарий:* ").append(order.getComment());
-        }
+        message.append("\n💰 *Общая сумма:* ").append(order.getTotalAmount()).append(" ₽");
 
         return message.toString();
     }
@@ -336,28 +406,38 @@ public class AdminBotService {
                     .append(order.getUpdatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n");
         }
 
-        // Информация о клиенте
+        // Информация о пользователе системы
         if (order.getUser() != null) {
-            message.append("\n👤 *КЛИЕНТ*\n");
-            message.append("Имя: ").append(order.getUser().getFirstName());
+            message.append("\n👤 *ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ*\n");
+            message.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()));
             if (order.getUser().getLastName() != null) {
-                message.append(" ").append(order.getUser().getLastName());
+                message.append(" ").append(escapeMarkdown(order.getUser().getLastName()));
             }
             message.append("\n");
 
+            if (order.getUser().getUsername() != null) {
+                message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+            }
+
             if (order.getUser().getPhone() != null) {
-                message.append("Телефон: ").append(order.getUser().getPhone()).append("\n");
+                message.append("Телефон пользователя: ").append(escapeMarkdown(order.getUser().getPhone()))
+                        .append("\n");
             }
 
             if (order.getUser().getEmail() != null) {
-                message.append("Email: ").append(order.getUser().getEmail()).append("\n");
+                message.append("Email: ").append(escapeMarkdown(order.getUser().getEmail())).append("\n");
             }
         }
+
+        // Контактные данные заказа
+        message.append("\n📞 *КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА*\n");
+        message.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
+        message.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n");
 
         // Адрес доставки
         if (order.getDeliveryAddress() != null) {
             message.append("\n📍 *ДОСТАВКА*\n");
-            message.append("Адрес: ").append(order.getDeliveryAddress()).append("\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n");
         }
 
         // Детальный состав заказа
@@ -368,7 +448,7 @@ public class AdminBotService {
             BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
             totalAmount = totalAmount.add(itemTotal);
 
-            message.append("• ").append(item.getProduct().getName()).append("\n");
+            message.append("• ").append(escapeMarkdown(item.getProduct().getName())).append("\n");
             message.append("  Цена: ").append(item.getPrice()).append(" ₽\n");
             message.append("  Количество: ").append(item.getQuantity()).append("\n");
             message.append("  Сумма: ").append(itemTotal).append(" ₽\n\n");
@@ -377,7 +457,7 @@ public class AdminBotService {
         message.append("💰 *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*");
 
         if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
-            message.append("\n\n💬 *КОММЕНТАРИЙ*\n").append(order.getComment());
+            message.append("\n\n💬 *КОММЕНТАРИЙ*\n").append(escapeMarkdown(order.getComment()));
         }
 
         return message.toString();
@@ -458,24 +538,44 @@ public class AdminBotService {
 
             // Отправляем каждый заказ отдельным сообщением с кнопками
             for (Order order : activeOrders) {
-                String orderMessage = String.format(
-                        "🔸 *Заказ #%d*\n" +
-                                "Статус: %s\n" +
-                                "Сумма: %.2f ₽\n" +
-                                "Время: %s\n" +
-                                "Клиент: %s\n" +
-                                "Телефон: %s",
-                        order.getId(),
-                        getStatusDisplayName(order.getStatus()),
-                        order.getTotalAmount(),
-                        order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM HH:mm")),
-                        order.getContactName(),
-                        order.getContactPhone());
+                StringBuilder orderMessage = new StringBuilder();
+                orderMessage.append("🔸 *Заказ #").append(order.getId()).append("*\n");
+                orderMessage.append("Статус: ").append(getStatusDisplayName(order.getStatus())).append("\n");
+                orderMessage.append("Сумма: ").append(String.format("%.2f", order.getTotalAmount())).append(" ₽\n");
+                orderMessage.append("Время: ")
+                        .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM HH:mm"))).append("\n\n");
+
+                // Информация о пользователе системы
+                if (order.getUser() != null) {
+                    orderMessage.append("👤 *Пользователь:* ");
+                    orderMessage.append(escapeMarkdown(order.getUser().getFirstName()));
+                    if (order.getUser().getLastName() != null) {
+                        orderMessage.append(" ").append(escapeMarkdown(order.getUser().getLastName()));
+                    }
+                    if (order.getUser().getUsername() != null) {
+                        orderMessage.append(" (@").append(escapeMarkdown(order.getUser().getUsername())).append(")");
+                    }
+                    orderMessage.append("\n");
+
+                    if (order.getUser().getPhone() != null) {
+                        orderMessage.append("📱 *Телефон пользователя:* ")
+                                .append(escapeMarkdown(order.getUser().getPhone()))
+                                .append("\n");
+                    }
+                    orderMessage.append("\n");
+                }
+
+                // Контактные данные заказа
+                orderMessage.append("📞 *Контакт заказа:* ").append(escapeMarkdown(order.getContactName()))
+                        .append("\n");
+                orderMessage.append("📞 *Телефон заказа:* ").append(escapeMarkdown(order.getContactPhone()));
+
+                String finalMessage = orderMessage.toString();
 
                 InlineKeyboardMarkup keyboard = telegramAdminNotificationService
                         .createOrderManagementKeyboard(order.getId().longValue());
 
-                telegramAdminNotificationService.sendMessageWithButtons(chatId, orderMessage, keyboard);
+                telegramAdminNotificationService.sendMessageWithButtons(chatId, finalMessage, keyboard);
             }
 
             log.debug("Отправлено {} активных заказов с кнопками администратору: chatId={}", activeOrders.size(),
