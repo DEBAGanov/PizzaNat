@@ -36,7 +36,7 @@ public class ExolveService {
 
     /**
      * Асинхронная отправка SMS
-     * 
+     *
      * @param phoneNumber номер телефона в формате +7XXXXXXXXXX
      * @param message     текст сообщения
      * @return CompletableFuture с результатом отправки
@@ -54,7 +54,7 @@ public class ExolveService {
 
     /**
      * Синхронная отправка SMS с повторными попытками
-     * 
+     *
      * @param phoneNumber номер телефона в формате +7XXXXXXXXXX
      * @param message     текст сообщения
      * @return true если SMS отправлено успешно
@@ -78,7 +78,7 @@ public class ExolveService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(exolveConfig.getExolveApiKey());
+            headers.set("Authorization", "Bearer " + exolveConfig.getExolveApiKey());
 
             HttpEntity<ExolveRequest> entity = new HttpEntity<>(request, headers);
 
@@ -111,7 +111,7 @@ public class ExolveService {
 
     /**
      * Проверка доступности сервиса Exolve
-     * 
+     *
      * @return true если сервис доступен
      */
     public boolean isServiceAvailable() {
@@ -131,7 +131,7 @@ public class ExolveService {
 
     /**
      * Генерация текста SMS сообщения с кодом
-     * 
+     *
      * @param code 4-значный код подтверждения
      * @return отформатированное сообщение
      */
@@ -142,7 +142,7 @@ public class ExolveService {
     /**
      * Нормализует номер телефона для Exolve API
      * Убирает '+' и оставляет только цифры, начинающиеся с '79'
-     * 
+     *
      * @param phoneNumber номер в формате +7XXXXXXXXXX или 7XXXXXXXXXX
      * @return номер в формате 79XXXXXXXXX
      */

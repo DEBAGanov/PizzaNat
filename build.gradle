@@ -31,6 +31,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -43,7 +44,8 @@ dependencies {
     // БД
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
-    runtimeOnly 'org.postgresql:postgresql'
+    	runtimeOnly 'org.postgresql:postgresql'
+	runtimeOnly 'com.h2database:h2' // H2 база для тестирования
 
     // H2 для тестов
     testRuntimeOnly 'com.h2database:h2'
