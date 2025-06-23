@@ -4,7 +4,8 @@ echo "🚀 Comprehensive тестирование PizzaNat API"
 
 #BASE_URL="https://debaganov-pizzanat-d8fb.twc1.net"
 #BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
-BASE_URL="http://localhost:8080"
+#BASE_URL="http://localhost:8080"
+BASE_URL="https://debaganov-pizzanat-d634.twc1.net"
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
@@ -240,14 +241,14 @@ if [ -n "$JWT_TOKEN" ]; then
 
     # Отправка SMS кода (ТОЛЬКО ОДИН ЗАПРОС!)
     sms_send_data='{"phoneNumber": "'$SMS_TEST_PHONE'"}'
-    
+
     # Используем временный файл для получения и тела ответа, и HTTP кода одним запросом
     temp_sms_file=$(mktemp)
     sms_send_code=$(curl -s -L -w '%{http_code}' -o "$temp_sms_file" -X POST "$BASE_URL/api/v1/auth/sms/send-code" \
       -H "Content-Type: application/json" \
       -H "Accept: application/json" \
       -d "$sms_send_data")
-    
+
     sms_send_response=$(cat "$temp_sms_file")
     rm -f "$temp_sms_file"
 
