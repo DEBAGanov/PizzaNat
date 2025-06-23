@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.baganov.pizzanat.util.TimeZoneUtils;
 
 @Data
 @Builder
@@ -72,12 +73,12 @@ public class Order {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = TimeZoneUtils.nowInMoscow();
+        updatedAt = TimeZoneUtils.nowInMoscow();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = TimeZoneUtils.nowInMoscow();
     }
 }

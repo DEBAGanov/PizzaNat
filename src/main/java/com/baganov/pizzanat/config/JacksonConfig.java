@@ -12,6 +12,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import java.util.TimeZone;
 
 @Configuration
 public class JacksonConfig {
@@ -26,6 +27,9 @@ public class JacksonConfig {
 
         // Отключаем сериализацию дат как timestamps
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // Устанавливаем московскую временную зону для Jackson
+        mapper.setTimeZone(TimeZone.getTimeZone("Europe/Moscow"));
 
         // Настройки для корректной работы
         mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);

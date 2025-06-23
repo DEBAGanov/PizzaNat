@@ -1,0 +1,163 @@
+# 🚀 PizzaNat - Переменные окружения
+# Скопируйте этот файл в .env и настройте под ваши нужды
+# cp env-template.txt .env
+
+# ====================================================================
+# 🔒 КРИТИЧНЫЕ ПЕРЕМЕННЫЕ (ОБЯЗАТЕЛЬНО ИЗМЕНИТЬ ДЛЯ PRODUCTION!)
+# ====================================================================
+
+# База данных (ОБЯЗАТЕЛЬНО установить пароль!)
+TIMEWEB_DB_PASSWORD=your_secure_database_password_here
+
+# JWT секретный ключ (рекомендуется сгенерировать новый)
+JWT_SECRET=YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg==
+
+# ====================================================================
+# 🌐 ОСНОВНЫЕ НАСТРОЙКИ ПРИЛОЖЕНИЯ
+# ====================================================================
+
+# Spring профиль (dev, prod, test)
+SPRING_PROFILES_ACTIVE=prod
+
+# Порт приложения
+SERVER_PORT=8080
+
+# Временная зона
+CONTAINER_TIMEZONE=Europe/Moscow
+JVM_TIMEZONE=Europe/Moscow
+JPA_TIMEZONE=Europe/Moscow
+
+# ====================================================================
+# 🗄️ БАЗА ДАННЫХ
+# ====================================================================
+
+# Подключение к базе данных Timeweb
+TIMEWEB_DB_URL=jdbc:postgresql://45.10.41.59:5432/default_db
+TIMEWEB_DB_USER=gen_user
+# TIMEWEB_DB_PASSWORD - установлен выше
+
+# Настройки пула соединений
+DB_POOL_MAX_SIZE=8
+DB_POOL_MIN_IDLE=2
+DB_CONNECTION_TIMEOUT=30000
+DB_IDLE_TIMEOUT=300000
+DB_MAX_LIFETIME=1200000
+DB_LEAK_DETECTION_THRESHOLD=60000
+
+# ====================================================================
+# 🗂️ ФАЙЛОВОЕ ХРАНИЛИЩЕ TIMEWEB S3
+# ====================================================================
+
+TIMEWEB_S3_ACCESS_KEY=AJK63DSBOEBQD3IVTLOT
+TIMEWEB_S3_SECRET_KEY=eOkZ8nzUkylhcsgPRQVJdr8qmvblxvaq7zoEcNpk
+TIMEWEB_S3_ENDPOINT=https://s3.twcstorage.ru
+TIMEWEB_S3_BUCKET=f9c8e17a-pizzanat-products
+TIMEWEB_S3_PUBLIC_URL=https://s3.twcstorage.ru/f9c8e17a-pizzanat-products
+
+# ====================================================================
+# 📱 SMS АВТОРИЗАЦИЯ (EXOLVE API)
+# ====================================================================
+
+# Exolve API настройки
+EXOLVE_API_KEY=eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJRV05sMENiTXY1SHZSV29CVUpkWjVNQURXSFVDS0NWODRlNGMzbEQtVHA0In0.eyJleHAiOjIwNjU1MTM0MTMsImlhdCI6MTc1MDE1MzQxMywianRpIjoiMzIyNDBhZTAtNzU2Ni00NDhkLWEzZGUtYjFjZDBjODlkNTU0IiwiaXNzIjoiaHR0cHM6Ly9zc28uZXhvbHZlLnJ1L3JlYWxtcy9FeG9sdmUiLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiZDZkYjE4ZDEtOWRhNS00NjRmLWI0ODYtMjI5NGQzMDk2ODI5IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiY2IxNGFjMTQtODU4OS00MjkzLWJkZjktNGE3M2VkYTRmMzQxIiwic2Vzc2lvbl9zdGF0ZSI6ImUzM2EwYzY1LWFkYTctNGU1My1iYmRmLTQzNDJhNTk0OTE1OCIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsiZGVmYXVsdC1yb2xlcy1leG9sdmUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJleG9sdmVfYXBwIHByb2ZpbGUgZW1haWwiLCJzaWQiOiJlMzNhMGM2NS1hZGE3LTRlNTMtYmJkZi00MzQyYTU5NDkxNTgiLCJ1c2VyX3V1aWQiOiI4NDY2MzRkNy0zYTNlLTRiMzMtODdkNy01MDgzZGRlNmYxOWIiLCJjbGllbnRJZCI6ImNiMTRhYzE0LTg1ODktNDI5My1iZGY5LTRhNzNlZGE0ZjM0MSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiY2xpZW50SG9zdCI6IjE3Mi4xNi4xNjEuMTkiLCJhcGlfa2V5Ijp0cnVlLCJhcGlmb25pY2Ffc2lkIjoiY2IxNGFjMTQtODU4OS00MjkzLWJkZjktNGE3M2VkYTRmMzQxIiwiYmlsbGluZ19udW1iZXIiOiIxMzMyNTgzIiwiYXBpZm9uaWNhX3Rva2VuIjoiYXV0ZDJlYTgxNGItMWM4Zi00ODRkLWE0MjgtMjY5YTZjOWM2NmY2IiwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LWNiMTRhYzE0LTg1ODktNDI5My1iZGY5LTRhNzNlZGE0ZjM0MSIsImN1c3RvbWVyX2lkIjoiMTM1ODk5IiwiY2xpZW50QWRkcmVzcyI6IjE3Mi4xNi4xNjEuMTkifQ.AFj1waE8M77SL26g9poSbRYEWeiV9Wy2ZonUnI4JJDF4uBP1D90YjTUOayHCPRbryBp6gU-cszAndQMlQsT5JLNhs88X7uo08XTY52Q9ghfdpEH22uG5AFxtWTr5450TfgLyl38goA76Xpd88xu3SHUJFEaScSGUjLaoZ1TKmvDnzdG1ZExtiARhUNRQ0eqlfkkfmYDiq_injddMk1Qub6TfC4zH4O2C0o4rUr9hIruXZe9ciKZAzZ_2hdys52vV8dN99OY5ghVRyysPAo05lScPDDMEpT2F6BwfZEQSH8r7WqOU3acxSI64gqmOFTczGZlsE7o09b_NlehqXIuHDg
+EXOLVE_SENDER_NAME=+79304410750
+EXOLVE_API_URL=https://api.exolve.ru/messaging/v1
+EXOLVE_TIMEOUT=10
+EXOLVE_RETRIES=3
+
+# SMS настройки
+SMS_CODE_LENGTH=4
+SMS_CODE_TTL=10
+SMS_RATE_LIMIT=3
+SMS_MAX_ATTEMPTS=3
+
+# ====================================================================
+# 🤖 TELEGRAM БОТЫ
+# ====================================================================
+
+# Telegram Gateway (для веб-авторизации)
+TELEGRAM_GATEWAY_ENABLED=true
+TELEGRAM_GATEWAY_ACCESS_TOKEN=AAGCGwAAIlEzNcCeEbrV5r-w65s_0edegXThOhJ2nq-eBw
+TELEGRAM_GATEWAY_TTL=300
+TELEGRAM_GATEWAY_CALLBACK_URL=https://debaganov-pizzanat-0177.twc1.net/api/v1/auth/telegram-gateway/callback
+TELEGRAM_GATEWAY_TIMEOUT=10
+TELEGRAM_GATEWAY_RETRIES=3
+
+# Основной пользовательский бот @PizzaNatBot
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_ENABLED=true
+TELEGRAM_LONGPOLLING_ENABLED=true
+TELEGRAM_AUTH_BOT_TOKEN=7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
+TELEGRAM_BOT_USERNAME=PizzaNatBot
+TELEGRAM_API_URL=https://api.telegram.org/bot
+
+# Telegram Auth настройки (в данный момент отключены)
+TELEGRAM_AUTH_ENABLED=false
+TELEGRAM_AUTH_WEBHOOK_URL=https://debaganov-pizzanat-0177.twc1.net/api/v1/telegram/webhook
+TELEGRAM_AUTH_WEBHOOK_ENABLED=false
+TELEGRAM_AUTH_TTL=10
+TELEGRAM_AUTH_RATE_LIMIT=5
+
+# Админский бот @PizzaNatOrders_bot (для уведомлений о заказах)
+TELEGRAM_ADMIN_BOT_ENABLED=true
+TELEGRAM_ADMIN_BOT_TOKEN=8052456616:AAEoAzBfr3jRpylDmxR-azNBSqimthPCHeg
+TELEGRAM_ADMIN_BOT_USERNAME=PizzaNatOrders_bot
+TELEGRAM_ADMIN_BOT_RETRIES=3
+TELEGRAM_ADMIN_BOT_TIMEOUT=30
+
+# ====================================================================
+# 🔧 JVM И ПРОИЗВОДИТЕЛЬНОСТЬ
+# ====================================================================
+
+# JVM настройки
+JVM_MAX_RAM_PERCENTAGE=70.0
+
+# Кэширование
+CACHE_TYPE=simple
+
+# JPA/Hibernate настройки
+JPA_DDL_AUTO=validate
+JPA_SHOW_SQL=false
+JPA_BATCH_SIZE=25
+JPA_ORDER_INSERTS=true
+JPA_ORDER_UPDATES=true
+JPA_BATCH_VERSIONED_DATA=true
+
+# ====================================================================
+# 📊 ЛОГИРОВАНИЕ И МОНИТОРИНГ
+# ====================================================================
+
+# Уровни логирования
+LOG_LEVEL_ROOT=WARN
+LOG_LEVEL_APP=INFO
+LOG_LEVEL_SPRING_WEB=WARN
+LOG_LEVEL_SPRING_SECURITY=WARN
+LOG_PATTERN=%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+
+# Actuator (мониторинг)
+ACTUATOR_ENDPOINTS=health,info,metrics
+ACTUATOR_HEALTH_DETAILS=never
+ACTUATOR_HEALTH_ENABLED=true
+ACTUATOR_PORT=8080
+
+# Health Check настройки
+HEALTH_CHECK_INTERVAL=30s
+HEALTH_CHECK_TIMEOUT=10s
+HEALTH_CHECK_RETRIES=3
+HEALTH_CHECK_START_PERIOD=90s
+
+# ====================================================================
+# 🛠️ ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ ДЛЯ РАЗРАБОТКИ
+# ====================================================================
+
+# Раскомментируйте для dev режима:
+# SPRING_PROFILES_ACTIVE=dev
+# LOG_LEVEL_ROOT=INFO
+# LOG_LEVEL_APP=DEBUG
+# JPA_SHOW_SQL=true
+# ACTUATOR_HEALTH_DETAILS=when_authorized
+
+# Раскомментируйте для отладки:
+# LOG_LEVEL_ROOT=DEBUG
+# LOG_LEVEL_SPRING_WEB=DEBUG
+# JPA_SHOW_SQL=true

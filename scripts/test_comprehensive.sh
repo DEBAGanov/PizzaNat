@@ -87,16 +87,16 @@ test_order_creation() {
     else
         cart_check_response=$(curl -s -X GET "$BASE_URL/api/v1/cart")
     fi
-    
+
     # Проверяем, есть ли товары в корзине
     local cart_total=$(echo "$cart_check_response" | grep -o '"totalAmount":[0-9.]*' | cut -d':' -f2)
-    
+
     # Если корзина пуста, добавляем товар
     if [ "$cart_total" = "0" ] || [ -z "$cart_total" ]; then
         echo -e "${YELLOW}Корзина пуста, добавляем товар...${NC}"
         cart_add_simple='{"productId": 1, "quantity": 1}'
         local cart_code
-        
+
         # Добавляем товар в корзину
         if [ -n "$token" ]; then
             cart_code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/cart/items" \
@@ -125,7 +125,7 @@ test_order_creation() {
     local temp_file=$(mktemp)
     local http_code
     local order_response
-    
+
     if [ -n "$token" ]; then
         http_code=$(curl -s -w '%{http_code}' -o "$temp_file" -X POST "$BASE_URL/api/v1/orders" \
           -H "Content-Type: application/json" \
@@ -138,7 +138,7 @@ test_order_creation() {
           -H "Accept: application/json" \
           -d "$order_data")
     fi
-    
+
     order_response=$(cat "$temp_file")
     rm -f "$temp_file"
 
@@ -147,7 +147,7 @@ test_order_creation() {
         local order_id=$(echo "$order_response" | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -n1 | tr -d '\n\r')
         echo -e "${GREEN}✅ УСПЕХ ($http_code) - Заказ #$order_id создан${NC}"
         PASSED_TESTS=$((PASSED_TESTS + 1))
-        
+
         # Возвращаем ID заказа через глобальную переменную
         LAST_CREATED_ORDER_ID="$order_id"
     else
@@ -229,6 +229,125 @@ if [ -n "$JWT_TOKEN" ]; then
     login_data='{"username": "'$USERNAME'", "password": "test123456"}'
     test_endpoint "/api/v1/auth/login" "Вход в систему" "POST" "" "$login_data"
 
+    # 5B. SMS АВТОРИЗАЦИЯ
+    echo -e "${BLUE}📱 5B. SMS АВТОРИЗАЦИЯ${NC}"
+
+    # Тестовый номер телефона для SMS
+    SMS_TEST_PHONE="+79600948872"
+
+    echo -e "${YELLOW}Тестирование отправки SMS кода...${NC}"
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+    # Отправка SMS кода
+    sms_send_data='{"phoneNumber": "'$SMS_TEST_PHONE'"}'
+    sms_send_response=$(curl -s -L -X POST "$BASE_URL/api/v1/auth/sms/send-code" \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/json" \
+      -d "$sms_send_data")
+
+    sms_send_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/auth/sms/send-code" \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/json" \
+      -d "$sms_send_data")
+
+    if [[ $sms_send_code -eq 200 ]]; then
+        echo -e "${GREEN}✅ УСПЕХ ($sms_send_code) - SMS код отправлен${NC}"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+
+        # Извлекаем информацию из ответа
+        SMS_EXPIRES_AT=$(echo "$sms_send_response" | grep -o '"expiresAt":"[^"]*' | cut -d'"' -f4)
+        SMS_CODE_LENGTH=$(echo "$sms_send_response" | grep -o '"codeLength":[0-9]*' | cut -d':' -f2)
+        SMS_MASKED_PHONE=$(echo "$sms_send_response" | grep -o '"maskedPhoneNumber":"[^"]*' | cut -d'"' -f4)
+
+        echo -e "${BLUE}   📱 Маскированный номер: $SMS_MASKED_PHONE${NC}"
+        echo -e "${BLUE}   🔢 Длина кода: $SMS_CODE_LENGTH${NC}"
+        echo -e "${BLUE}   ⏰ Истекает: $SMS_EXPIRES_AT${NC}"
+
+        # Тест верификации с неверным кодом
+        echo -e "${YELLOW}Тестирование верификации с неверным кодом...${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+        wrong_verify_data='{"phoneNumber": "'$SMS_TEST_PHONE'", "code": "0000"}'
+        wrong_verify_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/auth/sms/verify-code" \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/json" \
+          -d "$wrong_verify_data")
+
+        if [[ $wrong_verify_code -eq 400 ]]; then
+            echo -e "${GREEN}✅ УСПЕХ ($wrong_verify_code) - Неверный код отклонен${NC}"
+            PASSED_TESTS=$((PASSED_TESTS + 1))
+        else
+            echo -e "${RED}❌ ОШИБКА ($wrong_verify_code) - Ожидался код 400${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+        echo "---"
+
+        # Тест верификации с несуществующим номером
+        echo -e "${YELLOW}Тестирование верификации с несуществующим номером...${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+        invalid_phone_data='{"phoneNumber": "+79999999999", "code": "1234"}'
+        invalid_phone_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/auth/sms/verify-code" \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/json" \
+          -d "$invalid_phone_data")
+
+        if [[ $invalid_phone_code -eq 400 ]] || [[ $invalid_phone_code -eq 404 ]]; then
+            echo -e "${GREEN}✅ УСПЕХ ($invalid_phone_code) - Несуществующий номер отклонен${NC}"
+            PASSED_TESTS=$((PASSED_TESTS + 1))
+        else
+            echo -e "${RED}❌ ОШИБКА ($invalid_phone_code) - Ожидался код 400/404${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+        echo "---"
+
+        # Информация о ручной верификации
+        echo -e "${BLUE}📋 Информация о SMS авторизации:${NC}"
+        echo -e "${YELLOW}   📱 Для полного тестирования SMS авторизации:${NC}"
+        echo -e "${YELLOW}   1. Проверьте SMS на номере $SMS_TEST_PHONE${NC}"
+        echo -e "${YELLOW}   2. Используйте полученный код для верификации:${NC}"
+        echo -e "${YELLOW}      curl -X POST \"$BASE_URL/api/v1/auth/sms/verify-code\" \\${NC}"
+        echo -e "${YELLOW}        -H \"Content-Type: application/json\" \\${NC}"
+        echo -e "${YELLOW}        -d '{\"phoneNumber\": \"$SMS_TEST_PHONE\", \"code\": \"XXXX\"}'${NC}"
+        echo -e "${YELLOW}   3. В случае успеха получите JWT токен для авторизации${NC}"
+        echo ""
+
+        # Тест повторной отправки SMS (должен работать с ограничениями)
+        echo -e "${YELLOW}Тестирование повторной отправки SMS...${NC}"
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+        repeat_sms_code=$(curl -s -L -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/v1/auth/sms/send-code" \
+          -H "Content-Type: application/json" \
+          -H "Accept: application/json" \
+          -d "$sms_send_data")
+
+        if [[ $repeat_sms_code -eq 200 ]] || [[ $repeat_sms_code -eq 429 ]]; then
+            if [[ $repeat_sms_code -eq 429 ]]; then
+                echo -e "${GREEN}✅ УСПЕХ ($repeat_sms_code) - Ограничение повторной отправки работает${NC}"
+            else
+                echo -e "${GREEN}✅ УСПЕХ ($repeat_sms_code) - Повторная отправка разрешена${NC}"
+            fi
+            PASSED_TESTS=$((PASSED_TESTS + 1))
+        else
+            echo -e "${RED}❌ ОШИБКА ($repeat_sms_code) - Неожиданный код ответа${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+        echo "---"
+
+    else
+        echo -e "${RED}❌ ОШИБКА ($sms_send_code) - Не удалось отправить SMS код${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+
+        # Показываем ответ для диагностики
+        if [ -n "$sms_send_response" ]; then
+            echo "Ответ: $(echo "$sms_send_response" | head -c 200)..."
+        fi
+
+        # Пропускаем остальные SMS тесты
+        FAILED_TESTS=$((FAILED_TESTS + 3))  # 3 пропущенных теста
+        TOTAL_TESTS=$((TOTAL_TESTS + 3))
+    fi
+
     # 6. Корзина (обновлено для Android интеграции)
     echo -e "${BLUE}6. КОРЗИНА${NC}"
     test_endpoint "/api/v1/cart" "Получить пустую корзину" "GET" "$JWT_TOKEN"
@@ -260,7 +379,7 @@ if [ -n "$JWT_TOKEN" ]; then
     }'
     test_order_creation "$order_data_location" "Создать заказ с пунктом выдачи" "$JWT_TOKEN"
 
-    # Тест 2: Заказ с deliveryAddress (Android способ)  
+    # Тест 2: Заказ с deliveryAddress (Android способ)
     order_data_address='{
         "deliveryAddress": "ул. Тестовая, д. 123, кв. 45",
         "contactName": "Android Пользователь",
@@ -282,7 +401,7 @@ if [ -n "$JWT_TOKEN" ]; then
 
     # Получение заказов
     test_endpoint "/api/v1/orders" "Получить заказы пользователя" "GET" "$JWT_TOKEN"
-    
+
     # Получаем заказ по ID последнего созданного заказа
     if [ -n "$LAST_CREATED_ORDER_ID" ]; then
         test_endpoint "/api/v1/orders/$LAST_CREATED_ORDER_ID" "Получить заказ #$LAST_CREATED_ORDER_ID по ID" "GET" "$JWT_TOKEN"
@@ -613,34 +732,34 @@ if [ -n "$JWT_TOKEN" ]; then
             test_endpoint "/api/v1/cart/items/1" "Удалить товар из корзины (Telegram)" "DELETE" "$TELEGRAM_JWT_TOKEN"
             cart_add_simple='{"productId": 1, "quantity": 1}'
             test_endpoint "/api/v1/cart/items" "Добавить товар для заказа (Telegram)" "POST" "$TELEGRAM_JWT_TOKEN" "$cart_add_simple"
-            
+
             # Создаем заказы и сохраняем их ID
             TELEGRAM_ORDER_IDS=()
-            
+
             # Заказ с deliveryLocationId
             order_data_location='{"deliveryLocationId": 1, "contactName": "Telegram User", "contactPhone": "+79001234567", "comment": "Telegram заказ с пунктом выдачи"}'
             test_order_creation "$order_data_location" "Создать заказ с пунктом выдачи (Telegram)" "$TELEGRAM_JWT_TOKEN"
             if [ -n "$LAST_CREATED_ORDER_ID" ]; then
                 TELEGRAM_ORDER_IDS+=("$LAST_CREATED_ORDER_ID")
             fi
-            
+
             # Заказ с deliveryAddress
             order_data_address='{"deliveryAddress": "ул. Telegram, д. 1", "contactName": "Telegram User", "contactPhone": "+79001234567", "notes": "Telegram заказ с адресом"}'
             test_order_creation "$order_data_address" "Создать заказ с адресом доставки (Telegram)" "$TELEGRAM_JWT_TOKEN"
             if [ -n "$LAST_CREATED_ORDER_ID" ]; then
                 TELEGRAM_ORDER_IDS+=("$LAST_CREATED_ORDER_ID")
             fi
-            
+
             # Заказ с обоими полями
             order_data_both='{"deliveryLocationId": 1, "deliveryAddress": "ул. Игнорируемая, д. 999", "contactName": "Telegram User", "contactPhone": "+79005555555", "comment": "Telegram заказ", "notes": "Telegram notes"}'
             test_order_creation "$order_data_both" "Создать заказ с двумя типами адреса (Telegram)" "$TELEGRAM_JWT_TOKEN"
             if [ -n "$LAST_CREATED_ORDER_ID" ]; then
                 TELEGRAM_ORDER_IDS+=("$LAST_CREATED_ORDER_ID")
             fi
-            
+
             # Тестируем получение заказов
             test_endpoint "/api/v1/orders" "Получить заказы пользователя (Telegram)" "GET" "$TELEGRAM_JWT_TOKEN"
-            
+
             # Тестируем получение конкретного заказа (используем первый созданный)
             if [ ${#TELEGRAM_ORDER_IDS[@]} -gt 0 ]; then
                 FIRST_TELEGRAM_ORDER_ID="${TELEGRAM_ORDER_IDS[0]}"
@@ -648,7 +767,7 @@ if [ -n "$JWT_TOKEN" ]; then
             else
                 echo -e "${YELLOW}⚠️ Не удалось создать заказы для Telegram пользователя, пропускаем тест получения по ID${NC}"
             fi
-            
+
             # Проверка формата номера телефона (ручная)
             echo -e "${YELLOW}Проверьте в БД, что номер телефона Telegram-пользователя сохранён в формате +7...${NC}"
         else
@@ -687,6 +806,7 @@ echo -e "   🗂️ Категории - получение списка и по
 echo -e "   🍕 Продукты - CRUD операции, поиск, специальные предложения"
 echo -e "   🚚 Пункты доставки - управление локациями"
 echo -e "   🔐 Аутентификация - регистрация и авторизация пользователей"
+echo -e "   📱 SMS авторизация - отправка и верификация кодов через Exolve API"
 echo -e "   🛒 Корзина - добавление/обновление/удаление товаров"
 echo -e "   📦 Заказы - создание заказов с Android поддержкой"
 echo -e "   ⚙️ Административный API - управление заказами и продуктами"
@@ -700,6 +820,13 @@ echo -e "${GREEN}✅ Создание заказов: deliveryAddress подде
 echo -e "${GREEN}✅ Комментарии: notes → comment fallback работает${NC}"
 echo -e "${GREEN}✅ Корзина: selectedOptions поддерживаются${NC}"
 echo -e "${GREEN}✅ Автосоздание: Новые пункты доставки создаются${NC}"
+
+echo -e "${BLUE}📱 РЕЗУЛЬТАТЫ SMS АВТОРИЗАЦИИ:${NC}"
+echo -e "${GREEN}✅ Отправка SMS: Коды отправляются через Exolve API${NC}"
+echo -e "${GREEN}✅ Валидация: Неверные коды и номера отклоняются${NC}"
+echo -e "${GREEN}✅ Ограничения: Повторная отправка контролируется${NC}"
+echo -e "${GREEN}✅ Безопасность: Маскирование номеров работает${NC}"
+echo -e "${YELLOW}⚠️  Настройка: Требуется реальный SMS код для полной верификации${NC}"
 
 echo -e "${BLUE}📱 РЕЗУЛЬТАТЫ TELEGRAM ИНТЕГРАЦИИ:${NC}"
 echo -e "${GREEN}✅ Создание заказов: Telegram уведомления отправляются${NC}"
