@@ -7,7 +7,6 @@
 package com.baganov.pizzanat.util;
 
 import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -17,7 +16,6 @@ import java.time.ZonedDateTime;
  * Утилитный класс для работы с временными зонами.
  * Обеспечивает единообразную работу со временем в московской временной зоне.
  */
-@Slf4j
 @UtilityClass
 public class TimeZoneUtils {
 
@@ -74,9 +72,9 @@ public class TimeZoneUtils {
      * Логирование информации о временных зонах (для диагностики)
      */
     public static void logTimeZoneInfo() {
-        log.info("Системная временная зона: {}", getSystemTimeZone());
-        log.info("Московское время: {}", nowInMoscow());
-        log.info("UTC время: {}", LocalDateTime.now(ZoneId.of("UTC")));
-        log.info("Системное время: {}", LocalDateTime.now());
+        System.out.println("Системная временная зона: " + getSystemTimeZone());
+        System.out.println("Московское время: " + nowInMoscow());
+        System.out.println("UTC время: " + LocalDateTime.now(ZoneId.of("UTC")));
+        System.out.println("Системное время: " + LocalDateTime.now());
     }
 }

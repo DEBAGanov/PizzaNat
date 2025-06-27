@@ -40,7 +40,7 @@ public class YandexMapsAddressSuggestionService {
      */
     public List<AddressSuggestion> getYandexSuggestions(String query) {
         if (!yandexApiEnabled || yandexApiKey.isEmpty()) {
-            log.warn("Яндекс.Карты API не настроен");
+            log.debug("Яндекс.Карты API не настроен, используем локальную базу");
             return new ArrayList<>();
         }
 
@@ -91,15 +91,19 @@ public class YandexMapsAddressSuggestionService {
 
             if (response.getBody() != null &&
                     response.getBody().getResponse() != null &&
-                    response.getBody().getResponse().getGeoObjectCollection() != null) {
+                    response.getBody().getResponse().getGeoObjectCollection() != null &&
+                    response.getBody().getResponse().getGeoObjectCollection().getFeatureMember() != null) {
 
                 List<AddressSuggestion> suggestions = response.getBody()
                         .getResponse()
                         .getGeoObjectCollection()
                         .getFeatureMember()
                         .stream()
+                        .filter(featureMember -> featureMember != null && featureMember.getGeoObject() != null)
                         .map(this::convertToSuggestion)
-                        .filter(suggestion -> suggestion.getAddress().toLowerCase().contains("волжск"))
+                        .filter(suggestion -> suggestion != null &&
+                                suggestion.getAddress() != null &&
+                                suggestion.getAddress().toLowerCase().contains("волжск"))
                         .collect(Collectors.toList());
 
                 allResults.addAll(suggestions);
@@ -146,15 +150,19 @@ public class YandexMapsAddressSuggestionService {
 
             if (response.getBody() != null &&
                     response.getBody().getResponse() != null &&
-                    response.getBody().getResponse().getGeoObjectCollection() != null) {
+                    response.getBody().getResponse().getGeoObjectCollection() != null &&
+                    response.getBody().getResponse().getGeoObjectCollection().getFeatureMember() != null) {
 
                 List<AddressSuggestion> streets = response.getBody()
                         .getResponse()
                         .getGeoObjectCollection()
                         .getFeatureMember()
                         .stream()
+                        .filter(featureMember -> featureMember != null && featureMember.getGeoObject() != null)
                         .map(this::convertToSuggestion)
-                        .filter(suggestion -> suggestion.getAddress().toLowerCase().contains("волжск"))
+                        .filter(suggestion -> suggestion != null &&
+                                suggestion.getAddress() != null &&
+                                suggestion.getAddress().toLowerCase().contains("волжск"))
                         .collect(Collectors.toList());
 
                 log.info("Найдено {} улиц в Волжске", streets.size());
@@ -171,22 +179,50 @@ public class YandexMapsAddressSuggestionService {
      * Преобразование ответа Яндекс.Карт в нашу модель
      */
     private AddressSuggestion convertToSuggestion(YandexGeocoderResponse.FeatureMember featureMember) {
-        YandexGeocoderResponse.GeoObject geoObject = featureMember.getGeoObject();
-        String fullAddress = geoObject.getMetaDataProperty().getGeocoderMetaData().getText();
+        try {
+            if (featureMember == null || featureMember.getGeoObject() == null) {
+                return null;
+            }
 
-        // Извлекаем координаты
-        String[] coords = geoObject.getPoint().getPos().split(" ");
-        double longitude = Double.parseDouble(coords[0]); // долгота
-        double latitude = Double.parseDouble(coords[1]); // широта
+            YandexGeocoderResponse.GeoObject geoObject = featureMember.getGeoObject();
 
-        return AddressSuggestion.builder()
-                .address(fullAddress)
-                .shortAddress(extractShortAddress(fullAddress))
-                .latitude(latitude)
-                .longitude(longitude)
-                .source("yandex")
-                .metadata(geoObject.getMetaDataProperty().getGeocoderMetaData().getKind())
-                .build();
+            if (geoObject.getMetaDataProperty() == null ||
+                    geoObject.getMetaDataProperty().getGeocoderMetaData() == null ||
+                    geoObject.getPoint() == null ||
+                    geoObject.getPoint().getPos() == null) {
+                return null;
+            }
+
+            String fullAddress = geoObject.getMetaDataProperty().getGeocoderMetaData().getText();
+            if (fullAddress == null || fullAddress.trim().isEmpty()) {
+                return null;
+            }
+
+            // Извлекаем координаты
+            String[] coords = geoObject.getPoint().getPos().split(" ");
+            if (coords.length < 2) {
+                log.warn("Некорректные координаты для адреса: {}", fullAddress);
+                return null;
+            }
+
+            double longitude = Double.parseDouble(coords[0]); // долгота
+            double latitude = Double.parseDouble(coords[1]); // широта
+
+            String kind = geoObject.getMetaDataProperty().getGeocoderMetaData().getKind();
+
+            return AddressSuggestion.builder()
+                    .address(fullAddress)
+                    .shortAddress(extractShortAddress(fullAddress))
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .source("yandex")
+                    .metadata(kind != null ? kind : "unknown")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Ошибка преобразования ответа Яндекс.Карт в AddressSuggestion: {}", e.getMessage());
+            return null;
+        }
     }
 
     /**

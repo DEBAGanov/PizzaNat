@@ -73,10 +73,14 @@ public class SecurityConfig {
             "/api/v1/public/**",
             // Actuator
             "/actuator/**",
-            // Health check
+            // Health check (новые эндпоинты)
             "/health",
             "/api/health",
             "/api/status",
+            "/api/v1/health",
+            "/api/v1/health/**",
+            "/api/v1/ready",
+            "/api/v1/live",
             // Categories (только GET)
             "/api/v1/categories",
             "/api/v1/categories/*",
@@ -86,6 +90,20 @@ public class SecurityConfig {
             "/api/v1/products/category/*",
             "/api/v1/products/special-offers",
             "/api/v1/products/search",
+            // Delivery API (новые эндпоинты для мобильного приложения)
+            "/api/delivery/**",
+            "/api/v1/delivery/**",
+            "/api/delivery/health",
+            "/api/delivery/health/**",
+            "/api/delivery/ready",
+            "/api/delivery/live",
+            "/api/v1/delivery/address-suggestions",
+            "/api/v1/delivery/validate-address",
+            "/api/v1/delivery/estimate",
+            "/api/v1/delivery/locations",
+            "/api/v1/delivery/locations/*",
+            // Address API (автоподсказки адресов)
+            "/api/v1/address/**",
             // Delivery Locations (только GET для Android приложения)
             "/api/v1/delivery-locations",
             "/api/v1/delivery-locations/*",
