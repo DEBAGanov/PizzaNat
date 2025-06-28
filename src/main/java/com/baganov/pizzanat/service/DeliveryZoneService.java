@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,7 @@ public class DeliveryZoneService {
      * @param address адрес для проверки
      * @return зона доставки или пустой Optional если зона не найдена
      */
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public Optional<DeliveryZone> determineZoneByAddress(String address) {
         if (address == null || address.trim().isEmpty()) {
             log.warn("Пустой адрес для определения зоны доставки");
@@ -40,47 +43,94 @@ public class DeliveryZoneService {
         log.info("=== НАЧАЛО ОПРЕДЕЛЕНИЯ ЗОНЫ ДОСТАВКИ ===");
         log.info("Определение зоны доставки для адреса: {}", address);
 
-        List<DeliveryZone> activeZones = deliveryZoneRepository.findByIsActiveTrueOrderByPriorityDesc();
-        log.info("Найдено активных зон в БД: {}", activeZones.size());
+        try {
+            // ИСПРАВЛЕНИЕ: Загружаем коллекции отдельными запросами для избежания
+            // MultipleBagFetchException
+            // 1. Сначала загружаем зоны с улицами
+            List<DeliveryZone> activeZones = deliveryZoneRepository.findByIsActiveTrueWithStreets();
+            log.info("Найдено активных зон в БД: {}", activeZones.size());
 
-        for (DeliveryZone zone : activeZones) {
-            log.info("Проверка зоны: {} (ID: {}, приоритет: {}, улиц: {}, ключевых слов: {})",
-                    zone.getName(), zone.getId(), zone.getPriority(),
-                    zone.getStreets().size(), zone.getKeywords().size());
-
-            if (addressMatchesZone(address, zone)) {
-                log.info("✅ НАЙДЕНА ЗОНА: Адрес '{}' соответствует зоне: {} (стоимость: {}₽)",
-                        address, zone.getName(), zone.getBaseCost());
-                return Optional.of(zone);
-            } else {
-                log.info("❌ Адрес '{}' НЕ соответствует зоне: {}", address, zone.getName());
+            if (activeZones.isEmpty()) {
+                log.error("❌ В БД НЕТ АКТИВНЫХ ЗОН ДОСТАВКИ!");
+                return Optional.empty();
             }
-        }
 
-        log.warn("❌ НЕ НАЙДЕНА зона доставки для адреса: {}", address);
-        log.info("=== КОНЕЦ ОПРЕДЕЛЕНИЯ ЗОНЫ ДОСТАВКИ ===");
-        return Optional.empty();
+            // 2. Затем загружаем ключевые слова для всех найденных зон одним запросом
+            List<Integer> zoneIds = activeZones.stream()
+                    .map(DeliveryZone::getId)
+                    .toList();
+
+            // Загружаем ключевые слова для всех зон
+            List<DeliveryZone> zonesWithKeywords = deliveryZoneRepository.loadKeywordsForZones(zoneIds);
+            log.info("Загружены ключевые слова для {} зон", zonesWithKeywords.size());
+
+            // 3. Объединяем данные: у нас есть zones с streets и zonesWithKeywords с
+            // keywords
+            // Поскольку Hibernate кэширует сущности, keywords теперь доступны в исходных
+            // объектах
+            // Принудительная инициализация коллекций keywords внутри транзакции
+            for (DeliveryZone zone : zonesWithKeywords) {
+                // Инициализируем коллекцию keywords в рамках активной сессии
+                int keywordsCount = zone.getKeywords().size();
+                log.debug("Зона {}: ключевых слов={}", zone.getName(), keywordsCount);
+            }
+
+            // Создаем Map для быстрого поиска зон с инициализированными keywords
+            Map<Integer, DeliveryZone> zonesMap = zonesWithKeywords.stream()
+                    .collect(Collectors.toMap(DeliveryZone::getId, zone -> zone));
+
+            // Используем зоны с полностью инициализированными коллекциями
+            for (DeliveryZone zone : activeZones) {
+                DeliveryZone zoneWithKeywords = zonesMap.get(zone.getId());
+                log.info("Проверка зоны: {} (ID: {}, приоритет: {}, улиц: {})",
+                        zone.getName(), zone.getId(), zone.getPriority(),
+                        zone.getStreets().size());
+
+                if (addressMatchesZone(address, zone, zoneWithKeywords)) {
+                    log.info("✅ НАЙДЕНА ЗОНА: Адрес '{}' соответствует зоне: {} (стоимость: {}₽)",
+                            address, zone.getName(), zone.getBaseCost());
+                    return Optional.of(zone);
+                } else {
+                    log.info("❌ Адрес '{}' НЕ соответствует зоне: {}", address, zone.getName());
+                }
+            }
+
+            log.warn("❌ НЕ НАЙДЕНА зона доставки для адреса: {}", address);
+            log.info("=== КОНЕЦ ОПРЕДЕЛЕНИЯ ЗОНЫ ДОСТАВКИ ===");
+            return Optional.empty();
+        } catch (Exception e) {
+            log.error("🚨 КРИТИЧЕСКАЯ ОШИБКА в determineZoneByAddress: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
      * Проверяет, соответствует ли адрес указанной зоне доставки
+     *
+     * @param address          адрес для проверки
+     * @param zoneWithStreets  зона с инициализированными улицами
+     * @param zoneWithKeywords зона с инициализированными ключевыми словами (может
+     *                         быть null)
      */
-    private boolean addressMatchesZone(String address, DeliveryZone zone) {
-        // Проверка по улицам
-        for (DeliveryZoneStreet street : zone.getStreets()) {
+    private boolean addressMatchesZone(String address, DeliveryZone zoneWithStreets, DeliveryZone zoneWithKeywords) {
+        // Проверка по улицам (используем зону с инициализированными улицами)
+        for (DeliveryZoneStreet street : zoneWithStreets.getStreets()) {
             if (street.matchesAddress(address)) {
                 log.debug("Адрес соответствует улице '{}' в зоне '{}'",
-                        street.getStreetName(), zone.getName());
+                        street.getStreetName(), zoneWithStreets.getName());
                 return true;
             }
         }
 
-        // Проверка по ключевым словам
-        for (DeliveryZoneKeyword keyword : zone.getKeywords()) {
-            if (keyword.matchesAddress(address)) {
-                log.debug("Адрес соответствует ключевому слову '{}' в зоне '{}'",
-                        keyword.getKeyword(), zone.getName());
-                return true;
+        // Проверка по ключевым словам (используем зону с инициализированными ключевыми
+        // словами)
+        if (zoneWithKeywords != null) {
+            for (DeliveryZoneKeyword keyword : zoneWithKeywords.getKeywords()) {
+                if (keyword.matchesAddress(address)) {
+                    log.debug("Адрес соответствует ключевому слову '{}' в зоне '{}'",
+                            keyword.getKeyword(), zoneWithStreets.getName());
+                    return true;
+                }
             }
         }
 
