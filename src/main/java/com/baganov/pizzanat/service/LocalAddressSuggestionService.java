@@ -86,13 +86,17 @@ public class LocalAddressSuggestionService {
 
     /**
      * Создание локального предложения адреса
+     * ИСПРАВЛЕНО: Показываем только название улицы для мобильного приложения
      */
     private AddressSuggestion createLocalSuggestion(String street) {
         String fullAddress = "Республика Марий Эл, Волжск, " + street;
 
+        // Извлекаем только название улицы без "улица", "переулок" и т.д.
+        String shortStreetName = extractStreetName(street);
+
         return AddressSuggestion.builder()
                 .address(fullAddress)
-                .shortAddress("Волжск, " + street)
+                .shortAddress(shortStreetName) // ИСПРАВЛЕНО: только название улицы
                 .latitude(55.866 + (Math.random() - 0.5) * 0.01) // Небольшая вариация координат
                 .longitude(48.359 + (Math.random() - 0.5) * 0.01)
                 .source("local")
@@ -102,18 +106,46 @@ public class LocalAddressSuggestionService {
 
     /**
      * Создание предложения с номером дома
+     * ИСПРАВЛЕНО: Показываем только название улицы с номером дома
      */
     private AddressSuggestion createHouseSuggestion(String street, String houseNumber) {
         String fullAddress = "Республика Марий Эл, Волжск, " + street + ", " + houseNumber;
 
+        // Извлекаем только название улицы без "улица", "переулок" и т.д.
+        String shortStreetName = extractStreetName(street);
+
         return AddressSuggestion.builder()
                 .address(fullAddress)
-                .shortAddress("Волжск, " + street + ", " + houseNumber)
+                .shortAddress(shortStreetName + ", " + houseNumber) // ИСПРАВЛЕНО: только название улицы с домом
                 .latitude(55.866 + (Math.random() - 0.5) * 0.01)
                 .longitude(48.359 + (Math.random() - 0.5) * 0.01)
                 .source("local")
                 .metadata("house")
                 .build();
+    }
+
+    /**
+     * Извлечение названия улицы без типа (улица, переулок и т.д.)
+     * ДОБАВЛЕНО: Для унификации с Yandex API
+     */
+    private String extractStreetName(String street) {
+        String streetName = street.trim();
+
+        if (streetName.toLowerCase().startsWith("улица ")) {
+            streetName = streetName.substring(6); // Убираем "улица "
+        } else if (streetName.toLowerCase().startsWith("ул. ")) {
+            streetName = streetName.substring(4); // Убираем "ул. "
+        } else if (streetName.toLowerCase().startsWith("переулок ")) {
+            streetName = streetName.substring(9); // Убираем "переулок "
+        } else if (streetName.toLowerCase().startsWith("пер. ")) {
+            streetName = streetName.substring(5); // Убираем "пер. "
+        } else if (streetName.toLowerCase().startsWith("проспект ")) {
+            streetName = streetName.substring(9); // Убираем "проспект "
+        } else if (streetName.toLowerCase().startsWith("микрорайон ")) {
+            streetName = streetName.substring(11); // Убираем "микрорайон "
+        }
+
+        return streetName.trim();
     }
 
     /**

@@ -37,6 +37,7 @@ public class YandexMapsAddressSuggestionService {
 
     /**
      * Получить автоподсказки адресов через Яндекс.Карты API
+     * ИСПРАВЛЕНО: Автоматически добавляем "Волжск" и показываем только улицы города
      */
     public List<AddressSuggestion> getYandexSuggestions(String query) {
         if (!yandexApiEnabled || yandexApiKey.isEmpty()) {
@@ -44,23 +45,23 @@ public class YandexMapsAddressSuggestionService {
             return new ArrayList<>();
         }
 
-        if (query == null || query.trim().length() < 2) {
+        if (query == null || query.trim().length() < 1) { // Уменьшено с 2 до 1 символа
             return new ArrayList<>();
         }
 
         try {
             List<AddressSuggestion> allResults = new ArrayList<>();
 
-            // Если запрос короткий (типа "ул"), ищем все улицы в Волжске
-            if (query.trim().length() <= 3 &&
-                    (query.toLowerCase().contains("ул") || query.toLowerCase().contains("пер"))) {
-                allResults.addAll(getAllStreetsInVolzhsk());
+            // ИСПРАВЛЕНИЕ: Всегда добавляем "Волжск" к запросу для поиска только в городе
+            String searchQuery;
+            if (query.toLowerCase().contains("волжск")) {
+                searchQuery = query;
+            } else {
+                // Формируем запрос специально для поиска улиц в Волжске
+                searchQuery = "Волжск, " + query;
             }
 
-            // Добавляем поиск по конкретному запросу
-            String searchQuery = query.toLowerCase().contains("волжск")
-                    ? query
-                    : "Волжск " + query;
+            log.info("Поиск улиц в Волжске по запросу: '{}' -> '{}'", query, searchQuery);
 
             // Используем правильный endpoint для HTTP API Геокодера
             String url = UriComponentsBuilder
@@ -68,14 +69,15 @@ public class YandexMapsAddressSuggestionService {
                     .queryParam("apikey", yandexApiKey)
                     .queryParam("geocode", searchQuery)
                     .queryParam("format", "json")
-                    .queryParam("results", "10")
+                    .queryParam("results", "15") // Увеличено количество результатов
                     .queryParam("ll", "48.359,55.866") // Координаты Волжска
-                    .queryParam("spn", "0.5,0.5") // Увеличиваем область поиска
+                    .queryParam("spn", "0.3,0.3") // Уменьшено для более точного поиска в городе
                     .queryParam("rspn", "1") // Учитывать регион
+                    .queryParam("kind", "street") // ДОБАВЛЕНО: Ищем только улицы
                     .build()
                     .toUriString();
 
-            log.info("Запрос к Яндекс.Карты: {}", url);
+            log.info("Запрос к Яндекс.Карты для улиц: {}", url);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json");
@@ -103,17 +105,24 @@ public class YandexMapsAddressSuggestionService {
                         .map(this::convertToSuggestion)
                         .filter(suggestion -> suggestion != null &&
                                 suggestion.getAddress() != null &&
-                                suggestion.getAddress().toLowerCase().contains("волжск"))
+                                suggestion.getAddress().toLowerCase().contains("волжск") &&
+                                // ДОБАВЛЕНО: Фильтруем только улицы (содержат "улица", "переулок", "проспект" и
+                                // т.д.)
+                                (suggestion.getAddress().toLowerCase().contains("улица") ||
+                                        suggestion.getAddress().toLowerCase().contains("переулок") ||
+                                        suggestion.getAddress().toLowerCase().contains("проспект") ||
+                                        suggestion.getAddress().toLowerCase().contains("бульвар") ||
+                                        suggestion.getAddress().toLowerCase().contains("проезд")))
                         .collect(Collectors.toList());
 
                 allResults.addAll(suggestions);
             }
 
-            log.info("Получено {} результатов от Яндекс.Карты для запроса: {}", allResults.size(), query);
+            log.info("Найдено {} улиц в Волжске для запроса: '{}'", allResults.size(), query);
             return allResults;
 
         } catch (Exception e) {
-            log.error("Ошибка при получении автоподсказок от Яндекс.Карт: {}", e.getMessage(), e);
+            log.error("Ошибка при получении автоподсказок улиц от Яндекс.Карт: {}", e.getMessage(), e);
         }
 
         return new ArrayList<>();
@@ -226,16 +235,32 @@ public class YandexMapsAddressSuggestionService {
     }
 
     /**
-     * Извлечение короткого адреса (без региона и страны)
+     * Извлечение короткого адреса (только название улицы для мобильного приложения)
+     * ИСПРАВЛЕНО: Показываем только название улицы, убираем город и регион
      */
     private String extractShortAddress(String fullAddress) {
-        // Убираем "Россия, Республика Марий Эл, " из начала
+        // Убираем "Россия, Республика Марий Эл, Волжск, " из начала
         String shortAddress = fullAddress
                 .replaceFirst("^Россия,\\s*", "")
                 .replaceFirst("^Республика Марий Эл,\\s*", "")
+                .replaceFirst("^Волжск,\\s*", "")
+                .replaceFirst("^г\\.\\s*Волжск,\\s*", "")
+                .replaceFirst("^город\\s*Волжск,\\s*", "")
                 .trim();
 
-        return shortAddress;
+        // Дополнительная очистка для мобильного приложения
+        // Оставляем только название улицы
+        if (shortAddress.toLowerCase().startsWith("улица ")) {
+            shortAddress = shortAddress.substring(6); // Убираем "улица "
+        } else if (shortAddress.toLowerCase().startsWith("ул. ")) {
+            shortAddress = shortAddress.substring(4); // Убираем "ул. "
+        } else if (shortAddress.toLowerCase().startsWith("переулок ")) {
+            shortAddress = shortAddress.substring(9); // Убираем "переулок "
+        } else if (shortAddress.toLowerCase().startsWith("пер. ")) {
+            shortAddress = shortAddress.substring(5); // Убираем "пер. "
+        }
+
+        return shortAddress.trim();
     }
 
     // DTO классы для Яндекс.Карт API

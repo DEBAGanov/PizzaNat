@@ -467,7 +467,7 @@ test_delivery_endpoint() {
     if [[ $http_code -eq $expected_code ]]; then
         echo -e "${GREEN}✅ УСПЕХ ($http_code)${NC}"
         PASSED_TESTS=$((PASSED_TESTS + 1))
-        
+
         # Показываем краткий ответ
         if [ -n "$response" ]; then
             echo "   Ответ: $(echo "$response" | head -c 80)..."
@@ -475,7 +475,7 @@ test_delivery_endpoint() {
     else
         echo -e "${RED}❌ ОШИБКА ($http_code, ожидался $expected_code)${NC}"
         FAILED_TESTS=$((FAILED_TESTS + 1))
-        
+
         # Показываем ошибку
         if [ -n "$response" ]; then
             echo "   Ответ: $(echo "$response" | head -c 100)..."
@@ -490,7 +490,7 @@ test_delivery_endpoint "/api/v1/delivery/address-suggestions?query=%D0%92%D0%BE%
 test_delivery_endpoint "/api/v1/delivery/address-suggestions?query=123&limit=10" "Поиск по цифрам"
 test_delivery_endpoint "/api/v1/delivery/address-suggestions?query=%D0%A1%D0%9F%D0%B1" "Поиск СПб (без лимита)"
 
-# Дополнительные тесты валидации адресов  
+# Дополнительные тесты валидации адресов
 echo -e "\n${CYAN}✅ ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ ВАЛИДАЦИИ АДРЕСОВ${NC}"
 test_delivery_endpoint "/api/v1/delivery/validate-address?address=%D0%A0%D0%BE%D1%81%D1%81%D0%B8%D1%8F%2C%20%D0%A0%D0%B5%D1%81%D0%BF%D1%83%D0%B1%D0%BB%D0%B8%D0%BA%D0%B0%20%D0%9C%D0%B0%D1%80%D0%B8%D0%B9%20%D0%AD%D0%BB%2C%20%D0%92%D0%BE%D0%BB%D0%B6%D1%81%D0%BA" "Полный адрес Волжска"
 test_delivery_endpoint "/api/v1/delivery/validate-address?address=%D0%B3.%20%D0%92%D0%BE%D0%BB%D0%B6%D1%81%D0%BA%2C%20%D1%83%D0%BB.%20%D0%9B%D0%B5%D0%BD%D0%B8%D0%BD%D0%B0%2C%20%D0%B4.%201" "Конкретный адрес ул. Ленина"
@@ -503,7 +503,7 @@ test_delivery_endpoint "/api/v1/delivery/estimate?address=%D0%9C%D0%BE%D1%81%D0%
 # Тесты пунктов доставки (locations vs delivery-locations)
 echo -e "\n${CYAN}📦 ТЕСТЫ ПУНКТОВ ДОСТАВКИ (альтернативные endpoint'ы)${NC}"
 test_delivery_endpoint "/api/v1/delivery/locations" "Все пункты доставки (alternative endpoint)"
-test_delivery_endpoint "/api/v1/delivery/locations/1" "Пункт доставки #1 (alternative endpoint)" 
+test_delivery_endpoint "/api/v1/delivery/locations/1" "Пункт доставки #1 (alternative endpoint)"
 test_delivery_endpoint "/api/v1/delivery/locations/999" "Несуществующий пункт доставки" 404
 
 # 4E. СИСТЕМАТИЗИРОВАННЫЕ ТЕСТЫ ЗОНАЛЬНОЙ СИСТЕМЫ (из test_delivery_zones.sh)
@@ -531,9 +531,9 @@ test_zone_detailed() {
         local delivery_cost=$(echo "$response" | jq -r '.deliveryCost // "N/A"')
         local delivery_available=$(echo "$response" | jq -r '.deliveryAvailable // false')
         local city=$(echo "$response" | jq -r '.city // "unknown"')
-        
+
         echo "   HTTP: $http_code | Зона: $zone_name | Стоимость: $delivery_cost ₽ | Город: $city | Доступна: $delivery_available"
-        
+
         # Проверяем ожидаемые значения
         if [[ "$zone_name" == "$expected_zone" ]] && [[ "$delivery_cost" == "$expected_cost" ]]; then
             echo -e "${GREEN}✅ УСПЕХ - Зона и стоимость соответствуют ожиданиям${NC}"
@@ -617,14 +617,14 @@ if [ -n "$JWT_TOKEN" ]; then
 
     # Отправка SMS кода (ТОЛЬКО ОДИН ЗАПРОС!)
     sms_send_data='{"phoneNumber": "'$SMS_TEST_PHONE'"}'
-    
+
     # Используем временный файл для получения и тела ответа, и HTTP кода одним запросом
     temp_sms_file=$(mktemp)
     sms_send_code=$(curl -s -L -w '%{http_code}' -o "$temp_sms_file" -X POST "$BASE_URL/api/v1/auth/sms/send-code" \
       -H "Content-Type: application/json" \
       -H "Accept: application/json" \
       -d "$sms_send_data")
-    
+
     sms_send_response=$(cat "$temp_sms_file")
     rm -f "$temp_sms_file"
 
@@ -1251,5 +1251,21 @@ echo -e "${RED}🏗️ ПРОМУЗЕЛ:${NC} 300₽ (бесплатно от 15
 
 echo -e "\n${WHITE}📞 Доставка работает: 09:00-22:00${NC}"
 echo -e "${WHITE}🕐 Время доставки: 20-60 минут в зависимости от района${NC}"
+
+# Тест 8: Неизвестный адрес (должен получить стандартный тариф 250₽)
+test_delivery_cost "Тест неизвестного адреса - стандартный тариф" \
+    "Неизвестная улица, 1" \
+    500 \
+    "Стандартная зона" \
+    "250.00" \
+    false
+
+# Тест 9: Неизвестный адрес с большой суммой заказа (бесплатная доставка от 1200₽)
+test_delivery_cost "Тест неизвестного адреса - бесплатная доставка" \
+    "Несуществующая улица, 999" \
+    1300 \
+    "Стандартная зона" \
+    "0.00" \
+    true
 
 exit 0

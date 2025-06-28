@@ -49,6 +49,24 @@ public class SecurityConfig {
     @Value("${app.security.disable-jwt-auth:false}")
     private boolean disableJwtAuth;
 
+    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://api.pizzanat.ru,http://localhost:3000,http://localhost:8080}")
+    private String[] corsAllowedOrigins;
+
+    @Value("${app.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")
+    private String[] corsAllowedMethods;
+
+    @Value("${app.cors.allowed-headers:Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control}")
+    private String[] corsAllowedHeaders;
+
+    @Value("${app.cors.exposed-headers:Authorization,Content-Type,X-Total-Count,X-Pagination-Page,X-Pagination-Size}")
+    private String[] corsExposedHeaders;
+
+    @Value("${app.cors.allow-credentials:true}")
+    private boolean corsAllowCredentials;
+
+    @Value("${app.cors.max-age:3600}")
+    private long corsMaxAge;
+
     public SecurityConfig(@Lazy JwtAuthenticationFilter jwtAuthFilter,
             UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
@@ -150,11 +168,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // Используем patterns вместо origins для поддержки *
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
-        configuration.setAllowCredentials(true); // Разрешаем credentials для JWT
+
+        // Конкретные домены для production
+        configuration.setAllowedOrigins(Arrays.asList(corsAllowedOrigins));
+
+        configuration.setAllowedMethods(Arrays.asList(corsAllowedMethods));
+        configuration.setAllowedHeaders(Arrays.asList(corsAllowedHeaders));
+        configuration.setExposedHeaders(Arrays.asList(corsExposedHeaders));
+        configuration.setAllowCredentials(corsAllowCredentials);
+        configuration.setMaxAge(corsMaxAge);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

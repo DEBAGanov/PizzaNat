@@ -148,11 +148,32 @@ public class DeliveryZoneService {
         Optional<DeliveryZone> zoneOpt = determineZoneByAddress(address);
 
         if (zoneOpt.isEmpty()) {
+            // ИСПРАВЛЕНИЕ: Вместо отказа в доставке, возвращаем стандартную зону с 250₽
+            log.info("Адрес '{}' не найден в зональной системе, применяем стандартный тариф 250₽", address);
+
+            BigDecimal standardCost = new BigDecimal("250"); // 250₽ для неизвестных адресов
+            BigDecimal freeThreshold = new BigDecimal("1200"); // Бесплатно от 1200₽
+            boolean isDeliveryFree = orderAmount.compareTo(freeThreshold) >= 0;
+            BigDecimal finalCost = isDeliveryFree ? BigDecimal.ZERO : standardCost;
+
             return DeliveryCalculationResult.builder()
                     .address(address)
-                    .deliveryAvailable(false)
-                    .reason("Адрес находится за пределами зоны доставки")
-                    .zoneName("Вне зоны")
+                    .deliveryAvailable(true) // ИЗМЕНЕНО: доставка доступна
+                    .zoneName("Стандартная зона")
+                    .zoneDescription("Доставка по городу Волжск (стандартный тариф)")
+                    .deliveryCost(finalCost)
+                    .baseCost(standardCost)
+                    .freeDeliveryThreshold(freeThreshold)
+                    .isDeliveryFree(isDeliveryFree)
+                    .estimatedTimeMin(30)
+                    .estimatedTimeMax(50)
+                    .estimatedTime("30-50 минут")
+                    .currency("RUB")
+                    .message(isDeliveryFree ? "Бесплатная доставка" : "Доставка - " + finalCost + " ₽")
+                    .workingHours("09:00-22:00")
+                    .city("Волжск")
+                    .region("Республика Марий Эл")
+                    .reason(null) // Убираем причину отказа
                     .build();
         }
 

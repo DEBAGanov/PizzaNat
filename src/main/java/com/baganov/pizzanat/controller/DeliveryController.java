@@ -242,9 +242,9 @@ public class DeliveryController {
      */
     private DeliveryZoneService.DeliveryCalculationResult createFallbackDeliveryResult(String address,
             BigDecimal orderAmount) {
-        // Старая логика доставки
-        BigDecimal baseCost = new BigDecimal("200"); // 200₽ по умолчанию
-        BigDecimal freeThreshold = new BigDecimal("1000"); // Бесплатно от 1000₽
+        // ИСПРАВЛЕНО: Новая логика доставки - 250₽ для неизвестных адресов
+        BigDecimal baseCost = new BigDecimal("250"); // 250₽ по умолчанию (было 200₽)
+        BigDecimal freeThreshold = new BigDecimal("1200"); // Бесплатно от 1200₽ (было 1000₽)
         boolean isDeliveryFree = orderAmount.compareTo(freeThreshold) >= 0;
         BigDecimal finalCost = isDeliveryFree ? BigDecimal.ZERO : baseCost;
 
@@ -252,14 +252,14 @@ public class DeliveryController {
                 .address(address)
                 .deliveryAvailable(true)
                 .zoneName("Стандартная зона")
-                .zoneDescription("Доставка по городу Волжск")
+                .zoneDescription("Доставка по городу Волжск (fallback тариф)")
                 .deliveryCost(finalCost)
                 .baseCost(baseCost)
                 .freeDeliveryThreshold(freeThreshold)
                 .isDeliveryFree(isDeliveryFree)
                 .estimatedTimeMin(30)
-                .estimatedTimeMax(45)
-                .estimatedTime("30-45 минут")
+                .estimatedTimeMax(50) // Увеличено время доставки
+                .estimatedTime("30-50 минут")
                 .currency("RUB")
                 .message(isDeliveryFree ? "Бесплатная доставка" : "Доставка - " + finalCost + " ₽")
                 .workingHours("09:00-22:00")

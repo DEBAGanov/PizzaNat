@@ -1,178 +1,169 @@
 #!/bin/bash
 
-# Тестирование API автоподсказок адресов для PizzaNat
-# Проверяет работу с адресами города Волжск
+# Тестирование подсказок адресов для мобильного приложения
+# Проверка новой логики: только названия улиц без города и региона
 
 set -e
 
 # Цвета для вывода
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# Базовый URL
-BASE_URL="http://localhost:8080"
-
-# Счетчики тестов
+# Счетчики
 TOTAL_TESTS=0
 PASSED_TESTS=0
-FAILED_TESTS=0
 
-echo -e "${BLUE}🏠 ТЕСТИРОВАНИЕ API АВТОПОДСКАЗОК АДРЕСОВ${NC}"
+echo -e "${BLUE}🏠 Тестирование подсказок адресов PizzaNat${NC}"
 echo "=================================================="
+echo -e "${WHITE}Новая логика: только названия улиц Волжска для мобильного приложения${NC}"
+echo
 
-# Функция для выполнения HTTP запроса
-test_endpoint() {
-    local url="$1"
-    local description="$2"
-    local expected_status="${3:-200}"
-    
-    echo -e "${YELLOW}Тестируем: $description${NC}"
-    echo "URL: $BASE_URL$url"
-    
-    # Выполняем запрос
-    local response=$(curl -s -w "HTTPSTATUS:%{http_code}" "$BASE_URL$url" \
-        -H "Accept: application/json" \
-        -H "Content-Type: application/json")
-    
-    # Извлекаем HTTP код и тело ответа
-    local http_code=$(echo "$response" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
-    local body=$(echo "$response" | sed 's/HTTPSTATUS:[0-9]*$//')
-    
-    echo "HTTP код: $http_code"
-    
-    if [ "$http_code" = "$expected_status" ]; then
-        echo -e "${GREEN}✅ УСПЕХ${NC}"
-        echo "Ответ: $body" | head -c 200
-        if [ ${#body} -gt 200 ]; then
-            echo "..."
-        fi
-        echo
-        PASSED_TESTS=$((PASSED_TESTS + 1))
-    else
-        echo -e "${RED}❌ ОШИБКА - ожидался код $expected_status, получен $http_code${NC}"
-        echo "Ответ: $body"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
-    fi
+# Функция для тестирования подсказок
+test_address_suggestions() {
+    local test_name="$1"
+    local query="$2"
+    local expected_count="$3"
+    local should_contain="$4"
+    local should_not_contain="$5"
     
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    echo "=================================================="
-}
-
-# Функция для POST запроса
-test_post_endpoint() {
-    local url="$1"
-    local description="$2"
-    local data="$3"
-    local expected_status="${4:-200}"
+    echo -e "${YELLOW}🧪 Тест $TOTAL_TESTS: $test_name${NC}"
+    echo "   Запрос: '$query'"
     
-    echo -e "${YELLOW}Тестируем: $description${NC}"
-    echo "URL: $BASE_URL$url"
-    echo "Данные: $data"
-    
-    # Выполняем POST запрос
-    local response=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST "$BASE_URL$url" \
-        -H "Accept: application/json" \
+    # Выполняем запрос к API подсказок
+    response=$(curl -s -X GET \
+        "http://localhost:8080/api/v1/delivery/address-suggestions?query=${query}" \
         -H "Content-Type: application/json" \
-        -d "$data")
+        -w "\n%{http_code}")
     
-    # Извлекаем HTTP код и тело ответа
-    local http_code=$(echo "$response" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
-    local body=$(echo "$response" | sed 's/HTTPSTATUS:[0-9]*$//')
+    # Разделяем response и HTTP код
+    http_code=$(echo "$response" | tail -n1)
+    json_response=$(echo "$response" | head -n -1)
     
-    echo "HTTP код: $http_code"
-    
-    if [ "$http_code" = "$expected_status" ]; then
-        echo -e "${GREEN}✅ УСПЕХ${NC}"
-        echo "Ответ: $body" | head -c 200
-        if [ ${#body} -gt 200 ]; then
-            echo "..."
+    if [ "$http_code" -eq 200 ]; then
+        # Парсим JSON для получения количества результатов
+        suggestions_count=$(echo "$json_response" | jq '. | length' 2>/dev/null || echo "0")
+        
+        echo "   Получено подсказок: $suggestions_count"
+        
+        # Проверяем количество результатов
+        if [ "$suggestions_count" -ge "$expected_count" ]; then
+            echo -e "   ✅ Количество результатов: OK ($suggestions_count >= $expected_count)"
+        else
+            echo -e "   ❌ Количество результатов: FAIL ($suggestions_count < $expected_count)"
+            echo "$json_response" | jq '.' 2>/dev/null || echo "$json_response"
+            return 1
         fi
-        echo
+        
+        # Проверяем содержимое (если указано)
+        if [ -n "$should_contain" ]; then
+            if echo "$json_response" | grep -q "$should_contain"; then
+                echo -e "   ✅ Содержит '$should_contain': OK"
+            else
+                echo -e "   ❌ Не содержит '$should_contain': FAIL"
+                echo "$json_response" | jq '.' 2>/dev/null || echo "$json_response"
+                return 1
+            fi
+        fi
+        
+        # Проверяем что НЕ содержит (если указано)
+        if [ -n "$should_not_contain" ]; then
+            if echo "$json_response" | grep -q "$should_not_contain"; then
+                echo -e "   ❌ Содержит '$should_not_contain' (не должно): FAIL"
+                echo "$json_response" | jq '.' 2>/dev/null || echo "$json_response"
+                return 1
+            else
+                echo -e "   ✅ Не содержит '$should_not_contain': OK"
+            fi
+        fi
+        
+        # Показываем примеры подсказок
+        echo "   Примеры подсказок:"
+        echo "$json_response" | jq -r '.[0:3][] | "     - " + .shortAddress' 2>/dev/null || echo "     (не удалось распарсить)"
+        
         PASSED_TESTS=$((PASSED_TESTS + 1))
+        echo -e "   ${GREEN}✅ ПРОЙДЕН${NC}"
+        
     else
-        echo -e "${RED}❌ ОШИБКА - ожидался код $expected_status, получен $http_code${NC}"
-        echo "Ответ: $body"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        echo -e "   ❌ HTTP ошибка: $http_code"
+        echo "$json_response"
+        return 1
     fi
     
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    echo "=================================================="
+    echo
 }
 
-echo -e "${BLUE}1. АВТОПОДСКАЗКИ УЛИЦ${NC}"
+echo -e "${WHITE}📍 Тестирование подсказок улиц Волжска${NC}"
+echo
 
-# Тест 1: Поиск улиц по частичному совпадению
-test_endpoint "/api/v1/address/suggestions?query=ул" "Поиск улиц по 'ул'"
+# Тест 1: Поиск по первой букве
+test_address_suggestions \
+    "Поиск улиц на 'Л'" \
+    "Л" \
+    1 \
+    "Ленина" \
+    "Волжск"
 
-# Тест 2: Поиск конкретной улицы
-test_endpoint "/api/v1/address/suggestions?query=Ленина" "Поиск улицы Ленина"
+# Тест 2: Поиск по части названия
+test_address_suggestions \
+    "Поиск улиц 'Лен'" \
+    "Лен" \
+    1 \
+    "Ленина" \
+    "улица"
 
-# Тест 3: Поиск улицы 107-й Бригады
-test_endpoint "/api/v1/address/suggestions?query=107" "Поиск улицы 107-й Бригады"
+# Тест 3: Поиск переулков
+test_address_suggestions \
+    "Поиск переулков 'Сад'" \
+    "Сад" \
+    1 \
+    "Садовый" \
+    "переулок"
 
 # Тест 4: Поиск несуществующей улицы
-test_endpoint "/api/v1/address/suggestions?query=Несуществующая" "Поиск несуществующей улицы"
+test_address_suggestions \
+    "Поиск несуществующей улицы" \
+    "НесуществующаяУлица" \
+    0 \
+    "" \
+    ""
 
-# Тест 5: Короткий запрос (должен вернуть ошибку)
-test_endpoint "/api/v1/address/suggestions?query=л" "Короткий запрос (1 символ)" 400
+# Тест 5: Поиск с одной буквой
+test_address_suggestions \
+    "Поиск на одну букву 'П'" \
+    "П" \
+    1 \
+    "" \
+    "Республика"
 
-echo -e "${BLUE}2. АВТОПОДСКАЗКИ ДОМОВ${NC}"
+# Тест 6: Проверка что не показываем полные адреса
+test_address_suggestions \
+    "Проверка отсутствия полных адресов" \
+    "Мира" \
+    1 \
+    "Мира" \
+    "Республика Марий Эл"
 
-# Тест 6: Поиск домов на улице Ленина
-test_endpoint "/api/v1/address/houses?street=улица Ленина" "Дома на улице Ленина"
-
-# Тест 7: Поиск конкретного дома
-test_endpoint "/api/v1/address/houses?street=улица Ленина&houseQuery=1" "Дома начинающиеся с '1' на улице Ленина"
-
-# Тест 8: Поиск домов на улице 107-й Бригады
-test_endpoint "/api/v1/address/houses?street=улица 107-й Бригады&houseQuery=5" "Дома начинающиеся с '5' на улице 107-й Бригады"
-
-# Тест 9: Пустое название улицы (должен вернуть ошибку)
-test_endpoint "/api/v1/address/houses?street=" "Пустое название улицы" 400
-
-echo -e "${BLUE}3. ВАЛИДАЦИЯ АДРЕСОВ${NC}"
-
-# Тест 10: Валидация корректного адреса
-test_post_endpoint "/api/v1/address/validate" "Валидация корректного адреса" \
-    '{"address": "Республика Марий Эл, Волжск, улица Ленина, 1"}'
-
-# Тест 11: Валидация некорректного адреса
-test_post_endpoint "/api/v1/address/validate" "Валидация некорректного адреса" \
-    '{"address": "Москва, улица Тверская, 1"}'
-
-# Тест 12: Валидация адреса без города
-test_post_endpoint "/api/v1/address/validate" "Валидация адреса без города" \
-    '{"address": "улица Ленина, 1"}'
-
-# Тест 13: Валидация пустого адреса
-test_post_endpoint "/api/v1/address/validate" "Валидация пустого адреса" \
-    '{"address": ""}'
-
-echo -e "${BLUE}4. ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ${NC}"
-
-# Тест 14: Поиск микрорайонов
-test_endpoint "/api/v1/address/suggestions?query=микрорайон" "Поиск микрорайонов"
-
-# Тест 15: Поиск переулков
-test_endpoint "/api/v1/address/suggestions?query=переулок" "Поиск переулков"
-
-# Тест 16: Поиск проспектов
-test_endpoint "/api/v1/address/suggestions?query=проспект" "Поиск проспектов"
-
-# Итоговая статистика
-echo "=============================================="
-echo -e "${BLUE}📊 ИТОГОВАЯ СТАТИСТИКА${NC}"
+echo
+echo "=================================================="
+echo -e "${WHITE}📊 Результаты тестирования подсказок адресов:${NC}"
 echo -e "Всего тестов: $TOTAL_TESTS"
-echo -e "${GREEN}Успешных: $PASSED_TESTS${NC}"
-echo -e "${RED}Неудачных: $FAILED_TESTS${NC}"
+echo -e "Пройдено: ${GREEN}$PASSED_TESTS${NC}"
+echo -e "Провалено: ${RED}$((TOTAL_TESTS - PASSED_TESTS))${NC}"
 
-if [ $FAILED_TESTS -eq 0 ]; then
-    echo -e "${GREEN}🎉 ВСЕ ТЕСТЫ ПРОШЛИ УСПЕШНО!${NC}"
+if [ $PASSED_TESTS -eq $TOTAL_TESTS ]; then
+    echo -e "${GREEN}✅ Все тесты подсказок адресов пройдены успешно!${NC}"
+    echo -e "${WHITE}🎯 Новая логика работает корректно:${NC}"
+    echo "   - Показываются только названия улиц без города"
+    echo "   - Поиск работает с первой буквы"
+    echo "   - Фильтруются только улицы Волжска"
     exit 0
 else
-    echo -e "${RED}❌ НЕКОТОРЫЕ ТЕСТЫ НЕ ПРОШЛИ${NC}"
+    echo -e "${RED}❌ Некоторые тесты подсказок адресов провалены${NC}"
+    echo -e "${YELLOW}⚠️  Проверьте логику AddressSuggestionService${NC}"
     exit 1
 fi 
