@@ -4,6 +4,8 @@ import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.dto.order.OrderItemDTO;
 import com.baganov.pizzanat.model.dto.payment.PaymentUrlResponse;
+import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
+import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +39,7 @@ public class OrderService {
     private final DeliveryLocationRepository deliveryLocationRepository;
     private final StorageService storageService;
     private final NotificationService notificationService;
-    private final PaymentService paymentService;
+    private final YooKassaPaymentService yooKassaPaymentService;
     private final TelegramBotService telegramBotService;
     private final TelegramUserNotificationService telegramUserNotificationService;
     private final ScheduledNotificationService scheduledNotificationService;
@@ -196,7 +198,7 @@ public class OrderService {
      * @param orderId идентификатор заказа
      * @return объект с URL для оплаты
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public PaymentUrlResponse createPaymentUrl(Integer orderId, Integer userId) {
         Order order = findOrder(orderId, userId);
 
@@ -207,12 +209,30 @@ public class OrderService {
 
         String description = String.format("Оплата заказа №%d в PizzaNat", order.getId());
 
-        // Создаем URL для оплаты через платежный сервис
-        String paymentUrl = paymentService.createPaymentUrl(order.getId(), order.getTotalAmount(), description);
+        try {
+            // Создаем платеж через ЮКасса
+            CreatePaymentRequest paymentRequest = new CreatePaymentRequest();
+            paymentRequest.setOrderId(order.getId().longValue());
+            paymentRequest.setMethod(PaymentMethod.BANK_CARD); // По умолчанию банковская карта
+            paymentRequest.setAmount(order.getTotalAmount()); // Устанавливаем сумму заказа
+            paymentRequest.setDescription(description);
+            paymentRequest.setReturnUrl("https://pizzanat.ru/orders/" + order.getId());
 
-        log.info("Создан URL для оплаты заказа #{}: {}", order.getId(), paymentUrl);
+            PaymentResponse payment = yooKassaPaymentService.createPayment(paymentRequest);
 
-        return new PaymentUrlResponse(paymentUrl);
+            String paymentUrl = payment.getConfirmationUrl();
+            if (paymentUrl == null || paymentUrl.isEmpty()) {
+                throw new RuntimeException("ЮКасса не вернула URL для оплаты");
+            }
+
+            log.info("Создан URL для оплаты заказа #{} через ЮКасса: {}", order.getId(), paymentUrl);
+
+            return new PaymentUrlResponse(paymentUrl);
+
+        } catch (Exception e) {
+            log.error("Ошибка создания платежа ЮКасса для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            throw new RuntimeException("Не удалось создать ссылку для оплаты: " + e.getMessage(), e);
+        }
     }
 
     @Transactional(readOnly = true)

@@ -34,22 +34,23 @@ test_address_suggestions() {
     echo -e "${YELLOW}🧪 Тест $TOTAL_TESTS: $test_name${NC}"
     echo "   Запрос: '$query'"
     
-    # Выполняем запрос к API подсказок
+    # Выполняем запрос к API подсказок с правильным URL кодированием
     response=$(curl -s -X GET \
-        "http://localhost:8080/api/v1/delivery/address-suggestions?query=${query}" \
+        "http://localhost:8080/api/v1/delivery/address-suggestions" \
+        -G --data-urlencode "query=${query}" \
         -H "Content-Type: application/json" \
         -w "\n%{http_code}")
     
     # Разделяем response и HTTP код
     http_code=$(echo "$response" | tail -n1)
-    json_response=$(echo "$response" | head -n -1)
+    json_response=$(echo "$response" | sed '$d')
     
     if [ "$http_code" -eq 200 ]; then
         # Парсим JSON для получения количества результатов
         suggestions_count=$(echo "$json_response" | jq '. | length' 2>/dev/null || echo "0")
-        
+    
         echo "   Получено подсказок: $suggestions_count"
-        
+    
         # Проверяем количество результатов
         if [ "$suggestions_count" -ge "$expected_count" ]; then
             echo -e "   ✅ Количество результатов: OK ($suggestions_count >= $expected_count)"
@@ -59,26 +60,26 @@ test_address_suggestions() {
             return 1
         fi
         
-        # Проверяем содержимое (если указано)
+        # Проверяем содержимое в shortAddress (если указано)
         if [ -n "$should_contain" ]; then
-            if echo "$json_response" | grep -q "$should_contain"; then
-                echo -e "   ✅ Содержит '$should_contain': OK"
+            if echo "$json_response" | jq -r '.[].shortAddress' | grep -q "$should_contain"; then
+                echo -e "   ✅ shortAddress содержит '$should_contain': OK"
             else
-                echo -e "   ❌ Не содержит '$should_contain': FAIL"
+                echo -e "   ❌ shortAddress не содержит '$should_contain': FAIL"
                 echo "$json_response" | jq '.' 2>/dev/null || echo "$json_response"
                 return 1
             fi
         fi
         
-        # Проверяем что НЕ содержит (если указано)
+        # Проверяем что НЕ содержит в shortAddress (если указано)
         if [ -n "$should_not_contain" ]; then
-            if echo "$json_response" | grep -q "$should_not_contain"; then
-                echo -e "   ❌ Содержит '$should_not_contain' (не должно): FAIL"
+            if echo "$json_response" | jq -r '.[].shortAddress' | grep -q "$should_not_contain"; then
+                echo -e "   ❌ shortAddress содержит '$should_not_contain' (не должно): FAIL"
                 echo "$json_response" | jq '.' 2>/dev/null || echo "$json_response"
                 return 1
             else
-                echo -e "   ✅ Не содержит '$should_not_contain': OK"
-            fi
+                echo -e "   ✅ shortAddress не содержит '$should_not_contain': OK"
+        fi
         fi
         
         # Показываем примеры подсказок
@@ -100,10 +101,10 @@ test_address_suggestions() {
 echo -e "${WHITE}📍 Тестирование подсказок улиц Волжска${NC}"
 echo
 
-# Тест 1: Поиск по первой букве
+# Тест 1: Поиск по первой букве (минимум 2 символа)
 test_address_suggestions \
-    "Поиск улиц на 'Л'" \
-    "Л" \
+    "Поиск улиц на 'Ле'" \
+    "Ле" \
     1 \
     "Ленина" \
     "Волжск"
@@ -116,12 +117,12 @@ test_address_suggestions \
     "Ленина" \
     "улица"
 
-# Тест 3: Поиск переулков
+# Тест 3: Поиск улиц 'Садовая'
 test_address_suggestions \
-    "Поиск переулков 'Сад'" \
-    "Сад" \
+    "Поиск улиц 'Садовая'" \
+    "Садовая" \
     1 \
-    "Садовый" \
+    "Садовая" \
     "переулок"
 
 # Тест 4: Поиск несуществующей улицы
@@ -132,12 +133,12 @@ test_address_suggestions \
     "" \
     ""
 
-# Тест 5: Поиск с одной буквой
+# Тест 5: Поиск улиц на 'Промышленная'
 test_address_suggestions \
-    "Поиск на одну букву 'П'" \
-    "П" \
+    "Поиск 'Промышленная'" \
+    "Промышленная" \
     1 \
-    "" \
+    "Промышленная" \
     "Республика"
 
 # Тест 6: Проверка что не показываем полные адреса

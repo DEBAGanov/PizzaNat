@@ -99,6 +99,16 @@ public class SecurityConfig {
             "/api/v1/health/**",
             "/api/v1/ready",
             "/api/v1/live",
+            // ЮKassa Health endpoints (для мониторинга)
+            "/api/v1/payments/yookassa/health",
+            "/api/v1/payments/metrics/health",
+            "/api/v1/payments/*/health",
+            // ЮKassa webhook endpoints (критически важно для обработки платежей)
+            "/api/v1/payments/yookassa/webhook",
+            "/api/v1/payments/yookassa/webhook/**",
+            // ЮKassa СБП API endpoints (для мобильного приложения)
+            "/api/v1/payments/yookassa/sbp/banks",
+            "/api/v1/payments/yookassa/sbp/**",
             // Categories (только GET)
             "/api/v1/categories",
             "/api/v1/categories/*",

@@ -1,0 +1,119 @@
+# PizzaNat - Конфигурация для Этапа 6 (Финальная интеграция и тестирование)
+# Обновленные реальные тестовые учетные данные ЮKassa
+
+# ЮKassa тестовая конфигурация для PizzaNat - Stage 6
+# Обновленные учетные данные для тестирования мобильного приложения
+
+# === ОСНОВНЫЕ НАСТРОЙКИ YOOKASSA ===
+YOOKASSA_ENABLED=true
+YOOKASSA_SHOP_ID=1116141
+YOOKASSA_SECRET_KEY=test_A_jprj_408ySIz9HzYvC5WzxuB-mwKGqrp-7MfI_2B0
+
+# === МОБИЛЬНЫЙ SDK КЛЮЧ ===
+YOOKASSA_MOBILE_SDK_KEY=test_MTExNjE0MTdtMbsnxRGOphBSgVFAOYjWsNpAYjFN9Zg
+
+# === API НАСТРОЙКИ ===
+YOOKASSA_API_URL=https://api.yookassa.ru/v3
+YOOKASSA_WEBHOOK_URL=http://api.pizzanat.ru/api/v1/payments/yookassa/webhook
+YOOKASSA_RETURN_URL=pizzanat://payment/result
+
+# === ТАЙМАУТЫ И ПОВТОРЫ ===
+YOOKASSA_CONNECTION_TIMEOUT=5000
+YOOKASSA_READ_TIMEOUT=10000
+YOOKASSA_WRITE_TIMEOUT=10000
+YOOKASSA_RETRY_MAX_ATTEMPTS=3
+YOOKASSA_RETRY_DELAY=1000
+
+# === СБП НАСТРОЙКИ ===
+SBP_ENABLED=true
+SBP_DEFAULT_RETURN_URL=pizzanat://payment/result
+
+# === МОНИТОРИНГ И МЕТРИКИ ===
+YOOKASSA_METRICS_ENABLED=true
+YOOKASSA_METRICS_UPDATE_INTERVAL=60
+YOOKASSA_METRICS_RETENTION_HOURS=24
+
+# === АЛЕРТЫ ===
+YOOKASSA_ALERTS_ENABLED=true
+YOOKASSA_ALERTS_LOW_CONVERSION=70.0
+YOOKASSA_ALERTS_HIGH_FAILURE=10.0
+YOOKASSA_ALERTS_MAX_PENDING=30
+YOOKASSA_ALERTS_COOLDOWN=30
+YOOKASSA_ALERTS_MIN_PAYMENTS=5
+
+# === ЛОГИРОВАНИЕ ===
+LOGGING_LEVEL_YOOKASSA=DEBUG
+
+# === ТЕСТОВЫЕ КАРТЫ ДЛЯ ПРОВЕРКИ ===
+# Согласно https://yookassa.ru/developers/payment-acceptance/testing-and-going-live/testing#test-bank-card-data
+# Успешная оплата: 5555555555554444, CVV: 123, срок: 12/30
+# Отклоненная оплата: 4111111111111112, CVV: 123, срок: 12/30
+# Трёхмерная аутентификация: 4000000000000002, CVV: 123, срок: 12/30
+# Недостаточно средств: 4000000000000051, CVV: 123, срок: 12/30
+
+# === ДОКУМЕНТАЦИЯ ===
+# Тестовый магазин: https://yookassa.ru/docs/support/merchant/payments/implement/test-store
+# Тестовые данные карт: https://yookassa.ru/developers/payment-acceptance/testing-and-going-live/testing#test-bank-card-data
+# Аутентификация API: https://yookassa.ru/developers/using-api/interaction-format#auth
+# Android SDK: https://yookassa.ru/developers/payment-acceptance/integration-scenarios/mobile-sdks/android-sdk
+# Секретные ключи: https://yookassa.ru/docs/support/merchant/payouts/secret-key
+
+# === ОБНОВЛЕНИЯ В STAGE 6 ===
+# - Обновлен API ключ на test_A_jprj_408ySIz9HzYvC5WzxuB-mwKGqrp-7MfI_2B0
+# - Добавлен мобильный SDK ключ test_MTExNjE0MTdtMbsnxRGOphBSgVFAOYjWsNpAYjFN9Zg
+# - Обновлен webhook URL на http://api.pizzanat.ru/api/v1/payments/yookassa/webhook
+# - Добавлены ссылки на актуальную документацию ЮKassa
+
+# === ИНСТРУКЦИИ ПО ПРИМЕНЕНИЮ ===
+# 1. Скопируйте переменные в docker-compose.yml или .env файл
+# 2. Перезапустите контейнер: docker-compose restart pizzanat-app-dev
+# 3. Проверьте логи: docker-compose logs -f pizzanat-app-dev
+# 4. Тестируйте через мобильное API: /api/v1/mobile/payments/create
+
+# База данных
+POSTGRES_DB=pizzanat_db
+POSTGRES_USER=pizzanat_user
+POSTGRES_PASSWORD=pizzanat_password123
+DATABASE_URL=jdbc:postgresql://localhost:5432/pizzanat_db
+
+# Spring настройки
+SPRING_PROFILES_ACTIVE=dev
+SERVER_PORT=8080
+
+# JWT настройки
+JWT_SECRET=your-secret-key-here-change-in-production
+JWT_EXPIRATION=86400000
+
+# Telegram Bot настройки
+TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+TELEGRAM_BOT_USERNAME=PizzaNatBot
+TELEGRAM_ADMIN_BOT_TOKEN=your-admin-bot-token
+TELEGRAM_ADMIN_BOT_USERNAME=PizzaNatAdminBot
+
+# Exolve SMS настройки
+EXOLVE_API_KEY=your-exolve-api-key
+EXOLVE_API_URL=https://api.exolve.ru/messaging/v1/SendSMS
+
+# MinIO настройки
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET_NAME=pizzanat
+
+# Yandex Maps API
+YANDEX_MAPS_API_KEY=your-yandex-maps-api-key
+
+# CORS настройки для мобильного приложения
+CORS_ALLOWED_ORIGINS=http://localhost:3000,https://pizzanat.ru,https://api.pizzanat.ru,android-app://com.pizzanat.app,ios-app://com.pizzanat.app
+CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS,PATCH
+CORS_ALLOWED_HEADERS=Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control
+CORS_ALLOW_CREDENTIALS=true
+
+# Мониторинг и метрики
+MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics,prometheus
+MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
+
+# Логирование для отладки
+LOGGING_LEVEL_COM_BAGANOV_PIZZANAT=DEBUG
+LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB=DEBUG
+LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY=DEBUG

@@ -6,6 +6,7 @@
  */
 package com.baganov.pizzanat.controller;
 
+import com.baganov.pizzanat.entity.Order;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.dto.order.UpdateOrderStatusRequest;
 import com.baganov.pizzanat.service.OrderService;
@@ -22,6 +23,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -40,6 +44,26 @@ public class AdminOrderController {
         log.info("Администратор запрашивает список всех заказов");
         Page<OrderDTO> orders = orderService.getAllOrders(pageable);
         return ResponseEntity.ok(orders);
+    }
+
+    @GetMapping("/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Получение активных заказов", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<List<OrderDTO>> getActiveOrders() {
+        log.info("Администратор запрашивает список активных заказов");
+        List<Order> activeOrders = orderService.findActiveOrdersIncludingNew();
+        List<OrderDTO> orderDTOs = activeOrders.stream()
+                .map(order -> {
+                    try {
+                        return orderService.getOrderById(order.getId(), null);
+                    } catch (Exception e) {
+                        log.error("Ошибка конвертации заказа #{} в DTO: {}", order.getId(), e.getMessage());
+                        return null;
+                    }
+                })
+                .filter(dto -> dto != null)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(orderDTOs);
     }
 
     @GetMapping("/{orderId}")

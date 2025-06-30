@@ -1,0 +1,30 @@
+# ЮKassa настройки для PizzaNat
+# Скопируйте этот файл в .env и заполните реальными данными
+
+# Основные настройки ЮKassa
+YOOKASSA_ENABLED=false
+YOOKASSA_SHOP_ID=your_shop_id_here
+YOOKASSA_SECRET_KEY=your_secret_key_here
+
+# API настройки
+YOOKASSA_API_URL=https://api.yookassa.ru/v3
+YOOKASSA_WEBHOOK_URL=https://api.pizzanat.ru/api/v1/payments/yookassa/webhook
+YOOKASSA_TIMEOUT_SECONDS=30
+YOOKASSA_MAX_RETRY_ATTEMPTS=3
+
+# СБП настройки
+SBP_ENABLED=true
+SBP_DEFAULT_RETURN_URL=pizzanat://payment/result
+
+# Тестовые настройки (раскомментируйте для тестирования)
+# YOOKASSA_ENABLED=true
+# YOOKASSA_SHOP_ID=test_shop_id
+# YOOKASSA_SECRET_KEY=test_secret_key
+# YOOKASSA_API_URL=https://api.yookassa.ru/v3
+
+# Инструкции:
+# 1. Скопируйте этот файл: cp env-yookassa-template.txt .env
+# 2. Получите учетные данные на https://yookassa.ru/
+# 3. Замените your_shop_id_here и your_secret_key_here на реальные значения
+# 4. Установите YOOKASSA_ENABLED=true для активации
+# 5. Перезапустите приложение: docker-compose down && docker-compose up -d

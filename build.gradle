@@ -97,6 +97,11 @@ dependencies {
 
     // Telegram Bot API
     implementation 'org.telegram:telegrambots-spring-boot-starter:6.8.0'
+
+    // ЮKassa интеграция
+    // WebFlux уже добавлен выше
+    // Метрики для мониторинга платежей
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 }
 
 tasks.named('test') {

@@ -1,7 +1,7 @@
 /**
  * @file: AdminBotService.java
  * @description: Сервис для работы с админским Telegram ботом
- * @dependencies: AdminBotRepository, OrderService, UserService
+ * @dependencies: AdminBotRepository, OrderService, UserService, PaymentRepository
  * @created: 2025-06-13
  */
 package com.baganov.pizzanat.service;
@@ -9,17 +9,22 @@ package com.baganov.pizzanat.service;
 import com.baganov.pizzanat.entity.Order;
 import com.baganov.pizzanat.entity.OrderItem;
 import com.baganov.pizzanat.entity.OrderStatus;
+import com.baganov.pizzanat.entity.Payment;
+import com.baganov.pizzanat.entity.PaymentStatus;
+import com.baganov.pizzanat.entity.PaymentMethod;
+import com.baganov.pizzanat.event.NewOrderEvent;
+import com.baganov.pizzanat.event.PaymentAlertEvent;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.entity.TelegramAdminUser;
 import com.baganov.pizzanat.repository.TelegramAdminUserRepository;
+import com.baganov.pizzanat.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import com.baganov.pizzanat.event.NewOrderEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -37,6 +42,7 @@ public class AdminBotService {
     private final TelegramAdminUserRepository adminUserRepository;
     private final OrderService orderService;
     private final TelegramAdminNotificationService telegramAdminNotificationService;
+    private final PaymentRepository paymentRepository;
 
     /**
      * Регистрация администратора
@@ -325,7 +331,7 @@ public class AdminBotService {
     }
 
     /**
-     * Форматирование сообщения о новом заказе
+     * Форматирование сообщения о новом заказе с информацией о платеже
      */
     private String formatNewOrderMessage(Order order) {
         StringBuilder message = new StringBuilder();
@@ -385,13 +391,16 @@ public class AdminBotService {
                     .append(" ₽\n");
         }
 
-        message.append("\n💰 *Общая сумма:* ").append(order.getTotalAmount()).append(" ₽");
+        message.append("\n💰 *Общая сумма:* ").append(order.getTotalAmount()).append(" ₽\n\n");
+
+        // Информация о платеже
+        appendPaymentInfo(message, order);
 
         return message.toString();
     }
 
     /**
-     * Форматирование детальной информации о заказе
+     * Форматирование детальной информации о заказе с информацией о платеже
      */
     private String formatOrderDetailsMessage(Order order) {
         StringBuilder message = new StringBuilder();
@@ -454,13 +463,154 @@ public class AdminBotService {
             message.append("  Сумма: ").append(itemTotal).append(" ₽\n\n");
         }
 
-        message.append("💰 *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*");
+        message.append("💰 *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
+
+        // Информация о платеже
+        appendPaymentInfo(message, order);
 
         if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
-            message.append("\n\n💬 *КОММЕНТАРИЙ*\n").append(escapeMarkdown(order.getComment()));
+            message.append("\n💬 *КОММЕНТАРИЙ*\n").append(escapeMarkdown(order.getComment()));
         }
 
         return message.toString();
+    }
+
+    /**
+     * Добавляет информацию о платеже к сообщению
+     */
+    private void appendPaymentInfo(StringBuilder message, Order order) {
+        try {
+            Long orderId = order.getId().longValue();
+                        List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+            
+            if (payments.isEmpty()) {
+                message.append("💳 *СТАТУС ОПЛАТЫ:* 💵 Наличными\n");
+                message.append("💰 *СПОСОБ ОПЛАТЫ:* 💵 Наличными при доставке\n\n");
+                return;
+            }
+
+            // Берем последний платеж (самый новый)
+            Payment latestPayment = payments.get(0);
+
+            message.append("💳 *СТАТУС ОПЛАТЫ:* ").append(getPaymentStatusDisplayName(latestPayment.getStatus())).append("\n");
+            message.append("💰 *СПОСОБ ОПЛАТЫ:* ").append(getPaymentMethodDisplayName(latestPayment.getMethod())).append("\n");
+
+            if (latestPayment.getCreatedAt() != null) {
+                message.append("🕐 *Время создания платежа:* ")
+                        .append(latestPayment.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
+                        .append("\n");
+            }
+
+            if (latestPayment.getPaidAt() != null) {
+                message.append("✅ *Время оплаты:* ")
+                        .append(latestPayment.getPaidAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
+                        .append("\n");
+            }
+
+            // Добавляем ссылку на проверку платежа для онлайн оплаты
+            if (isOnlinePayment(latestPayment.getMethod()) && latestPayment.getYookassaPaymentId() != null) {
+                String checkUrl = "https://yoomoney.ru/checkout/payments/v2/contract?orderId=" + latestPayment.getYookassaPaymentId();
+                message.append("🔗 *Проверить оплату:* [Открыть в ЮMoney](").append(checkUrl).append(")\n");
+            }
+
+            message.append("\n");
+
+        } catch (Exception e) {
+            log.error("Ошибка получения информации о платеже для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            message.append("💳 *СТАТУС ОПЛАТЫ:* ❓ Ошибка получения данных\n\n");
+        }
+    }
+
+    /**
+     * Получение отображаемого названия статуса платежа
+     */
+    private String getPaymentStatusDisplayName(PaymentStatus status) {
+        if (status == null) {
+            return "❓ Неизвестно";
+        }
+
+        switch (status) {
+            case PENDING:
+                return "⏳ Ожидает оплаты";
+            case WAITING_FOR_CAPTURE:
+                return "⏳ Ожидает подтверждения";
+            case SUCCEEDED:
+                return "✅ Оплачено";
+            case FAILED:
+                return "❌ Ошибка оплаты";
+            case CANCELLED:
+                return "❌ Отменено";
+            default:
+                return status.toString();
+        }
+    }
+
+    /**
+     * Получение отображаемого названия способа оплаты
+     */
+    private String getPaymentMethodDisplayName(PaymentMethod method) {
+        if (method == null) {
+            return "❓ Неизвестно";
+        }
+
+        switch (method) {
+            case SBP:
+                return "📱 СБП (Система быстрых платежей)";
+            case BANK_CARD:
+                return "💳 Банковская карта";
+            case YOOMONEY:
+                return "💰 ЮMoney";
+            case QIWI:
+                return "🥝 QIWI";
+            case WEBMONEY:
+                return "💻 WebMoney";
+            case ALFABANK:
+                return "🏦 Альфа-Клик";
+            case SBERBANK:
+                return "🏛️ Сбербанк Онлайн";
+            default:
+                return method.toString();
+        }
+    }
+
+    /**
+     * Проверяет, является ли способ оплаты онлайн
+     */
+    private boolean isOnlinePayment(PaymentMethod method) {
+        return method != null; // Все методы в PaymentMethod являются онлайн-платежами
+    }
+
+    /**
+     * Добавляет краткую информацию о платеже к сообщению (для списка активных заказов)
+     */
+    private void appendBriefPaymentInfo(StringBuilder message, Order order) {
+        try {
+            Long orderId = order.getId().longValue();
+                        List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+            
+            if (payments.isEmpty()) {
+                message.append("💳 *Оплата:* 💵 Наличными\n");
+                return;
+            }
+
+            // Берем последний платеж (самый новый)
+            Payment latestPayment = payments.get(0);
+
+            message.append("💳 *Оплата:* ").append(getPaymentStatusDisplayName(latestPayment.getStatus()));
+            message.append(" (").append(getPaymentMethodDisplayName(latestPayment.getMethod())).append(")\n");
+
+            // Добавляем ссылку на проверку платежа для онлайн оплаты (только если не оплачено)
+            if (isOnlinePayment(latestPayment.getMethod()) &&
+                latestPayment.getYookassaPaymentId() != null &&
+                latestPayment.getStatus() != PaymentStatus.SUCCEEDED) {
+                String checkUrl = "https://yoomoney.ru/checkout/payments/v2/contract?orderId=" + latestPayment.getYookassaPaymentId();
+                message.append("🔗 [Проверить оплату](").append(checkUrl).append(")\n");
+            }
+
+        } catch (Exception e) {
+            log.error("Ошибка получения краткой информации о платеже для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            message.append("💳 *Оплата:* ❓ Ошибка получения данных\n");
+        }
     }
 
     /**
@@ -568,7 +718,10 @@ public class AdminBotService {
                 // Контактные данные заказа
                 orderMessage.append("📞 *Контакт заказа:* ").append(escapeMarkdown(order.getContactName()))
                         .append("\n");
-                orderMessage.append("📞 *Телефон заказа:* ").append(escapeMarkdown(order.getContactPhone()));
+                orderMessage.append("📞 *Телефон заказа:* ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
+
+                // Краткая информация о платеже
+                appendBriefPaymentInfo(orderMessage, order);
 
                 String finalMessage = orderMessage.toString();
 
@@ -598,6 +751,48 @@ public class AdminBotService {
             log.debug("Уведомление админского бота о новом заказе #{} отправлено", event.getOrder().getId());
         } catch (Exception e) {
             log.error("Ошибка обработки события нового заказа #{}: {}", event.getOrder().getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Обработчик событий алертов платежной системы
+     */
+    @EventListener
+    @Async
+    public void handlePaymentAlertEvent(PaymentAlertEvent event) {
+        try {
+            log.info("🚨 Получено событие алерта платежной системы: {}", event.getAlertType());
+            notifyAdminsAboutPaymentAlert(event.getAlertMessage(), event.getAlertType());
+        } catch (Exception e) {
+            log.error("❌ Ошибка обработки события алерта платежной системы: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Отправка алерта всем администраторам
+     */
+    private void notifyAdminsAboutPaymentAlert(String alertMessage, PaymentAlertEvent.AlertType alertType) {
+        try {
+            List<TelegramAdminUser> activeAdmins = adminUserRepository.findByIsActiveTrue();
+
+            if (activeAdmins.isEmpty()) {
+                log.warn("Нет активных администраторов для отправки алерта типа {}", alertType);
+                return;
+            }
+
+            for (TelegramAdminUser admin : activeAdmins) {
+                try {
+                    telegramAdminNotificationService.sendMessage(admin.getTelegramChatId(), alertMessage, true);
+                    log.debug("Алерт {} отправлен администратору: {}", alertType, admin.getUsername());
+                } catch (Exception e) {
+                    log.error("Ошибка отправки алерта администратору {}: {}", admin.getUsername(), e.getMessage());
+                }
+            }
+
+            log.info("Алерт {} отправлен {} администраторам", alertType, activeAdmins.size());
+
+        } catch (Exception e) {
+            log.error("Ошибка при отправке алерта администраторам: {}", e.getMessage(), e);
         }
     }
 }

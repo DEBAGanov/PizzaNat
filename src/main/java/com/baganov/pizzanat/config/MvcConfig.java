@@ -7,6 +7,7 @@
 package com.baganov.pizzanat.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -19,6 +20,9 @@ import java.util.List;
 
 @Configuration
 public class MvcConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * Настройка конвертеров HTTP-сообщений
@@ -33,8 +37,11 @@ public class MvcConfig implements WebMvcConfigurer {
         stringConverter.setWriteAcceptCharset(false);
         converters.add(stringConverter);
 
-        // Добавляем Jackson конвертер для JSON
-        converters.add(new MappingJackson2HttpMessageConverter(new ObjectMapper()));
+        // Добавляем Jackson конвертер для JSON с настроенным ObjectMapper
+        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter();
+        jsonConverter.setObjectMapper(objectMapper);
+        jsonConverter.setDefaultCharset(StandardCharsets.UTF_8);
+        converters.add(jsonConverter);
     }
 
     /**

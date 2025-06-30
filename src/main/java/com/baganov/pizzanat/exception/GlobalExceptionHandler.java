@@ -53,8 +53,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Object> handleJsonParsingError(
             HttpMessageNotReadableException ex, WebRequest request) {
 
-        log.error("JSON PARSING ERROR: URL: {}, Message: {}",
-                request.getDescription(false), ex.getMessage(), ex);
+        String requestUrl = request.getDescription(false);
+        log.error("JSON PARSING ERROR: URL: {}, Message: {}", requestUrl, ex.getMessage(), ex);
 
         String errorMessage = "Ошибка парсинга JSON";
 
@@ -63,6 +63,12 @@ public class GlobalExceptionHandler {
         if (cause instanceof JsonProcessingException jsonEx) {
             log.error("JSON Processing Exception: {}", jsonEx.getOriginalMessage());
             errorMessage = "Ошибка обработки JSON: " + jsonEx.getOriginalMessage();
+            
+            // Специальная обработка для UTF-8 ошибок
+            if (jsonEx.getOriginalMessage().contains("Invalid UTF-8")) {
+                log.warn("UTF-8 кодировка проблема, возможно некорректные данные в запросе");
+                errorMessage = "Ошибка кодировки данных. Проверьте корректность UTF-8 символов в запросе";
+            }
         } else if (cause instanceof InvalidFormatException formatEx) {
             log.error("Invalid Format Exception: {}", formatEx.getOriginalMessage());
             errorMessage = "Неверный формат данных: " + formatEx.getOriginalMessage();
@@ -72,11 +78,19 @@ public class GlobalExceptionHandler {
         }
 
         // Для Telegram webhook возвращаем OK статус с ошибкой
-        if (request.getDescription(false).contains("/telegram/webhook")) {
+        if (requestUrl.contains("/telegram/webhook")) {
             return ResponseEntity.ok(Map.of(
                     "status", "OK",
                     "processed", false,
                     "error", errorMessage,
+                    "timestamp", LocalDateTime.now().toString()));
+        }
+
+        // Для ЮКасса webhook тоже возвращаем OK статус
+        if (requestUrl.contains("/payments/yookassa/webhook")) {
+            return ResponseEntity.ok(Map.of(
+                    "status", "error",
+                    "message", "Failed to process webhook: " + errorMessage,
                     "timestamp", LocalDateTime.now().toString()));
         }
 

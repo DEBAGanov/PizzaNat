@@ -6,6 +6,7 @@
  */
 package com.baganov.pizzanat.model.dto.user;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -68,10 +69,12 @@ public class UserProfileResponse {
 
     @Schema(description = "Дата создания", example = "2025-01-11T10:30:00")
     @JsonProperty("created_at")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
     @Schema(description = "Дата обновления", example = "2025-01-11T10:30:00")
     @JsonProperty("updated_at")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updatedAt;
 
     @Schema(description = "Отображаемое имя пользователя", example = "Иван Иванов")

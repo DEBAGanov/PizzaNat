@@ -4,6 +4,7 @@ import com.baganov.pizzanat.model.dto.order.CreateOrderRequest;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.dto.payment.PaymentUrlResponse;
 import com.baganov.pizzanat.service.OrderService;
+import com.baganov.pizzanat.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
 
     private final OrderService orderService;
+    private final UserService userService;
 
     @PostMapping
     @Operation(summary = "Создание заказа", security = @SecurityRequirement(name = "bearerAuth"))
@@ -35,9 +37,7 @@ public class OrderController {
             HttpServletRequest httpRequest,
             Authentication authentication) {
 
-        Integer userId = authentication != null
-                ? ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId()
-                : null;
+        Integer userId = getUserId(authentication);
 
         String sessionId = null;
         if (userId == null) {
@@ -63,9 +63,7 @@ public class OrderController {
             @Parameter(description = "ID заказа", required = true) @PathVariable Integer orderId,
             Authentication authentication) {
 
-        Integer userId = authentication != null
-                ? ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId()
-                : null;
+        Integer userId = getUserId(authentication);
 
         OrderDTO order = orderService.getOrderById(orderId, userId);
         return ResponseEntity.ok(order);
@@ -77,9 +75,7 @@ public class OrderController {
             @Parameter(description = "ID заказа", required = true) @PathVariable Integer orderId,
             Authentication authentication) {
 
-        Integer userId = authentication != null
-                ? ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId()
-                : null;
+        Integer userId = getUserId(authentication);
 
         PaymentUrlResponse paymentUrlResponse = orderService.createPaymentUrl(orderId, userId);
         return ResponseEntity.ok(paymentUrlResponse);
@@ -96,11 +92,58 @@ public class OrderController {
             return ResponseEntity.status(401).build();
         }
 
-        Integer userId = ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId();
+        Integer userId = getUserId(authentication);
 
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<OrderDTO> orders = orderService.getUserOrders(userId, pageRequest);
 
         return ResponseEntity.ok(orders);
+    }
+
+    private Integer getUserId(Authentication authentication) {
+        log.debug("getUserId: authentication={}", authentication);
+        if (authentication != null) {
+            log.debug("getUserId: isAuthenticated={}, principal type={}, principal={}",
+                    authentication.isAuthenticated(),
+                    authentication.getPrincipal().getClass().getName(),
+                    authentication.getPrincipal());
+        }
+
+        if (authentication != null && authentication.isAuthenticated()) {
+            try {
+                log.debug("Authentication principal type: {}", authentication.getPrincipal().getClass().getName());
+
+                // Проверяем, является ли principal User объектом
+                if (authentication.getPrincipal() instanceof com.baganov.pizzanat.entity.User) {
+                    return ((com.baganov.pizzanat.entity.User) authentication.getPrincipal()).getId();
+                }
+
+                // Если это UserDetails, получаем username и ищем пользователя
+                if (authentication
+                        .getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+                    String username = ((org.springframework.security.core.userdetails.UserDetails) authentication
+                            .getPrincipal()).getUsername();
+                    log.debug("Principal is UserDetails with username: {}", username);
+
+                    // Получаем User по username
+                    try {
+                        com.baganov.pizzanat.entity.User user = userService.getUserByUsername(username);
+                        log.debug("Found user by username: {}, id: {}", username, user.getId());
+                        return user.getId();
+                    } catch (Exception e) {
+                        log.warn("Failed to find user by username: {}", username, e);
+                        return null;
+                    }
+                }
+
+                log.warn("Unknown principal type: {}", authentication.getPrincipal().getClass().getName());
+                return null;
+            } catch (Exception e) {
+                log.warn("Failed to get user ID from authentication", e);
+            }
+        }
+        log.debug("getUserId returning null: authentication={}, isAuthenticated={}",
+                authentication != null, authentication != null ? authentication.isAuthenticated() : false);
+        return null;
     }
 }
