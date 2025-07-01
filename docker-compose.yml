@@ -114,7 +114,7 @@ services:
       SMS_MAX_ATTEMPTS: 3
 
       # ЮKassa настройки
-      YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-false}
+      YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-true}
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1116141}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_A_jprj_408ySIz9HzYvC5WzxuB-mwKGqrp-7MfI_2B0}
       YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}
