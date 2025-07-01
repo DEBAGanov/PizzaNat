@@ -460,6 +460,62 @@ Read file: src/main/java/com/baganov/pizzanat/service/YooKassaPaymentService.jav
 
 ---
 
+Я вижу, что эти переменные уже существуют в файле. Давайте удалим дублирующиеся переменные:
+
+---
+
+
+
+---
+
+Теперь давайте проверим, что получилось, и запустим контейнер:
+
+---
+
+```bash
+docker-compose down
+```
+
+```
+a123@MacBookAir PizzaNat % docker-compose down
+zsh: command not found: docker-compose
+a123@MacBookAir PizzaNat %
+```
+
+---
+
+```bash
+docker-compose up -d
+```
+
+```
+a123@MacBookAir PizzaNat % docker-compose up -d
+zsh: command not found: docker-compose
+a123@MacBookAir PizzaNat %
+```
+
+---
+
+Попробуем с `docker compose` (без дефиса):
+
+---
+
+Cancelled
+
+---
+
+
+
+---
+
+_**User**_
+
+напиши мне список всехх эндпойтов в этом проекте
+
+---
+
+_**Assistant**_
+
 
 
 ---

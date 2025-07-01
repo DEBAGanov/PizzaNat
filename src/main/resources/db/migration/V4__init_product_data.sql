@@ -124,13 +124,13 @@ BEGIN
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
         ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром', 499.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
-        ('Пицца Пепперони', 'Острая пицца с пепперони и сыром', 599.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
-        ('Гавайская пицца', 'Пицца с ветчиной и ананасами', 549.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
-        ('Сырная пицца', 'Пицца с четырьмя видами сыра', 579.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
-        ('Пицца 5 сыров', 'Пицца с пятью сортами сыра', 649.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
+        ('Пицца Пепперони', 'Острая пицца с пепперони и сыром', 1.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
+        ('Гавайская пицца', 'Пицца с ветчиной и ананасами', 1.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
+        ('Сырная пицца', 'Пицца с четырьмя видами сыра', 1.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
+        ('Пицца 5 сыров', 'Пицца с пятью сортами сыра', 1.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
         ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов', 649.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
-        ('Пицца Марио', 'Фирменная пицца с беконом и грибами', 599.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
-        ('Пицца Карбонара', 'Пицца в стиле пасты карбонара', 629.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
+        ('Пицца Марио', 'Фирменная пицца с беконом и грибами', 1.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
+        ('Пицца Карбонара', 'Пицца в стиле пасты карбонара', 1.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
         ('Грибная пицца', 'Пицца с шампиньонами и лесными грибами', 559.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
         ('Пицца Том Ям', 'Острая пицца в стиле тайского супа', 679.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
@@ -152,7 +152,7 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Бургер "Классический"', 'Классический бургер с жареным луком и сыром', 499.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
+        ('Бургер "Классический"', 'Классический бургер с жареным луком и сыром', 1.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
         ('Бургер "Чизбургер"', 'Бургер с сыром и салатом', 599.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, true, 15),
         ('Бургер "Гавайский"', 'Бургер с ветчиной и ананасами', 549.00, 470, burgers_category_id, 'products/burger_hawaiian.png', true, false, null),
         ('Бургер "Том Ям"', 'Острый бургер в стиле тайского супа', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12)
