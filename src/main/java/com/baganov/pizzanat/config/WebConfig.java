@@ -14,7 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://api.pizzanat.ru,http://localhost:3000,http://localhost:8080}")
+    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080}")
     private String[] allowedOrigins;
 
     @Override

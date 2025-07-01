@@ -104,7 +104,7 @@ MINIO_BUCKET_NAME=pizzanat
 YANDEX_MAPS_API_KEY=your-yandex-maps-api-key
 
 # CORS настройки для мобильного приложения
-CORS_ALLOWED_ORIGINS=http://localhost:3000,https://pizzanat.ru,https://api.pizzanat.ru,android-app://com.pizzanat.app,ios-app://com.pizzanat.app
+CORS_ALLOWED_ORIGINS=https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,android-app://com.pizzanat.app,ios-app://com.pizzanat.app
 CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS,PATCH
 CORS_ALLOWED_HEADERS=Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control
 CORS_ALLOW_CREDENTIALS=true
