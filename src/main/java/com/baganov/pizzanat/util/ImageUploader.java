@@ -194,7 +194,7 @@ public class ImageUploader {
         productImageMap.put("Пицца 5 сыров", "products/pizza_5_chees.png");
         productImageMap.put("Пицца Пепперони", "products/pizza_peperoni.png");
         productImageMap.put("Гавайская пицца", "products/pizza_gavaiyaskay.png");
-        productImageMap.put("Сырная пицца", "products/pizza_4_chees.png");
+        productImageMap.put("Сырная пицца", "products/pizza_cheese.png");
         productImageMap.put("Мясная пицца", "products/pizza_mzysnay.png");
         productImageMap.put("Пицца Марио", "products/pizza_mario.png");
         productImageMap.put("Пицца Карбонара", "products/pizza_karbonara.png");
