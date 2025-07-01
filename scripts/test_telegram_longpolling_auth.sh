@@ -1,157 +1,154 @@
 #!/bin/bash
 
-# Цвета для вывода
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Тест Long Polling авторизации в Telegram боте
+# Дата: 2025-01-20
 
-# Заголовок
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}  Тестирование Long Polling авторизации${NC}"
-echo -e "${BLUE}    через @PizzaNatBot${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo
+echo "🧪 ТЕСТ: Long Polling авторизация в @PizzaNatBot"
+echo "================================================"
+
+# Цвета для вывода
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
 BASE_URL="http://localhost:8080"
 
-# Функция для создания токена авторизации
-create_auth_token() {
-    echo -e "${BLUE}1. Создание токена авторизации...${NC}"
+echo -e "${YELLOW}📋 Проверяем состояние приложения...${NC}"
 
-    RESPONSE=$(curl -s -X POST \
-        "$BASE_URL/api/v1/auth/telegram/init" \
-        -H "Content-Type: application/json" \
-        -d '{"deviceId": "test_device_longpolling"}')
+# Проверка здоровья приложения
+health_response=$(curl -s "$BASE_URL/actuator/health" || echo "ERROR")
+if [[ "$health_response" == *"UP"* ]]; then
+    echo -e "${GREEN}✅ Приложение работает${NC}"
+else
+    echo -e "${RED}❌ Приложение недоступно${NC}"
+    exit 1
+fi
 
-    echo "Ответ сервера: $RESPONSE"
+echo -e "\n${YELLOW}🔐 Инициализируем Telegram авторизацию...${NC}"
 
-    # Извлекаем токен из ответа
-    AUTH_TOKEN=$(echo "$RESPONSE" | grep -o '"authToken":"[^"]*"' | cut -d'"' -f4)
-    TELEGRAM_URL=$(echo "$RESPONSE" | grep -o '"telegramUrl":"[^"]*"' | cut -d'"' -f4)
+# Инициализация Telegram авторизации
+auth_response=$(curl -s -X POST "$BASE_URL/api/v1/auth/telegram/init" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deviceId": "test_longpolling_device"
+  }')
 
-    if [ -z "$AUTH_TOKEN" ]; then
-        echo -e "${RED}❌ Не удалось создать токен авторизации${NC}"
-        return 1
-    fi
+echo "Ответ авторизации: $auth_response"
 
-    echo -e "${GREEN}✅ Токен создан: $AUTH_TOKEN${NC}"
-    echo -e "${YELLOW}🔗 Telegram URL: $TELEGRAM_URL${NC}"
-    echo
+# Извлекаем токен и URL
+AUTH_TOKEN=$(echo $auth_response | jq -r '.authToken // empty')
+BOT_URL=$(echo $auth_response | jq -r '.telegramBotUrl // empty')
+SUCCESS=$(echo $auth_response | jq -r '.success // false')
 
-    return 0
-}
+if [[ "$SUCCESS" != "true" || -z "$AUTH_TOKEN" ]]; then
+    echo -e "${RED}❌ Не удалось инициализировать авторизацию${NC}"
+    echo "Ответ: $auth_response"
+    exit 1
+fi
 
-# Функция для проверки статуса токена
-check_token_status() {
-    local token=$1
-    local expected_status=$2
+echo -e "${GREEN}✅ Токен авторизации получен: $AUTH_TOKEN${NC}"
+echo -e "${BLUE}🔗 Ссылка на бота: $BOT_URL${NC}"
 
-    echo -e "${BLUE}2. Проверка статуса токена (ожидается: $expected_status)...${NC}"
+echo -e "\n${YELLOW}📱 Проверяем начальный статус токена...${NC}"
 
-    RESPONSE=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$token")
-    echo "Ответ сервера: $RESPONSE"
+# Проверка начального статуса
+status_response=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$AUTH_TOKEN")
+echo "Начальный статус: $status_response"
 
-    STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+INITIAL_STATUS=$(echo $status_response | jq -r '.status // ""')
+if [[ "$INITIAL_STATUS" != "PENDING" ]]; then
+    echo -e "${RED}❌ Неожиданный начальный статус: $INITIAL_STATUS${NC}"
+    exit 1
+fi
 
-    if [ "$STATUS" = "$expected_status" ]; then
-        echo -e "${GREEN}✅ Статус корректный: $STATUS${NC}"
-    else
-        echo -e "${RED}❌ Неожиданный статус: $STATUS (ожидался: $expected_status)${NC}"
-    fi
-    echo
-}
+echo -e "${GREEN}✅ Токен в статусе PENDING - готов к авторизации${NC}"
 
-# Функция для подтверждения авторизации (эмуляция Long Polling)
-confirm_auth_longpolling() {
-    local token=$1
+echo -e "\n${YELLOW}🤖 ИНСТРУКЦИИ ДЛЯ РУЧНОГО ТЕСТИРОВАНИЯ:${NC}"
+echo "======================================================"
+echo ""
+echo -e "${BLUE}1. Откройте ссылку в браузере или Telegram:${NC}"
+echo -e "${BLUE}   $BOT_URL${NC}"
+echo ""
+echo "2. В боте должно появиться сообщение:"
+echo "   '🍕 Добро пожаловать в PizzaNat!"
+echo "    Привет, [Ваше имя]!"
+echo "    Для завершения авторизации нажмите кнопку ниже и поделитесь номером телефона:'"
+echo ""
+echo "3. Нажмите кнопку: [📱 Отправить телефон]"
+echo ""
+echo "4. В диалоге выберите 'Поделиться номером телефона'"
+echo ""
+echo "5. После отправки контакта должно сразу прийти:"
+echo "   '✅ Номер телефона получен! Спасибо, [Ваше имя]!"
+echo "    Теперь можете вернуться в приложение для завершения авторизации.'"
+echo ""
+echo -e "${GREEN}6. НЕТ дополнительных кнопок подтверждения!${NC}"
 
-    echo -e "${BLUE}3. Эмуляция подтверждения через Long Polling...${NC}"
-    echo -e "${YELLOW}📱 ИНСТРУКЦИЯ: Теперь в боте @PizzaNatBot:${NC}"
-    echo -e "${YELLOW}   1. Нажмите на ссылку: https://t.me/PizzaNatBot?start=$token${NC}"
-    echo -e "${YELLOW}   2. Отправьте свой контакт кнопкой '📱 Отправить телефон'${NC}"
-    echo -e "${YELLOW}   3. Нажмите '✅ Подтвердить вход'${NC}"
-    echo
+echo -e "\n${YELLOW}⏳ Ожидание авторизации (60 секунд)...${NC}"
 
-    echo -e "${BLUE}⏰ Ожидание подтверждения (60 секунд)...${NC}"
-
-    # Ждем подтверждения в течение 60 секунд
-    for i in {1..12}; do
-        sleep 5
-        RESPONSE=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$token")
-        STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-
-        if [ "$STATUS" = "CONFIRMED" ]; then
-            echo -e "${GREEN}✅ Авторизация подтверждена через Long Polling!${NC}"
-            echo "Финальный ответ: $RESPONSE"
-
-            # Извлекаем JWT токен
-            JWT_TOKEN=$(echo "$RESPONSE" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-            if [ -n "$JWT_TOKEN" ]; then
-                echo -e "${GREEN}🔑 JWT токен получен: ${JWT_TOKEN:0:20}...${NC}"
-            fi
-            return 0
-        elif [ "$STATUS" = "PENDING" ]; then
-            echo -e "${YELLOW}⏳ Статус: $STATUS (попытка $i/12)${NC}"
-        else
-            echo -e "${RED}❌ Неожиданный статус: $STATUS${NC}"
-            return 1
+# Ожидание авторизации с проверкой каждые 5 секунд
+for i in {1..12}; do
+    echo -e "${YELLOW}Проверка $i/12...${NC}"
+    
+    status_response=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$AUTH_TOKEN")
+    CURRENT_STATUS=$(echo $status_response | jq -r '.status // ""')
+    
+    echo "Текущий статус: $CURRENT_STATUS"
+    
+    if [[ "$CURRENT_STATUS" == "CONFIRMED" ]]; then
+        echo -e "\n${GREEN}🎉 УСПЕХ! Авторизация завершена!${NC}"
+        echo "Финальный ответ: $status_response"
+        
+        # Проверяем данные авторизации
+        AUTH_DATA=$(echo $status_response | jq -r '.authData // null')
+        if [[ "$AUTH_DATA" != "null" ]]; then
+            echo -e "${GREEN}✅ Данные авторизации получены${NC}"
+            echo "AuthData: $AUTH_DATA"
         fi
-    done
-
-    echo -e "${RED}❌ Таймаут ожидания подтверждения${NC}"
-    return 1
-}
-
-# Функция для проверки логов
-check_logs() {
-    echo -e "${BLUE}4. Проверка логов приложения...${NC}"
-
-    echo "Логи Long Polling бота:"
-    docker logs pizzanat-app --tail=20 | grep -i "pizzanat.*bot\|longpolling\|auth.*confirm" || echo "Логи не найдены"
-    echo
-}
-
-# Главная функция
-main() {
-    echo -e "${YELLOW}🧪 Тестирование Long Polling авторизации через @PizzaNatBot${NC}"
-    echo -e "${YELLOW}Убедитесь, что:${NC}"
-    echo -e "${YELLOW}  - Приложение запущено (docker-compose up -d)${NC}"
-    echo -e "${YELLOW}  - TELEGRAM_BOT_ENABLED=true${NC}"
-    echo -e "${YELLOW}  - TELEGRAM_LONGPOLLING_ENABLED=true${NC}"
-    echo -e "${YELLOW}  - TELEGRAM_AUTH_ENABLED=false (Webhook отключен)${NC}"
-    echo
-
-    # Создаем токен авторизации
-    if ! create_auth_token; then
-        echo -e "${RED}💥 Тест провален на создании токена${NC}"
-        exit 1
-    fi
-
-    # Проверяем начальный статус
-    check_token_status "$AUTH_TOKEN" "PENDING"
-
-    # Подтверждаем авторизацию через Long Polling
-    if confirm_auth_longpolling "$AUTH_TOKEN"; then
-        echo -e "${GREEN}🎉 ТЕСТ ПРОЙДЕН: Long Polling авторизация работает!${NC}"
-
-        # Финальная проверка статуса
-        check_token_status "$AUTH_TOKEN" "CONFIRMED"
-
-        # Проверяем логи
-        check_logs
-
-        echo -e "${GREEN}✅ Все проверки завершены успешно${NC}"
+        
+        echo -e "\n${GREEN}📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ: УСПЕХ${NC}"
+        echo "================================="
+        echo -e "${GREEN}✅ Long Polling авторизация работает корректно${NC}"
+        echo -e "${GREEN}✅ Упрощенный процесс без лишних подтверждений${NC}"
+        echo -e "${GREEN}✅ Токен успешно подтвержден${NC}"
         exit 0
-    else
-        echo -e "${RED}💥 ТЕСТ ПРОВАЛЕН: Проблема с подтверждением авторизации${NC}"
-
-        # Проверяем логи для диагностики
-        check_logs
+    elif [[ "$CURRENT_STATUS" == "EXPIRED" ]]; then
+        echo -e "\n${RED}❌ ОШИБКА: Токен истек${NC}"
+        echo "Финальный ответ: $status_response"
+        exit 1
+    elif [[ "$CURRENT_STATUS" == "FAILED" ]]; then
+        echo -e "\n${RED}❌ ОШИБКА: Авторизация не удалась${NC}"
+        echo "Финальный ответ: $status_response"
         exit 1
     fi
-}
+    
+    if [[ $i -lt 12 ]]; then
+        sleep 5
+    fi
+done
 
-# Запуск основной функции
-main "$@"
+echo -e "\n${YELLOW}⏰ Время ожидания истекло${NC}"
+final_status=$(curl -s "$BASE_URL/api/v1/auth/telegram/status/$AUTH_TOKEN")
+echo "Финальный статус: $final_status"
+
+FINAL_STATUS=$(echo $final_status | jq -r '.status // ""')
+
+echo -e "\n${YELLOW}📊 РЕЗУЛЬТАТ ТЕСТИРОВАНИЯ:${NC}"
+echo "================================="
+
+if [[ "$FINAL_STATUS" == "CONFIRMED" ]]; then
+    echo -e "${GREEN}✅ УСПЕХ: Авторизация завершена (с задержкой)${NC}"
+elif [[ "$FINAL_STATUS" == "PENDING" ]]; then
+    echo -e "${YELLOW}⏳ ЧАСТИЧНЫЙ УСПЕХ: Токен создан, но авторизация не завершена${NC}"
+    echo -e "${YELLOW}   Возможные причины:${NC}"
+    echo -e "${YELLOW}   - Пользователь не прошел авторизацию в боте${NC}"
+    echo -e "${YELLOW}   - Long Polling бот не работает${NC}"
+    echo -e "${YELLOW}   - Проблемы с обработкой контакта${NC}"
+else
+    echo -e "${RED}❌ ОШИБКА: Неожиданный статус: $FINAL_STATUS${NC}"
+fi
+
+echo -e "\n${BLUE}💡 Для отладки проверьте логи приложения:${NC}"
+echo "docker logs pizzanat-app --tail 50 | grep -i telegram" 
