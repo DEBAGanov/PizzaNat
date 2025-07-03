@@ -49,36 +49,64 @@
 - **Проблема**: 
   - Фронтенд получал ошибку: "Request header field x-client-type is not allowed by Access-Control-Allow-Headers in preflight response"
   - Авторизация через Telegram не работала на продакшене, но работала на localhost:5174
+  - **Корневая причина**: Заголовок отсутствовал в CORS конфигурации Spring Security (не только в nginx)
 - **Шаги выполнения**:
   - [x] Диагностика проблемы CORS на продакшене
-  - [x] Анализ конфигурации nginx.conf
-  - [x] Добавление заголовка X-Client-Type в Access-Control-Allow-Headers для preflight запросов
-  - [x] Добавление заголовка X-Client-Type в Access-Control-Allow-Headers для обычных запросов
+  - [x] Анализ конфигурации nginx.conf (первоначальная гипотеза)
+  - [x] **Обнаружение реальной проблемы**: Прямой запрос к приложению минуя nginx показал HTTP 403
+  - [x] Исправление Spring Security конфигурации (SecurityConfig.java)
+  - [x] Исправление WebConfig.java
+  - [x] Обновление application.properties
+  - [x] Обновление docker-compose.yml и docker-compose.production.yml
+  - [x] Добавление заголовка X-Client-Type в nginx.conf (дополнительная защита)
   - [x] Создание тестового скрипта test_cors_x_client_type.sh
+  - [x] Полное тестирование исправления
   - [x] Обновление документации (changelog.md, Tasktracker.md)
 - **Исправленные файлы**:
-  - `nginx/nginx.conf` - добавлен `X-Client-Type` в список разрешенных заголовков
-  - `scripts/test_cors_x_client_type.sh` - скрипт для тестирования исправления
-  - `docs/changelog.md` - запись об исправлении
-  - `docs/Tasktracker.md` - обновлен трекер задач
+  - **Spring конфигурация** (основная проблема):
+    - `src/main/java/com/baganov/pizzanat/config/SecurityConfig.java` - добавлен X-Client-Type в corsAllowedHeaders
+    - `src/main/java/com/baganov/pizzanat/config/WebConfig.java` - добавлен X-Client-Type в allowedHeaders
+    - `src/main/resources/application.properties` - обновлена переменная app.cors.allowed-headers
+    - `docker-compose.yml` - обновлена переменная CORS_ALLOWED_HEADERS
+    - `docker-compose.production.yml` - обновлена переменная CORS_ALLOWED_HEADERS
+  - **Nginx конфигурация** (дополнительная защита):
+    - `nginx/nginx.conf` - добавлен `X-Client-Type` в список разрешенных заголовков
+  - **Тестирование**:
+    - `scripts/test_cors_x_client_type.sh` - скрипт для тестирования исправления
+    - `docs/changelog.md` - запись об исправлении
+    - `docs/Tasktracker.md` - обновлен трекер задач
 - **Техническое исправление**:
   - **До**: `Authorization, Content-Type, X-Requested-With, Accept, Origin, X-Auth-Token, Cache-Control`
   - **После**: `Authorization, Content-Type, X-Requested-With, Accept, Origin, X-Auth-Token, Cache-Control, X-Client-Type`
-- **Результат**: 
-  - ✅ **Telegram авторизация работает** на https://pizzanat.ru/auth
+- **Результаты тестирования**: 
+  - ✅ **Локальный сервер**: Preflight запросы HTTP 200, заголовок x-client-type разрешен
+  - ✅ **Локальный сервер**: POST запросы с X-Client-Type работают корректно (HTTP 200)
+  - ✅ **Продакшн сервер**: POST запросы с X-Client-Type работают (реальные запросы не блокируются)
+  - ⚠️ **Продакшн сервер**: Preflight запросы показывают HTTP 403 (требуется деплой обновленной конфигурации)
+  - ✅ **Множественные заголовки**: `content-type, x-client-type, authorization` разрешены
   - ✅ **CORS ошибка устранена** для заголовка x-client-type
-  - ✅ **Preflight запросы** обрабатываются корректно
+  - ✅ **Preflight запросы** обрабатываются корректно на локальном сервере
   - ✅ **Обратная совместимость** с localhost сохранена
-- **Команды для применения**:
+- **Диагностический процесс**:
+  1. **Первоначальная гипотеза**: Проблема в nginx конфигурации
+  2. **Ключевое открытие**: Прямой запрос к приложению `curl -X OPTIONS http://api.pizzanat.ru:8080/...` минуя nginx показал HTTP 403
+  3. **Реальная проблема**: Заголовок отсутствовал в Spring Security CORS конфигурации
+  4. **Комплексное решение**: Обновление CORS на всех уровнях (Spring + nginx + переменные окружения)
+- **Команды для применения на продакшене**:
   ```bash
-  # Перезапуск nginx с новой конфигурацией
+  # 1. Деплой обновленного приложения
+  docker-compose -f docker-compose.production.yml down
+  docker-compose -f docker-compose.production.yml up -d --build
+  
+  # 2. Перезапуск nginx с новой конфигурацией  
   docker-compose restart nginx
   
-  # Тестирование исправления
+  # 3. Тестирование исправления
   ./scripts/test_cors_x_client_type.sh
   ```
-- **Зависимости**: nginx конфигурация, фронтенд авторизация, Telegram интеграция
+- **Зависимости**: Spring Security конфигурация, nginx конфигурация, фронтенд авторизация, Telegram интеграция
 - **Приоритет**: Критический (блокировал авторизацию пользователей)
+- **Урок**: При проблемах с CORS важно тестировать как nginx, так и Spring конфигурацию отдельно
 
 ## Задача: ✅ ЗАВЕРШЕНА - Интеграция платежей в админский Telegram бот
 - **Статус**: ✅ ЗАВЕРШЕНА
@@ -1212,7 +1240,7 @@
   - [x] Проведено полное тестирование функциональности
   - [x] Обновлена документация (changelog.md, tasktracker.md)
 - **Зависимости**: Админский Telegram бот, dev окружение, Docker конфигурация
-- **Результат**:
+- **Результат**: 
   - ✅ Админский бот @PizzaNatOrders_bot успешно зарегистрирован
   - ✅ Приложение запускается без ошибок (Started PizzaNatApplication in 30.164 seconds)
   - ✅ Нет ошибок 409 для админского бота
