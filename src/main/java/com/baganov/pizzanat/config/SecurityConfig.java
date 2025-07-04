@@ -55,7 +55,7 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")
     private String[] corsAllowedMethods;
 
-    @Value("${app.cors.allowed-headers:Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control,X-Client-Type}")
+    @Value("${app.cors.allowed-headers:Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control,X-Client-Type,X-Client-Version}")
     private String[] corsAllowedHeaders;
 
     @Value("${app.cors.exposed-headers:Authorization,Content-Type,X-Total-Count,X-Pagination-Page,X-Pagination-Size}")

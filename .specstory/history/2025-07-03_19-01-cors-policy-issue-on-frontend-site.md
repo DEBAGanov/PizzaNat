@@ -2083,3 +2083,35 @@ a123@MacBookAir PizzaNat %
 
 ---
 
+_**User**_
+
+все равно ошибка
+
+---
+
+_**Assistant**_
+
+Я вижу в консоли браузера, что проблема все еще есть! Ошибка показывает:
+
+**"Access to XMLHttpRequest at 'https://api.pizzanat.ru/api/v1/auth/telegram/init' from origin 'https://pizzanat.ru' has been blocked by CORS policy: Request header field x-client-version is not allowed by Access-Control-Allow-Headers in preflight response."**
+
+Теперь проблема в заголовке `x-client-version` (а не `x-client-type`)! Давайте исправим это:
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
+
+
+---
+
