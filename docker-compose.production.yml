@@ -36,7 +36,7 @@ services:
       TZ: ${CONTAINER_TIMEZONE:-Europe/Moscow}
 
       # CORS настройки для поддержки фронтенда
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*}
       CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS:-GET,POST,PUT,DELETE,OPTIONS,PATCH}
       CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control,X-Client-Type,X-Client-Version}
       CORS_EXPOSED_HEADERS: ${CORS_EXPOSED_HEADERS:-Authorization,Content-Type,X-Total-Count,X-Pagination-Page,X-Pagination-Size}
@@ -182,13 +182,13 @@ services:
               proxy_set_header X-Real-IP \$$remote_addr;
               proxy_set_header X-Forwarded-For \$$proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto \$$scheme;
-              
+
               # Добавляем CORS заголовки для всех ответов
               add_header 'Access-Control-Allow-Origin' 'https://pizzanat.ru' always;
               add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS, PATCH' always;
               add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, X-Requested-With, Accept, Origin, X-Auth-Token, Cache-Control' always;
               add_header 'Access-Control-Allow-Credentials' 'true' always;
-              
+
               proxy_connect_timeout 60s;
               proxy_send_timeout 60s;
               proxy_read_timeout 60s;

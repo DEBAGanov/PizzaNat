@@ -118,7 +118,8 @@ services:
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1116141}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_A_jprj_408ySIz9HzYvC5WzxuB-mwKGqrp-7MfI_2B0}
       YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}
-      YOOKASSA_WEBHOOK_URL: ${YOOKASSA_WEBHOOK_URL:-http://api.pizzanat.ru/api/v1/payments/yookassa/webhook}
+      #YOOKASSA_WEBHOOK_URL: ${YOOKASSA_WEBHOOK_URL:-http://api.pizzanat.ru/api/v1/payments/yookassa/webhook}
+      YOOKASSA_WEBHOOK_URL: ${YOOKASSA_WEBHOOK_URL:-http://api.dimbopizza.ru/api/v1/payments/yookassa/webhook}
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-pizzanat://payment/result}
       YOOKASSA_TIMEOUT_SECONDS: ${YOOKASSA_TIMEOUT_SECONDS:-30}
       YOOKASSA_MAX_RETRY_ATTEMPTS: ${YOOKASSA_MAX_RETRY_ATTEMPTS:-3}
@@ -171,7 +172,7 @@ services:
       TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS: 30
 
       # CORS настройки для поддержки фронтенда
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*}
       CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS:-GET,POST,PUT,DELETE,OPTIONS,PATCH}
       CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control,X-Client-Type,X-Client-Version}
       CORS_EXPOSED_HEADERS: ${CORS_EXPOSED_HEADERS:-Authorization,Content-Type,X-Total-Count,X-Pagination-Page,X-Pagination-Size}

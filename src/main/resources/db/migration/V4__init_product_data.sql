@@ -123,16 +123,18 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром', 499.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
-        ('Пицца Пепперони', 'Острая пицца с пепперони и сыром', 1.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
-        ('Гавайская пицца', 'Пицца с ветчиной и ананасами', 1.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
-        ('Сырная пицца', 'Пицца с четырьмя видами сыра', 1.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
-        ('Пицца 5 сыров', 'Пицца с пятью сортами сыра', 1.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
-        ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов', 649.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
-        ('Пицца Марио', 'Фирменная пицца с беконом и грибами', 1.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
-        ('Пицца Карбонара', 'Пицца в стиле пасты карбонара', 1.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
-        ('Грибная пицца', 'Пицца с шампиньонами и лесными грибами', 559.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
-        ('Пицца Том Ям', 'Острая пицца в стиле тайского супа', 679.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
+        ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром "Моцарелла" и помидорами. Вес 580 гр.', 380.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
+        ('Грибная пицца', 'Пицца с шампиньонами и томатным соусом, с сыром "Моцарелла" и ветчиной. Вес 600 гр. ', 559.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
+        ('Сырная пицца', 'Пицца с четырьмя видами сыра (соус томатный, "Моцарелла", "Голландский", "Пармезан", "Масдам". Вес 450 гр.) ', 1.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
+        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)', 1.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
+        ('Пицца Пепперони', 'Пицца с пепперони и сыром (соус томатный, сыр "Моцарелла", пеперони. Вес 600 гр.)', 1.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
+        ('Пицца Цезарь', 'Фирменная пицца с соусом Цезарь (соус Цезарь, сыр, курица, помидоры, салат. Вес 690 гр.)', 1.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
+        ('Гавайская пицца', 'Пицца с курицей и ананасами (соус сливочный, сыр "Моцарелла", курица, ананасы. Вес 600 гр )', 1.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
+        ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов (соус томатный, сыр "Моцарелла", курица, колбаски, салями, ветчина. Вес 650 гр.)', 1.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
+        ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 1.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
+        ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.  )', 1.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
+        ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 679.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12),
+        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.)', 679.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -152,10 +154,12 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Бургер "Классический"', 'Классический бургер с жареным луком и сыром', 1.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
-        ('Бургер "Чизбургер"', 'Бургер с сыром и салатом', 599.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, true, 15),
-        ('Бургер "Гавайский"', 'Бургер с ветчиной и ананасами', 549.00, 470, burgers_category_id, 'products/burger_hawaiian.png', true, false, null),
-        ('Бургер "Том Ям"', 'Острый бургер в стиле тайского супа', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12)
+        ('Бургер "Димбургер"', 'Бургер с жареным луком и сыром (куриная котлета, лук, помидоры, салат, двойной сыр, маринованные орурцы, соус)', 1.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
+        ('Бургер "Чизбургер"', 'Бургер с сыром и салатом (куриная котлета, лук, помидоры, салат, сыр, соус)', 599.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, true, 15),
+        ('Бургер "Чикенбургер"', 'Чикенбургер (куриная котлета, лук, помидоры, салат, соус)', 549.00, 470, burgers_category_id, 'products/burger_hawaiian.png', true, false, null),
+        ('Бургер "Джуниор"', 'Джуниор (куриная котлета, лук, помидоры, соус)', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
+        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
+        ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -175,15 +179,8 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Молочный коктейль', 'Классический колы', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
-        ('Шоколадный Молочный коктейль', 'Классический колы', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
-        ('Кока-Кола', 'Классический колы', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
-        ('Пепси', 'Классический пепси', 599.00, 480, drinks_category_id, 'products/drink_pepsi.png', true, true, 15),
-        ('Фанта', 'Классический фанта', 549.00, 470, drinks_category_id, 'products/drink_fant.png', true, false, null),
-        ('Спрайт', 'Классический спрайт', 679.00, 490, drinks_category_id, 'products/drink_sprite.png', true, true, 12),
-        ('Кофе', 'Классический кофе', 679.00, 490, drinks_category_id, 'products/drink_coffee.png', true, true, 12),
-        ('Чай', 'Классический чай', 679.00, 490, drinks_category_id, 'products/drink_tea.png', true, true, 12),
-        ('Сок', 'Классический сок', 679.00, 490, drinks_category_id, 'products/drink_juice.png', true, true, 12)
+        ('Молочный коктейль', 'Молочный коктейль с мороженным.', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
+        ('Шоколадный молочный коктейль', 'Молочный коктейль с шоколадным мороженным.', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -203,10 +200,7 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Десерт "Шоколадный"', 'Шоколадный десерт', 499.00, 450, desserts_category_id, 'products/dessert_chocolate.png', true, false, null),
-        ('Десерт "Фруктовый"', 'Фруктовый десерт', 599.00, 480, desserts_category_id, 'products/dessert_fruit.png', true, true, 15),
-        ('Десерт "Ягодный"', 'Ягодный десерт', 549.00, 470, desserts_category_id, 'products/dessert_berry.png', true, false, null),
-        ('Десерт "Клубничный"', 'Клубничный десерт', 679.00, 490, desserts_category_id, 'products/dessert_strawberry.png', true, true, 12)
+        ('Десерт "Шоколадный"', 'Шоколадный десерт', 499.00, 450, desserts_category_id, 'products/dessert_chocolate.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -226,10 +220,19 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Закуска "Сырные шарики"', 'Сырные шарики', 499.00, 450, snacks_category_id, 'products/snack_cheese_balls.png', true, false, null),
-        ('Закуска "Сырные шарики"', 'Сырные шарики', 599.00, 480, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 15),
-        ('Закуска "Сырные шарики"', 'Сырные шарики', 549.00, 470, snacks_category_id, 'products/snack_cheese_balls.png', true, false, null),
-        ('Закуска "Сырные шарики"', 'Сырные шарики', 679.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12)
+        ('Картофель Фри 100 гр.', 'Картофель Фри 100 гр.', 499.00, 450, snacks_category_id, 'products/snack_cheese_balls.png', true, false, null),
+        ('Картофель Фри 150 гр.', 'СКартофель Фри 150 гр.', 499.00, 450, snacks_category_id, 'products/snack_cheese_balls.png', true, false, null),
+        ('Нагецы 6 штук', 'Нагецы 6 штук', 599.00, 480, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 15),
+        ('Нагецы 9 штук', 'Нагецы 9 штук', 599.00, 480, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 15),
+        ('Нагецы 12 штук', 'Нагецы 12 штук', 599.00, 480, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 15),
+        ('Стрипсы 6 штук', 'Стрипсы 6 штук', 549.00, 470, snacks_category_id, 'products/snack_cheese_balls.png', true, false, null),
+        ('Стрипсы 9 штук', 'Стрипсы 9 штук', 549.00, 470, snacks_category_id, 'products/snack_cheese_balls.png', true, false, null),
+        ('Крылья 6 штук', 'Крылья 6 штук', 679.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
+        ('Крылья 9 штук', 'Крылья 9 штук', 679.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
+        ('Соус Кисло-сладкий', 'Соус Кисло-сладкий', 40.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
+        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
+        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
+        ('Кетчуп', 'Кетчуп', 40.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -274,14 +277,14 @@ INSERT INTO
     )
 VALUES (
         'Пункт выдачи #1',
-        'ул. Ленина, 10',
+        'ул. Шестакова 1Б',
         55.7558,
         37.6173,
         true
     ),
     (
         'Пункт выдачи #2',
-        'ул. Пушкина, 15',
+        'ул. Шестакова, 1Б',
         55.7539,
         37.6208,
         true
