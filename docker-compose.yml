@@ -115,8 +115,8 @@ services:
 
       # ЮKassa настройки
       YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-true}
-      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1116141}
-      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_A_jprj_408ySIz9HzYvC5WzxuB-mwKGqrp-7MfI_2B0}
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1127550}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_g0tYwSJBL5ahKeMNC2388jdT-3g_VPdJchsNFFJF8o0}
       YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}
       #YOOKASSA_WEBHOOK_URL: ${YOOKASSA_WEBHOOK_URL:-http://api.pizzanat.ru/api/v1/payments/yookassa/webhook}
       YOOKASSA_WEBHOOK_URL: ${YOOKASSA_WEBHOOK_URL:-http://api.dimbopizza.ru/api/v1/payments/yookassa/webhook}
