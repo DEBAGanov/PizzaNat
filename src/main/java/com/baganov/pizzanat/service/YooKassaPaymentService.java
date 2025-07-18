@@ -350,11 +350,16 @@ public class YooKassaPaymentService {
         }
         paymentRequest.put("payment_method", paymentMethod);
 
-        // Подтверждение
-        Map<String, Object> confirmation = Map.of(
-                "type", "redirect",
-                "return_url", request.getReturnUrl() != null ? request.getReturnUrl()
-                        : "https://pizzanat.ru/orders/" + payment.getOrder().getId());
+        // Подтверждение - с принудительным использованием только СБП
+        Map<String, Object> confirmation = new HashMap<>();
+        confirmation.put("type", "redirect");
+        confirmation.put("return_url", request.getReturnUrl() != null ? request.getReturnUrl()
+                : "https://dimbopizza.ru/orders/" + payment.getOrder().getId());
+
+        // Ограничиваем способы оплаты только СБП
+        if (payment.getMethod() == PaymentMethod.SBP) {
+            confirmation.put("enforce_payment_method", true);
+        }
         paymentRequest.put("confirmation", confirmation);
 
         // Метаданные

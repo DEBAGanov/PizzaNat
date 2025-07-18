@@ -213,7 +213,7 @@ public class OrderService {
             // Создаем платеж через ЮКасса
             CreatePaymentRequest paymentRequest = new CreatePaymentRequest();
             paymentRequest.setOrderId(order.getId().longValue());
-            paymentRequest.setMethod(PaymentMethod.BANK_CARD); // По умолчанию банковская карта
+            paymentRequest.setMethod(PaymentMethod.SBP); // По умолчанию банковская карта
             paymentRequest.setAmount(order.getTotalAmount()); // Устанавливаем сумму заказа
             paymentRequest.setDescription(description);
             paymentRequest.setReturnUrl("https://pizzanat.ru/orders/" + order.getId());
