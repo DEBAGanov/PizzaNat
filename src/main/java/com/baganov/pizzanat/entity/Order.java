@@ -51,6 +51,11 @@ public class Order {
     @Column(name = "contact_phone", nullable = false)
     private String contactPhone;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method")
+    @Builder.Default
+    private PaymentMethod paymentMethod = PaymentMethod.CASH;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

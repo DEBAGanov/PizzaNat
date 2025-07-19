@@ -8,6 +8,7 @@ package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.config.YooKassaConfig;
 import com.baganov.pizzanat.entity.*;
+import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
 import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.model.dto.payment.SbpBankInfo;
@@ -19,6 +20,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class YooKassaPaymentService {
     private final ObjectMapper objectMapper;
     private final PaymentMetricsService paymentMetricsService;
     private final PaymentAlertService paymentAlertService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * Создание платежа через ЮKassa API
@@ -448,14 +451,24 @@ public class YooKassaPaymentService {
 
     private void updateOrderStatusAfterPayment(Order order) {
         try {
-            // Здесь можно добавить логику обновления статуса заказа
-            // Например, изменить статус на "PAID" или "IN_PROGRESS"
-            log.info("💰 Заказ {} успешно оплачен", order.getId());
+            log.info("💰 Заказ {} успешно оплачен через ЮКассу", order.getId());
 
-            // TODO: Интеграция с OrderService для обновления статуса
+            // Публикуем событие о новом заказе для админского бота
+            // Поскольку платеж завершен, AdminBotService.hasActivePendingPayments() вернет false
+            // и уведомление будет отправлено в бот
+            try {
+                eventPublisher.publishEvent(new NewOrderEvent(this, order));
+                log.info("✅ Событие о успешно оплаченном заказе #{} опубликовано", order.getId());
+            } catch (Exception e) {
+                log.error("❌ Ошибка публикации события для заказа #{}: {}", order.getId(), e.getMessage(), e);
+                // Не прерываем выполнение, так как основная функция платежа выполнена
+            }
+
+            // Здесь можно добавить дополнительную логику обновления статуса заказа
+            // Например, изменить статус на "PAID" или "IN_PROGRESS" если потребуется
 
         } catch (Exception e) {
-            log.error("❌ Ошибка обновления статуса заказа {}: {}", order.getId(), e.getMessage());
+            log.error("❌ Ошибка обработки успешного платежа для заказа {}: {}", order.getId(), e.getMessage());
         }
     }
 

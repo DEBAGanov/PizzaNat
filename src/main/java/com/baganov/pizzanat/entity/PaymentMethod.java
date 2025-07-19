@@ -44,7 +44,12 @@ public enum PaymentMethod {
     /**
      * Сбербанк Онлайн
      */
-    SBERBANK("sberbank", "Сбербанк Онлайн", "Интернет-банк Сбербанка", false);
+    SBERBANK("sberbank", "Сбербанк Онлайн", "Интернет-банк Сбербанка", false),
+
+    /**
+     * Наличными при доставке
+     */
+    CASH("cash", "Наличными", "Оплата наличными при получении", false);
 
     private final String yookassaMethod;
     private final String displayName;

@@ -94,6 +94,7 @@ public class OrderService {
                 .comment(finalComment)
                 .contactName(request.getContactName())
                 .contactPhone(request.getContactPhone())
+                .paymentMethod(request.getPaymentMethod()) // Устанавливаем способ оплаты
                 .build();
 
         // Копирование товаров из корзины в заказ

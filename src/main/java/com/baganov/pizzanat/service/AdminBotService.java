@@ -747,8 +747,20 @@ public class AdminBotService {
     @Async
     public void handleNewOrderEvent(NewOrderEvent event) {
         try {
-            notifyAdminsAboutNewOrder(event.getOrder());
-            log.debug("Уведомление админского бота о новом заказе #{} отправлено", event.getOrder().getId());
+            Order order = event.getOrder();
+            
+            // Проверяем способ оплаты заказа
+            if (order.getPaymentMethod() != null && order.getPaymentMethod() != PaymentMethod.CASH) {
+                // Если способ оплаты НЕ наличные, НЕ отправляем уведомление сейчас
+                // Уведомление будет отправлено при получении webhook payment.succeeded
+                log.info("🔄 Заказ #{} с способом оплаты {} будет отправлен в бот после успешной оплаты", 
+                    order.getId(), order.getPaymentMethod());
+                return;
+            }
+            
+            // Если способ оплаты наличные, отправляем уведомление сразу
+            notifyAdminsAboutNewOrder(order);
+            log.debug("Уведомление админского бота о наличном заказе #{} отправлено", order.getId());
         } catch (Exception e) {
             log.error("Ошибка обработки события нового заказа #{}: {}", event.getOrder().getId(), e.getMessage(), e);
         }
@@ -793,6 +805,43 @@ public class AdminBotService {
 
         } catch (Exception e) {
             log.error("Ошибка при отправке алерта администраторам: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Проверяет есть ли для заказа активные платежи в ожидании оплаты
+     * Активными считаются платежи со статусами PENDING или WAITING_FOR_CAPTURE
+     * 
+     * @param order заказ для проверки
+     * @return true если есть активные платежи, false если нет
+     */
+    private boolean hasActivePendingPayments(Order order) {
+        try {
+            Long orderId = order.getId().longValue();
+            List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+            
+            if (payments.isEmpty()) {
+                log.debug("Заказ #{} не имеет платежей - считается оплатой наличными", order.getId());
+                return false;
+            }
+            
+            // Проверяем есть ли платежи в ожидании
+            boolean hasActivePending = payments.stream()
+                    .anyMatch(payment -> payment.getStatus() == PaymentStatus.PENDING || 
+                                       payment.getStatus() == PaymentStatus.WAITING_FOR_CAPTURE);
+            
+            if (hasActivePending) {
+                log.debug("Заказ #{} имеет активные платежи в ожидании", order.getId());
+                return true;
+            } else {
+                log.debug("Заказ #{} не имеет активных платежей в ожидании", order.getId());
+                return false;
+            }
+            
+        } catch (Exception e) {
+            log.error("Ошибка проверки активных платежей для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            // В случае ошибки предполагаем что нет активных платежей (безопасный вариант)
+            return false;
         }
     }
 }

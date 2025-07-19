@@ -1,5 +1,6 @@
 package com.baganov.pizzanat.model.dto.order;
 
+import com.baganov.pizzanat.entity.PaymentMethod;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -36,6 +37,10 @@ public class CreateOrderRequest {
     @NotBlank(message = "Телефон получателя не может быть пустым")
     @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Некорректный формат телефона")
     private String contactPhone;
+
+    // Способ оплаты (по умолчанию наличными)
+    @Builder.Default
+    private PaymentMethod paymentMethod = PaymentMethod.CASH;
 
     /**
      * Валидация: должен быть указан либо deliveryLocationId, либо deliveryAddress
