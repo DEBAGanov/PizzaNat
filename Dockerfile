@@ -1,4 +1,4 @@
-FROM openjdk:17-slim as builder
+FROM openjdk:21-slim as builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y curl unzip
 # Сборка приложения
 RUN chmod +x ./gradlew && ./gradlew build -x test
 
-FROM openjdk:17-slim
+FROM openjdk:21-slim
 
 WORKDIR /app
 

@@ -1,4 +1,4 @@
-version: "3.8"
+# Docker Compose для отладки
 
 # Отладочная версия для диагностики проблем в Timeweb Cloud
 

@@ -12,6 +12,10 @@ import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
 import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.model.dto.payment.SbpBankInfo;
+import com.baganov.pizzanat.model.dto.payment.YooKassaReceiptDto;
+import com.baganov.pizzanat.model.dto.payment.CustomerDto;
+import com.baganov.pizzanat.model.dto.payment.ReceiptItemDto;
+import com.baganov.pizzanat.model.dto.payment.AmountDto;
 import com.baganov.pizzanat.repository.OrderRepository;
 import com.baganov.pizzanat.repository.PaymentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -374,6 +378,19 @@ public class YooKassaPaymentService {
         // Захват платежа
         paymentRequest.put("capture", true);
 
+        // Формируем чек для онлайн-кассы (54-ФЗ)
+        YooKassaReceiptDto receipt = buildReceipt(payment.getOrder());
+        if (receipt != null) {
+            try {
+                Map<String, Object> receiptMap = objectMapper.convertValue(receipt, Map.class);
+                paymentRequest.put("receipt", receiptMap);
+                log.debug("📄 Чек добавлен в платеж: {} позиций", receipt.getItems().size());
+            } catch (Exception e) {
+                log.warn("⚠️ Ошибка сериализации чека: {}", e.getMessage());
+                // Продолжаем без чека, это не критично для платежа
+            }
+        }
+
         return paymentRequest;
     }
 
@@ -492,5 +509,141 @@ public class YooKassaPaymentService {
 
     private String generateIdempotenceKey() {
         return "pizzanat_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * Формирует чек для онлайн-кассы согласно 54-ФЗ
+     */
+    private YooKassaReceiptDto buildReceipt(Order order) {
+        try {
+            // Проверяем обязательные данные
+            if (order.getContactPhone() == null || order.getContactPhone().trim().isEmpty()) {
+                log.warn("⚠️ Не указан телефон покупателя для чека заказа #{}", order.getId());
+                return null;
+            }
+
+            if (order.getContactName() == null || order.getContactName().trim().isEmpty()) {
+                log.warn("⚠️ Не указано имя покупателя для чека заказа #{}", order.getId());
+                return null;
+            }
+
+            if (order.getItems() == null || order.getItems().isEmpty()) {
+                log.warn("⚠️ Нет товаров в заказе #{} для формирования чека", order.getId());
+                return null;
+            }
+
+            // Нормализуем номер телефона для ЮКассы (формат +7XXXXXXXXXX)
+            String normalizedPhone = normalizePhoneNumber(order.getContactPhone());
+            if (normalizedPhone == null) {
+                log.warn("⚠️ Некорректный формат телефона {} для чека заказа #{}", 
+                        order.getContactPhone(), order.getId());
+                return null;
+            }
+
+            // Формируем данные покупателя
+            CustomerDto customer = CustomerDto.builder()
+                    .fullName(order.getContactName())
+                    .phone(normalizedPhone)
+                    .build();
+
+            // Формируем товарные позиции
+            List<ReceiptItemDto> items = new ArrayList<>();
+            for (OrderItem orderItem : order.getItems()) {
+                ReceiptItemDto receiptItem = buildReceiptItem(orderItem);
+                if (receiptItem != null) {
+                    items.add(receiptItem);
+                }
+            }
+
+            if (items.isEmpty()) {
+                log.warn("⚠️ Не удалось сформировать ни одной позиции чека для заказа #{}", order.getId());
+                return null;
+            }
+
+            YooKassaReceiptDto receipt = YooKassaReceiptDto.builder()
+                    .customer(customer)
+                    .items(items)
+                    .build();
+
+            log.debug("✅ Сформирован чек для заказа #{}: {} позиций, покупатель: {} ({})", 
+                    order.getId(), items.size(), order.getContactName(), normalizedPhone);
+
+            return receipt;
+
+        } catch (Exception e) {
+            log.error("❌ Ошибка формирования чека для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Формирует товарную позицию для чека
+     */
+    private ReceiptItemDto buildReceiptItem(OrderItem orderItem) {
+        try {
+            Product product = orderItem.getProduct();
+            if (product == null) {
+                log.warn("⚠️ Товар не найден для позиции заказа ID: {}", orderItem.getId());
+                return null;
+            }
+
+            // Обрезаем название товара до 128 символов согласно требованиям ЮКассы
+            String description = product.getName();
+            if (description != null && description.length() > 128) {
+                description = description.substring(0, 125) + "...";
+            }
+
+            // Формируем сумму товара
+            AmountDto amount = AmountDto.builder()
+                    .value(orderItem.getSubtotal().toString())
+                    .currency("RUB")
+                    .build();
+
+            return ReceiptItemDto.builder()
+                    .description(description != null ? description : "Товар")
+                    .quantity(orderItem.getQuantity().toString() + ".00")
+                    .amount(amount)
+                    .vatCode(1) // НДС 0% для доставки еды
+                    .paymentSubject("commodity") // товар
+                    .paymentMode("full_payment") // полный расчет
+                    .build();
+
+        } catch (Exception e) {
+            log.warn("⚠️ Ошибка формирования позиции чека для товара ID {}: {}", 
+                    orderItem.getId(), e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Нормализует номер телефона для ЮКассы
+     * Принимает: +7XXXXXXXXXX, 8XXXXXXXXXX, 7XXXXXXXXXX
+     * Возвращает: +7XXXXXXXXXX или null если формат некорректный
+     */
+    private String normalizePhoneNumber(String phone) {
+        if (phone == null) {
+            return null;
+        }
+
+        // Убираем все символы кроме цифр и +
+        String cleanPhone = phone.replaceAll("[^\\d+]", "");
+
+        // Проверяем различные форматы
+        if (cleanPhone.matches("\\+7\\d{10}")) {
+            // Уже в нужном формате: +7XXXXXXXXXX
+            return cleanPhone;
+        } else if (cleanPhone.matches("8\\d{10}")) {
+            // Формат: 8XXXXXXXXXX -> +7XXXXXXXXXX
+            return "+7" + cleanPhone.substring(1);
+        } else if (cleanPhone.matches("7\\d{10}")) {
+            // Формат: 7XXXXXXXXXX -> +7XXXXXXXXXX
+            return "+" + cleanPhone;
+        } else if (cleanPhone.matches("\\d{10}")) {
+            // Формат: XXXXXXXXXX -> +7XXXXXXXXXX
+            return "+7" + cleanPhone;
+        }
+
+        // Некорректный формат
+        return null;
     }
 }

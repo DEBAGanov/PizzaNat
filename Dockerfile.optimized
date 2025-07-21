@@ -1,5 +1,5 @@
 # Этап 1: Подготовка зависимостей
-FROM openjdk:17-slim as deps
+FROM openjdk:21-slim as deps
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY gradlew build.gradle settings.gradle ./
 RUN chmod +x ./gradlew && ./gradlew dependencies --no-daemon
 
 # Этап 2: Сборка приложения
-FROM openjdk:17-slim as builder
+FROM openjdk:21-slim as builder
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ COPY src/ src/
 RUN chmod +x ./gradlew && ./gradlew build -x test --no-daemon
 
 # Этап 3: Финальный образ
-FROM openjdk:17-slim
+FROM openjdk:21-slim
 
 LABEL maintainer="baganov"
 LABEL version="1.0"
