@@ -593,9 +593,10 @@ public class YooKassaPaymentService {
                 description = description.substring(0, 125) + "...";
             }
 
-            // Формируем сумму товара
+            // ИСПРАВЛЕНИЕ: Формируем сумму товара как цену за единицу, а не общую сумму
+            // YooKassa ожидает amount = цена за единицу, а общую сумму рассчитывает сам (amount * quantity)
             AmountDto amount = AmountDto.builder()
-                    .value(orderItem.getSubtotal().toString())
+                    .value(orderItem.getPrice().toString())  // Цена за единицу, а не getSubtotal()
                     .currency("RUB")
                     .build();
 
