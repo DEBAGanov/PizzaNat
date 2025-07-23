@@ -331,7 +331,7 @@ public class AdminBotService {
     }
 
     /**
-     * Форматирование сообщения о новом заказе с информацией о платеже
+     * Форматирование детального сообщения о новом заказе (включает всю информацию для главного экрана)
      */
     private String formatNewOrderMessage(Order order) {
         StringBuilder message = new StringBuilder();
@@ -390,16 +390,32 @@ public class AdminBotService {
             message.append("💬 *Комментарий:* ").append(escapeMarkdown(order.getComment())).append("\n\n");
         }
 
-        // Состав заказа
+        // Детальный состав заказа
         message.append("🛒 *СОСТАВ ЗАКАЗА*\n");
+        BigDecimal itemsTotal = BigDecimal.ZERO;
+        
         for (OrderItem item : order.getItems()) {
+            BigDecimal itemSubtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemsTotal = itemsTotal.add(itemSubtotal);
+
             message.append("• ").append(escapeMarkdown(item.getProduct().getName()))
                     .append(" x").append(item.getQuantity())
-                    .append(" = ").append(item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-                    .append(" ₽\n");
+                    .append(" = ").append(itemSubtotal).append(" ₽\n");
         }
 
-        message.append("\n💰 *Общая сумма:* ").append(order.getTotalAmount()).append(" ₽\n\n");
+        // Детальный расчет суммы (как в детальном просмотре)
+        message.append("\n💰 *ДЕТАЛЬНЫЙ РАСЧЕТ СУММЫ:*\n");
+        message.append("├ Товары: ").append(itemsTotal).append(" ₽\n");
+        
+        if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+            message.append("├ Доставка: ").append(order.getDeliveryCost()).append(" ₽\n");
+        } else if (order.isDeliveryByCourier()) {
+            message.append("├ Доставка: БЕСПЛАТНО\n");
+        } else if (order.isPickup()) {
+            message.append("├ Доставка: Самовывоз (0 ₽)\n");
+        }
+        
+        message.append("└ *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
 
         // Информация о платеже
         appendPaymentInfo(message, order);
