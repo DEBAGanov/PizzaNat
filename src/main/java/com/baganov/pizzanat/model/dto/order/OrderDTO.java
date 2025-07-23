@@ -22,6 +22,8 @@ public class OrderDTO {
     private String deliveryLocationAddress;
     private String deliveryAddress;
     private BigDecimal totalAmount;
+    private BigDecimal deliveryCost; // Стоимость доставки
+    private String deliveryType; // Способ доставки
     private String comment;
     private String contactName;
     private String contactPhone;
@@ -31,4 +33,32 @@ public class OrderDTO {
 
     @Builder.Default
     private List<OrderItemDTO> items = new ArrayList<>();
+
+    /**
+     * Возвращает сумму только товаров (без доставки)
+     */
+    public BigDecimal getItemsAmount() {
+        if (deliveryCost != null && totalAmount != null) {
+            return totalAmount.subtract(deliveryCost);
+        }
+        return totalAmount;
+    }
+
+    /**
+     * Проверяет, является ли заказ самовывозом
+     */
+    public boolean isPickup() {
+        return deliveryType != null && 
+               (deliveryType.toLowerCase().contains("самовывоз") || 
+                deliveryType.toLowerCase().contains("самов"));
+    }
+
+    /**
+     * Проверяет, является ли заказ доставкой курьером
+     */
+    public boolean isDeliveryByCourier() {
+        return deliveryType != null && 
+               (deliveryType.toLowerCase().contains("курьер") || 
+                deliveryType.toLowerCase().contains("доставка"));
+    }
 }

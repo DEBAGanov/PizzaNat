@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import com.baganov.pizzanat.event.NewOrderEvent;
+import com.baganov.pizzanat.service.DeliveryZoneService;
 
 @Slf4j
 @Service
@@ -44,6 +45,7 @@ public class OrderService {
     private final TelegramUserNotificationService telegramUserNotificationService;
     private final ScheduledNotificationService scheduledNotificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final DeliveryZoneService deliveryZoneService;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
@@ -79,6 +81,41 @@ public class OrderService {
             deliveryLocation = createDeliveryLocationFromAddress(request.getDeliveryAddress());
         }
 
+        // Рассчитываем стоимость товаров
+        BigDecimal itemsAmount = cart.getTotalAmount();
+        
+        // Рассчитываем стоимость доставки
+        BigDecimal deliveryCost = BigDecimal.ZERO;
+        String deliveryType = request.getDeliveryType() != null ? request.getDeliveryType() : "Самовывоз";
+        
+        // Если выбрана доставка курьером - рассчитываем стоимость через зональную систему
+        if (request.isDeliveryByCourier() && request.getDeliveryAddress() != null) {
+            try {
+                log.info("Расчет стоимости доставки для адреса: {} (сумма товаров: {})", 
+                        request.getDeliveryAddress(), itemsAmount);
+                
+                DeliveryZoneService.DeliveryCalculationResult deliveryResult = 
+                    deliveryZoneService.calculateDelivery(request.getDeliveryAddress(), itemsAmount);
+                
+                if (deliveryResult.isDeliveryAvailable()) {
+                    deliveryCost = deliveryResult.getDeliveryCost();
+                    log.info("Стоимость доставки рассчитана: {} (зона: {})", 
+                            deliveryCost, deliveryResult.getZoneName());
+                } else {
+                    log.warn("Доставка недоступна для адреса: {}", request.getDeliveryAddress());
+                    throw new IllegalArgumentException("Доставка недоступна для указанного адреса");
+                }
+            } catch (Exception e) {
+                log.error("Ошибка при расчете стоимости доставки: {}", e.getMessage(), e);
+                // Используем стандартную стоимость доставки как fallback
+                deliveryCost = new BigDecimal("250"); // Стандартная стоимость
+                log.info("Применена стандартная стоимость доставки: {}", deliveryCost);
+            }
+        }
+        
+        // Общая сумма заказа = товары + доставка
+        BigDecimal totalAmount = itemsAmount.add(deliveryCost);
+
         OrderStatus createdStatus = orderStatusRepository.findByName("CREATED")
                 .orElseThrow(() -> new IllegalArgumentException("Статус заказа 'CREATED' не найден"));
 
@@ -90,7 +127,9 @@ public class OrderService {
                 .status(createdStatus)
                 .deliveryLocation(deliveryLocation)
                 .deliveryAddress(request.getDeliveryAddress()) // Сохраняем Android адрес
-                .totalAmount(cart.getTotalAmount())
+                .deliveryType(deliveryType) // Сохраняем способ доставки
+                .totalAmount(totalAmount) // Общая сумма = товары + доставка
+                .deliveryCost(deliveryCost) // Стоимость доставки отдельно
                 .comment(finalComment)
                 .contactName(request.getContactName())
                 .contactPhone(request.getContactPhone())
@@ -136,8 +175,8 @@ public class OrderService {
             log.error("Ошибка отправки Telegram уведомления о новом заказе #{}: {}", order.getId(), e.getMessage());
         }
 
-        log.info("Создан новый заказ #{} на сумму {} (адрес: {})",
-                order.getId(), order.getTotalAmount(),
+        log.info("Создан новый заказ #{} на сумму {} (товары: {}, доставка: {}, тип: {}, адрес: {})",
+                order.getId(), order.getTotalAmount(), itemsAmount, deliveryCost, deliveryType,
                 request.getDeliveryAddress() != null ? request.getDeliveryAddress() : deliveryLocation.getAddress());
 
         return mapToDTO(order);
@@ -510,6 +549,8 @@ public class OrderService {
                 .deliveryLocationAddress(order.getDeliveryLocation().getAddress())
                 .deliveryAddress(order.getDeliveryAddress())
                 .totalAmount(order.getTotalAmount())
+                .deliveryCost(order.getDeliveryCost()) // Стоимость доставки
+                .deliveryType(order.getDeliveryType()) // Способ доставки
                 .comment(order.getComment())
                 .contactName(order.getContactName())
                 .contactPhone(order.getContactPhone())

@@ -555,6 +555,15 @@ public class YooKassaPaymentService {
                 }
             }
 
+            // Добавляем доставку как отдельную позицию чека (если платная)
+            if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+                ReceiptItemDto deliveryItem = buildDeliveryReceiptItem(order.getDeliveryCost());
+                if (deliveryItem != null) {
+                    items.add(deliveryItem);
+                    log.debug("📦 Добавлена позиция доставки в чек: {} ₽", order.getDeliveryCost());
+                }
+            }
+
             if (items.isEmpty()) {
                 log.warn("⚠️ Не удалось сформировать ни одной позиции чека для заказа #{}", order.getId());
                 return null;
@@ -572,6 +581,32 @@ public class YooKassaPaymentService {
 
         } catch (Exception e) {
             log.error("❌ Ошибка формирования чека для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Формирует позицию доставки для чека
+     */
+    private ReceiptItemDto buildDeliveryReceiptItem(BigDecimal deliveryCost) {
+        try {
+            // Формируем позицию доставки согласно требованиям ЮКассы
+            AmountDto amount = AmountDto.builder()
+                    .value(deliveryCost.toString())  // Стоимость доставки за единицу
+                    .currency("RUB")
+                    .build();
+
+            return ReceiptItemDto.builder()
+                    .description("Доставка")  // Название услуги
+                    .quantity("1.00")         // Количество = 1
+                    .amount(amount)           // Стоимость доставки
+                    .vatCode(1)               // НДС 0% для услуги доставки
+                    .paymentSubject("service") // Услуга (не товар)
+                    .paymentMode("full_payment") // Полный расчет
+                    .build();
+
+        } catch (Exception e) {
+            log.warn("⚠️ Ошибка формирования позиции доставки в чеке: {}", e.getMessage());
             return null;
         }
     }

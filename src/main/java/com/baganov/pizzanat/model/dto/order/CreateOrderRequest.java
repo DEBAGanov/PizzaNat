@@ -23,6 +23,10 @@ public class CreateOrderRequest {
     @Size(max = 500, message = "Адрес доставки не должен превышать 500 символов")
     private String deliveryAddress;
 
+    // Способ доставки из мобильного приложения
+    @Size(max = 100, message = "Способ доставки не должен превышать 100 символов")
+    private String deliveryType; // "Самовывоз" или "Доставка курьером"
+
     @Size(max = 500, message = "Комментарий не должен превышать 500 символов")
     private String comment;
 
@@ -43,15 +47,14 @@ public class CreateOrderRequest {
     private PaymentMethod paymentMethod = PaymentMethod.CASH;
 
     /**
-     * Валидация: должен быть указан либо deliveryLocationId, либо deliveryAddress
+     * Проверяет корректность информации о доставке
      */
     public boolean hasValidDeliveryInfo() {
-        return (deliveryLocationId != null) ||
-                (deliveryAddress != null && !deliveryAddress.trim().isEmpty());
+        return deliveryLocationId != null || (deliveryAddress != null && !deliveryAddress.trim().isEmpty());
     }
 
     /**
-     * Получает итоговый комментарий (приоритет: comment > notes)
+     * Возвращает финальный комментарий с приоритетом comment > notes
      */
     public String getFinalComment() {
         if (comment != null && !comment.trim().isEmpty()) {
@@ -61,5 +64,23 @@ public class CreateOrderRequest {
             return notes.trim();
         }
         return null;
+    }
+
+    /**
+     * Проверяет, выбрана ли доставка курьером
+     */
+    public boolean isDeliveryByCourier() {
+        return deliveryType != null && 
+               (deliveryType.toLowerCase().contains("курьер") || 
+                deliveryType.toLowerCase().contains("доставка"));
+    }
+
+    /**
+     * Проверяет, выбран ли самовывоз
+     */
+    public boolean isPickup() {
+        return deliveryType != null && 
+               (deliveryType.toLowerCase().contains("самовывоз") || 
+                deliveryType.toLowerCase().contains("самов"));
     }
 }

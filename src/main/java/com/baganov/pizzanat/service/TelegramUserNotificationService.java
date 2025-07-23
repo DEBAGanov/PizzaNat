@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -51,7 +52,7 @@ public class TelegramUserNotificationService {
         }
 
         try {
-            String message = formatPersonalNewOrderMessage(order);
+            String message = formatNewOrderMessage(order);
             sendPersonalMessage(order.getUser().getTelegramId(), message);
 
             log.info("Персональное уведомление о новом заказе #{} отправлено пользователю {} (Telegram ID: {})",
@@ -121,7 +122,7 @@ public class TelegramUserNotificationService {
     /**
      * Форматирование персонального сообщения о новом заказе
      */
-    private String formatPersonalNewOrderMessage(Order order) {
+    private String formatNewOrderMessage(Order order) {
         User user = order.getUser();
         StringBuilder message = new StringBuilder();
 
@@ -138,19 +139,42 @@ public class TelegramUserNotificationService {
             message.append("📍 <b>Пункт выдачи:</b> ").append(order.getDeliveryLocation().getAddress()).append("\n");
         }
 
+        // Способ доставки (НОВОЕ ПОЛЕ)
+        if (order.getDeliveryType() != null) {
+            String deliveryIcon = order.isPickup() ? "🏠" : "🚗";
+            message.append("🚛 <b>Способ доставки:</b> ").append(deliveryIcon).append(" ")
+                    .append(order.getDeliveryType()).append("\n");
+        }
+
         // Комментарий
         if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
             message.append("💬 <b>Комментарий:</b> ").append(order.getComment()).append("\n");
         }
 
         message.append("\n🛒 <b>Состав заказа:</b>\n");
+        BigDecimal itemsTotal = BigDecimal.ZERO;
         for (OrderItem item : order.getItems()) {
+            BigDecimal itemSubtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemsTotal = itemsTotal.add(itemSubtotal);
+            
             message.append("• ").append(item.getProduct().getName())
                     .append(" x").append(item.getQuantity())
-                    .append(" = ").append(item.getPrice()).append(" ₽\n");
+                    .append(" = ").append(itemSubtotal).append(" ₽\n");
         }
 
-        message.append("\n💰 <b>Итого: ").append(order.getTotalAmount()).append(" ₽</b>\n\n");
+        // Детализация суммы (ОБНОВЛЕНО)
+        message.append("\n💰 <b>РАСЧЕТ СУММЫ:</b>\n");
+        message.append("├ Товары: ").append(itemsTotal).append(" ₽\n");
+        
+        if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+            message.append("├ Доставка: ").append(order.getDeliveryCost()).append(" ₽\n");
+        } else if (order.isDeliveryByCourier()) {
+            message.append("├ Доставка: БЕСПЛАТНО\n");
+        } else if (order.isPickup()) {
+            message.append("├ Доставка: Самовывоз (0 ₽)\n");
+        }
+        
+        message.append("└ <b>ИТОГО: ").append(order.getTotalAmount()).append(" ₽</b>\n\n");
         message.append("Мы уведомим вас об изменении статуса заказа! 🔔");
 
         return message.toString();

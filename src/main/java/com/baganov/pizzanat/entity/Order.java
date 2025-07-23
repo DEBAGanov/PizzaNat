@@ -39,11 +39,20 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    // Стоимость доставки (отдельно от общей суммы)
+    @Column(name = "delivery_cost", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal deliveryCost = BigDecimal.ZERO;
+
     @Column(columnDefinition = "TEXT")
     private String comment;
 
     @Column(name = "delivery_address", columnDefinition = "TEXT")
     private String deliveryAddress;
+
+    // Способ доставки ("Самовывоз" или "Доставка курьером")
+    @Column(name = "delivery_type", length = 100)
+    private String deliveryType;
 
     @Column(name = "contact_name", nullable = false)
     private String contactName;
@@ -85,5 +94,32 @@ public class Order {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = TimeZoneUtils.nowInMoscow();
+    }
+
+    /**
+     * Возвращает сумму только товаров (без доставки)
+     */
+    public BigDecimal getItemsAmount() {
+        return items.stream()
+                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * Проверяет, является ли заказ самовывозом
+     */
+    public boolean isPickup() {
+        return deliveryType != null && 
+               (deliveryType.toLowerCase().contains("самовывоз") || 
+                deliveryType.toLowerCase().contains("самов"));
+    }
+
+    /**
+     * Проверяет, является ли заказ доставкой курьером
+     */
+    public boolean isDeliveryByCourier() {
+        return deliveryType != null && 
+               (deliveryType.toLowerCase().contains("курьер") || 
+                deliveryType.toLowerCase().contains("доставка"));
     }
 }

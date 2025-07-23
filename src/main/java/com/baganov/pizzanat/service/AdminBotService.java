@@ -197,7 +197,7 @@ public class AdminBotService {
             Optional<Order> orderOpt = orderService.findById(orderId);
 
             if (orderOpt.isPresent()) {
-                String detailsMessage = formatOrderDetailsMessage(orderOpt.get());
+                String detailsMessage = formatOrderDetails(orderOpt.get());
                 telegramAdminNotificationService.sendMessage(chatId, detailsMessage, true);
             } else {
                 telegramAdminNotificationService.sendMessage(chatId, "❌ Заказ не найден", false);
@@ -377,6 +377,14 @@ public class AdminBotService {
             message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryLocation().getAddress())).append("\n\n");
         }
 
+        // Способ доставки (НОВОЕ ПОЛЕ)
+        if (order.getDeliveryType() != null) {
+            String deliveryIcon = order.isPickup() ? "🏠" : "🚗";
+            message.append("🚛 *Способ доставки:* ").append(deliveryIcon).append(" ")
+                    .append(escapeMarkdown(order.getDeliveryType())).append("\n");
+        }
+        message.append("\n");
+
         // Комментарий
         if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
             message.append("💬 *Комментарий:* ").append(escapeMarkdown(order.getComment())).append("\n\n");
@@ -399,47 +407,26 @@ public class AdminBotService {
         return message.toString();
     }
 
-    /**
-     * Форматирование детальной информации о заказе с информацией о платеже
-     */
-    private String formatOrderDetailsMessage(Order order) {
+    private String formatOrderDetails(Order order) {
         StringBuilder message = new StringBuilder();
-        message.append("📋 *ДЕТАЛИ ЗАКАЗА #").append(order.getId()).append("*\n\n");
 
-        message.append("📊 *Статус:* ").append(getStatusDisplayName(order.getStatus())).append("\n");
-        message.append("🕐 *Создан:* ")
-                .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n");
+        message.append("🔍 *ДЕТАЛИ ЗАКАЗА #").append(order.getId()).append("*\n\n");
 
-        if (order.getUpdatedAt() != null && !order.getUpdatedAt().equals(order.getCreatedAt())) {
-            message.append("🔄 *Обновлен:* ")
-                    .append(order.getUpdatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n");
-        }
+        message.append("📅 *Время создания:* ").append(formatDateTime(order.getCreatedAt())).append("\n");
+        message.append("📋 *Статус:* ").append(order.getStatus().getName()).append("\n");
+        message.append("📝 *Описание статуса:* ").append(order.getStatus().getDescription()).append("\n\n");
 
-        // Информация о пользователе системы
+        // Информация о пользователе
         if (order.getUser() != null) {
-            message.append("\n👤 *ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ*\n");
-            message.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()));
-            if (order.getUser().getLastName() != null) {
-                message.append(" ").append(escapeMarkdown(order.getUser().getLastName()));
-            }
-            message.append("\n");
-
-            if (order.getUser().getUsername() != null) {
-                message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
-            }
-
-            if (order.getUser().getPhone() != null) {
-                message.append("Телефон пользователя: ").append(escapeMarkdown(order.getUser().getPhone()))
-                        .append("\n");
-            }
-
-            if (order.getUser().getEmail() != null) {
-                message.append("Email: ").append(escapeMarkdown(order.getUser().getEmail())).append("\n");
-            }
+            message.append("👤 *ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ*\n");
+            message.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()))
+                    .append(" ").append(escapeMarkdown(order.getUser().getLastName())).append("\n");
+            message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+            message.append("Телефон: ").append(escapeMarkdown(order.getUser().getPhone())).append("\n");
+            message.append("Email: ").append(escapeMarkdown(order.getUser().getEmail())).append("\n\n");
         }
 
-        // Контактные данные заказа
-        message.append("\n📞 *КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА*\n");
+        message.append("📞 *КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА*\n");
         message.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
         message.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n");
 
@@ -449,21 +436,40 @@ public class AdminBotService {
             message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n");
         }
 
+        // Способ доставки (НОВОЕ ПОЛЕ)
+        if (order.getDeliveryType() != null) {
+            String deliveryIcon = order.isPickup() ? "🏠" : "🚗";
+            message.append("🚛 *Способ доставки:* ").append(deliveryIcon).append(" ")
+                    .append(escapeMarkdown(order.getDeliveryType())).append("\n");
+        }
+
         // Детальный состав заказа
         message.append("\n🛒 *СОСТАВ ЗАКАЗА*\n");
-        BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal itemsTotal = BigDecimal.ZERO;
 
         for (OrderItem item : order.getItems()) {
-            BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            totalAmount = totalAmount.add(itemTotal);
+            BigDecimal itemSubtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemsTotal = itemsTotal.add(itemSubtotal);
 
             message.append("• ").append(escapeMarkdown(item.getProduct().getName())).append("\n");
             message.append("  Цена: ").append(item.getPrice()).append(" ₽\n");
             message.append("  Количество: ").append(item.getQuantity()).append("\n");
-            message.append("  Сумма: ").append(itemTotal).append(" ₽\n\n");
+            message.append("  Сумма: ").append(itemSubtotal).append(" ₽\n\n");
         }
 
-        message.append("💰 *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
+        // Детализация суммы (ОБНОВЛЕНО)
+        message.append("💰 *ДЕТАЛЬНЫЙ РАСЧЕТ СУММЫ:*\n");
+        message.append("├ Товары: ").append(itemsTotal).append(" ₽\n");
+        
+        if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+            message.append("├ Доставка: ").append(order.getDeliveryCost()).append(" ₽\n");
+        } else if (order.isDeliveryByCourier()) {
+            message.append("├ Доставка: БЕСПЛАТНО\n");
+        } else if (order.isPickup()) {
+            message.append("├ Доставка: Самовывоз (0 ₽)\n");
+        }
+        
+        message.append("└ *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
 
         // Информация о платеже
         appendPaymentInfo(message, order);
@@ -843,5 +849,87 @@ public class AdminBotService {
             // В случае ошибки предполагаем что нет активных платежей (безопасный вариант)
             return false;
         }
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "Неизвестно";
+        }
+        return dateTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+    }
+
+    private String formatOrderSummary(Order order) {
+        StringBuilder message = new StringBuilder();
+
+        message.append("🆔 *Заказ #").append(order.getId()).append("*\n");
+        message.append("📅 Время: ").append(formatDateTime(order.getCreatedAt())).append("\n");
+        message.append("📋 Статус: *").append(order.getStatus().getName()).append("*\n\n");
+
+        // Информация о пользователе
+        if (order.getUser() != null) {
+            message.append("👤 *ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ*\n");
+            message.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()))
+                    .append(" ").append(escapeMarkdown(order.getUser().getLastName())).append("\n");
+            message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+            message.append("Телефон: ").append(escapeMarkdown(order.getUser().getPhone())).append("\n");
+            message.append("Email: ").append(escapeMarkdown(order.getUser().getEmail())).append("\n\n");
+        }
+
+        // Контактные данные заказа
+        message.append("📞 *КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА*\n");
+        message.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
+        message.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
+
+        // Информация о доставке
+        if (order.getDeliveryAddress() != null) {
+            message.append("📍 *ДОСТАВКА*\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n");
+        } else if (order.getDeliveryLocation() != null) {
+            message.append("📍 *ПУНКТ ВЫДАЧИ*\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryLocation().getAddress())).append("\n");
+        }
+
+        // Способ доставки (НОВОЕ ПОЛЕ)
+        if (order.getDeliveryType() != null) {
+            String deliveryIcon = order.isPickup() ? "🏠" : "🚗";
+            message.append("🚛 *Способ доставки:* ").append(deliveryIcon).append(" ")
+                    .append(escapeMarkdown(order.getDeliveryType())).append("\n");
+        }
+        message.append("\n");
+
+        // Комментарий
+        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
+            message.append("💬 *Комментарий:* ").append(escapeMarkdown(order.getComment())).append("\n\n");
+        }
+
+        // Состав заказа
+        message.append("🛒 *СОСТАВ ЗАКАЗА*\n");
+        BigDecimal itemsTotal = BigDecimal.ZERO;
+        for (OrderItem item : order.getItems()) {
+            BigDecimal itemSubtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemsTotal = itemsTotal.add(itemSubtotal);
+            
+            message.append("• ").append(escapeMarkdown(item.getProduct().getName()))
+                    .append(" x").append(item.getQuantity())
+                    .append(" = ").append(itemSubtotal)
+                    .append(" ₽\n");
+        }
+
+        // Детализация суммы (ОБНОВЛЕНО)
+        message.append("\n💰 *РАСЧЕТ СУММЫ:*\n");
+        message.append("├ Товары: ").append(itemsTotal).append(" ₽\n");
+        
+        if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+            message.append("├ Доставка: ").append(order.getDeliveryCost()).append(" ₽\n");
+        } else if (order.isDeliveryByCourier()) {
+            message.append("├ Доставка: БЕСПЛАТНО ₽\n");
+        }
+        
+        message.append("└ *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
+
+        // Информация о платеже
+        appendPaymentInfo(message, order);
+
+        return message.toString();
     }
 }
