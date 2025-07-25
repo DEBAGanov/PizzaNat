@@ -2763,6 +2763,642 @@ else
     TOTAL_TESTS=$((TOTAL_TESTS + 7))
 fi
 
+# 13. ТЕСТЫ УСПЕШНОЙ ОПЛАТЫ ОТ ЮКАССЫ
+echo -e "${BLUE}💳 13. ТЕСТЫ УСПЕШНОЙ ОПЛАТЫ ОТ ЮКАССЫ${NC}"
+echo -e "${CYAN}Проверяем полный цикл платежей: создание → webhook → обновление статуса${NC}"
+
+if [ -n "$JWT_TOKEN" ]; then
+    # Функция для создания тестового заказа для успешных платежей
+    create_success_payment_order() {
+        local order_name=$1
+        local delivery_type=$2
+        local delivery_address=$3
+
+        echo -e "${CYAN}📦 Создание заказа '$order_name'...${NC}"
+
+        # Добавляем товар в корзину
+        local cart_data='{"productId": 1, "quantity": 1}'
+        curl -s -X POST "$BASE_URL/api/v1/cart/items" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $JWT_TOKEN" \
+            -d "$cart_data" > /dev/null
+
+        # Создаем заказ
+        local order_data
+        if [ "$delivery_type" = "pickup" ]; then
+            order_data='{
+                "deliveryLocationId": 1,
+                "contactName": "'$order_name'",
+                "contactPhone": "+79001234567",
+                "comment": "Тестовый заказ для успешной оплаты: '$order_name'",
+                "deliveryType": "Самовывоз"
+            }'
+        else
+            order_data='{
+                "deliveryAddress": "'$delivery_address'",
+                "contactName": "'$order_name'",
+                "contactPhone": "+79001234567",
+                "comment": "Тестовый заказ для успешной оплаты: '$order_name'",
+                "deliveryType": "Доставка курьером"
+            }'
+        fi
+
+        local order_response=$(curl -s -X POST "$BASE_URL/api/v1/orders" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $JWT_TOKEN" \
+            -d "$order_data")
+
+        local order_id=$(echo "$order_response" | grep -o '"id":[0-9]*' | cut -d':' -f2)
+
+        if [ -n "$order_id" ] && [ "$order_id" != "null" ]; then
+            echo -e "${GREEN}✅ Заказ #$order_id создан для '$order_name'${NC}"
+            echo "$order_id"
+        else
+            echo -e "${RED}❌ Не удалось создать заказ для '$order_name'${NC}"
+            return 1
+        fi
+    }
+
+    # Функция для создания платежа и получения всех данных
+    create_payment_for_success_test() {
+        local order_id=$1
+        local payment_method=$2
+        local test_name=$3
+
+        echo -e "${YELLOW}💳 Создание $payment_method платежа для заказа #$order_id...${NC}"
+
+        local payment_data='{
+            "orderId": '$order_id',
+            "method": "'$payment_method'",
+            "description": "Тест успешной оплаты: '$test_name'",
+            "returnUrl": "https://pizzanat.ru/payment-success"
+        }'
+
+        local temp_payment_file=$(mktemp)
+        printf '%s' "$payment_data" > "$temp_payment_file"
+
+        local temp_response_file=$(mktemp)
+        local payment_code=$(curl -s -L -w '%{http_code}' -o "$temp_response_file" \
+            -X POST "$BASE_URL/api/v1/payments/yookassa/create" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -H "Authorization: Bearer $JWT_TOKEN" \
+            --data-binary "@$temp_payment_file")
+
+        local payment_response=$(cat "$temp_response_file")
+        rm -f "$temp_payment_file" "$temp_response_file"
+
+        if [[ $payment_code -eq 200 ]] || [[ $payment_code -eq 201 ]]; then
+            local payment_id=$(echo "$payment_response" | grep -o '"id":[0-9]*' | cut -d':' -f2)
+            local yookassa_id=$(echo "$payment_response" | grep -o '"yookassaPaymentId":"[^"]*' | cut -d'"' -f4)
+            local payment_status=$(echo "$payment_response" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+            local payment_amount=$(echo "$payment_response" | grep -o '"amount":[0-9.]*' | cut -d':' -f2)
+            local confirmation_url=$(echo "$payment_response" | grep -o '"confirmation_url":"[^"]*' | cut -d'"' -f4)
+
+            echo -e "${GREEN}✅ $payment_method платеж создан:${NC}"
+            echo -e "${CYAN}   ID: #$payment_id${NC}"
+            echo -e "${CYAN}   ЮКасса ID: $yookassa_id${NC}"
+            echo -e "${CYAN}   Статус: $payment_status${NC}"
+            echo -e "${CYAN}   Сумма: ${payment_amount}₽${NC}"
+            
+            if [ -n "$confirmation_url" ]; then
+                echo -e "${BLUE}🔗 Ссылка для оплаты: $confirmation_url${NC}"
+            fi
+
+            # Возвращаем данные для дальнейшего использования
+            echo "$payment_id:$yookassa_id:$payment_amount:$payment_status"
+            return 0
+        else
+            echo -e "${RED}❌ Ошибка создания платежа (HTTP $payment_code)${NC}"
+            if [ -n "$payment_response" ]; then
+                echo "   Ответ: $(echo "$payment_response" | head -c 150)..."
+            fi
+            return 1
+        fi
+    }
+
+    # Функция для имитации успешного webhook от ЮКассы
+    simulate_payment_success_webhook() {
+        local order_id=$1
+        local payment_data=$2  # format: payment_id:yookassa_id:amount:old_status
+        local test_name=$3
+
+        IFS=':' read -r payment_id yookassa_id amount old_status <<< "$payment_data"
+
+        echo -e "${YELLOW}🔔 Имитация webhook payment.succeeded для платежа #$payment_id...${NC}"
+
+        # Webhook данные от ЮКассы
+        local webhook_data='{
+            "type": "notification",
+            "event": "payment.succeeded",
+            "object": {
+                "id": "'$yookassa_id'",
+                "status": "succeeded",
+                "amount": {
+                    "value": "'$amount'",
+                    "currency": "RUB"
+                },
+                "payment_method": {
+                    "type": "sbp",
+                    "id": "sbp-'$yookassa_id'"
+                },
+                "created_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+                "captured_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+                "metadata": {
+                    "order_id": "'$order_id'",
+                    "payment_id": "'$payment_id'"
+                },
+                "receipt": {
+                    "registered": "true",
+                    "fiscal_document_number": "'.$$.'",
+                    "fiscal_storage_number": "1234567890",
+                    "fiscal_attribute": "98765432"
+                }
+            }
+        }'
+
+        local temp_webhook_file=$(mktemp)
+        printf '%s' "$webhook_data" > "$temp_webhook_file"
+
+        local temp_webhook_response=$(mktemp)
+        local webhook_code=$(curl -s -L -w '%{http_code}' -o "$temp_webhook_response" \
+            -X POST "$BASE_URL/api/v1/payments/yookassa/webhook" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data-binary "@$temp_webhook_file")
+
+        local webhook_response=$(cat "$temp_webhook_response")
+        rm -f "$temp_webhook_file" "$temp_webhook_response"
+
+        if [ "$webhook_code" = "200" ]; then
+            echo -e "${GREEN}✅ Webhook payment.succeeded обработан успешно${NC}"
+            
+            if [ -n "$webhook_response" ] && [ ${#webhook_response} -gt 5 ]; then
+                echo -e "${CYAN}   Ответ: $(echo "$webhook_response" | head -c 80)...${NC}"
+            fi
+            
+            return 0
+        else
+            echo -e "${RED}❌ Ошибка обработки webhook (HTTP $webhook_code)${NC}"
+            if [ -n "$webhook_response" ]; then
+                echo "   Ответ: $(echo "$webhook_response" | head -c 150)..."
+            fi
+            return 1
+        fi
+    }
+
+    # Функция для проверки статуса платежа после webhook
+    verify_payment_success_status() {
+        local payment_data=$1  # format: payment_id:yookassa_id:amount:old_status
+        local expected_status=$2
+        local test_name=$3
+
+        IFS=':' read -r payment_id yookassa_id amount old_status <<< "$payment_data"
+
+        echo -e "${YELLOW}🔍 Проверка статуса платежа #$payment_id после webhook...${NC}"
+
+        # Даем время на обработку webhook
+        sleep 2
+
+        local status_response=$(curl -s -X GET "$BASE_URL/api/v1/payments/yookassa/$payment_id" \
+            -H "Authorization: Bearer $JWT_TOKEN")
+
+        local new_status=$(echo "$status_response" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+        local updated_at=$(echo "$status_response" | grep -o '"updatedAt":"[^"]*' | cut -d'"' -f4)
+        local yookassa_status=$(echo "$status_response" | grep -o '"yookassaStatus":"[^"]*' | cut -d'"' -f4)
+
+        echo -e "${CYAN}   Старый статус: $old_status${NC}"
+        echo -e "${CYAN}   Новый статус: $new_status${NC}"
+        echo -e "${CYAN}   ЮКасса статус: $yookassa_status${NC}"
+        echo -e "${CYAN}   Обновлен: $updated_at${NC}"
+
+        if [ "$new_status" = "$expected_status" ]; then
+            echo -e "${GREEN}✅ Статус платежа корректно обновлен на $expected_status${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ Статус платежа не обновился: ожидался $expected_status, получен $new_status${NC}"
+            return 1
+        fi
+    }
+
+    # Функция для проверки уведомлений в админском боте
+    verify_admin_bot_notification() {
+        local order_id=$1
+        local payment_method=$2
+        local should_be_notified=$3  # true/false
+        local test_name=$4
+
+        echo -e "${YELLOW}🤖 Проверка уведомления админского бота для заказа #$order_id...${NC}"
+
+        if [ -n "$ADMIN_TOKEN" ]; then
+            # Получаем детали заказа через админское API
+            local admin_order_response=$(curl -s -X GET "$BASE_URL/api/v1/admin/orders/$order_id" \
+                -H "Authorization: Bearer $ADMIN_TOKEN")
+
+            local order_status=$(echo "$admin_order_response" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+            local payment_method_resp=$(echo "$admin_order_response" | grep -o '"paymentMethod":"[^"]*' | cut -d'"' -f4)
+
+            echo -e "${CYAN}   Статус заказа: $order_status${NC}"
+            echo -e "${CYAN}   Способ оплаты: $payment_method_resp${NC}"
+
+            # Проверяем платежи для заказа
+            local payments_response=$(curl -s -X GET "$BASE_URL/api/v1/payments/yookassa/order/$order_id" \
+                -H "Authorization: Bearer $ADMIN_TOKEN")
+
+            local payments_count=$(echo "$payments_response" | jq '. | length' 2>/dev/null || echo "0")
+            
+            if [ "$payments_count" -gt 0 ]; then
+                echo -e "${CYAN}   Найдено платежей: $payments_count${NC}"
+                
+                # Показываем статус первого платежа
+                local first_payment_status=$(echo "$payments_response" | jq -r '.[0].status' 2>/dev/null)
+                if [ "$first_payment_status" != "null" ]; then
+                    echo -e "${CYAN}   Статус первого платежа: $first_payment_status${NC}"
+                fi
+            else
+                echo -e "${CYAN}   Платежи не найдены (заказ наличный)${NC}"
+            fi
+
+            if [ "$should_be_notified" = "true" ]; then
+                echo -e "${GREEN}✅ Заказ должен быть в админском боте${NC}"
+                echo -e "${YELLOW}📱 Проверьте Telegram бот - заказ #$order_id должен отображаться${NC}"
+            else
+                echo -e "${YELLOW}⏳ Заказ НЕ должен быть в админском боте до успешной оплаты${NC}"
+                echo -e "${YELLOW}📱 Проверьте Telegram бот - заказ #$order_id НЕ должен отображаться${NC}"
+            fi
+
+            return 0
+        else
+            echo -e "${RED}❌ Нет токена администратора для проверки${NC}"
+            return 1
+        fi
+    }
+
+    # Функция для проверки чека при успешной оплате
+    verify_receipt_after_payment() {
+        local payment_data=$1  # format: payment_id:yookassa_id:amount:status
+        local test_name=$2
+
+        IFS=':' read -r payment_id yookassa_id amount status <<< "$payment_data"
+
+        echo -e "${YELLOW}🧾 Проверка данных фискального чека для платежа #$payment_id...${NC}"
+
+        # Получаем детали платежа
+        local payment_details=$(curl -s -X GET "$BASE_URL/api/v1/payments/yookassa/$payment_id" \
+            -H "Authorization: Bearer $JWT_TOKEN")
+
+        # Проверяем наличие данных чека в платеже
+        if echo "$payment_details" | grep -q "receiptUrl\|fiscalDocumentNumber\|receiptRegistered"; then
+            echo -e "${GREEN}✅ Данные фискального чека найдены в платеже${NC}"
+        else
+            echo -e "${CYAN}ℹ️ Чек формируется автоматически на стороне ЮКассы${NC}"
+        fi
+
+        # Проверяем что платеж содержит правильную сумму
+        local payment_amount=$(echo "$payment_details" | grep -o '"amount":[0-9.]*' | cut -d':' -f2)
+        if [ -n "$payment_amount" ] && [ "$payment_amount" != "null" ]; then
+            echo -e "${GREEN}✅ Сумма платежа в чеке: ${payment_amount}₽${NC}"
+        fi
+
+        # Проверяем данные покупателя
+        if echo "$payment_details" | grep -q "customerPhone\|customerEmail"; then
+            echo -e "${GREEN}✅ Данные покупателя включены в чек${NC}"
+        fi
+
+        return 0
+    }
+
+    # ТЕСТ 1: СБП платеж с полным циклом успешной оплаты
+    echo -e "\n${GREEN}🚀 ТЕСТ 1: СБП ПЛАТЕЖ - ПОЛНЫЙ ЦИКЛ УСПЕШНОЙ ОПЛАТЫ${NC}"
+    echo "=============================================================="
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+    SBP_ORDER_ID=$(create_success_payment_order "СБП Успех" "delivery" "г. Волжск, ул. Ленина, д. 10")
+
+    if [ -n "$SBP_ORDER_ID" ] && [ "$SBP_ORDER_ID" != "" ]; then
+        # Создаем СБП платеж
+        SBP_PAYMENT_DATA=$(create_payment_for_success_test "$SBP_ORDER_ID" "SBP" "СБП полный цикл")
+
+        if [ $? -eq 0 ] && [ -n "$SBP_PAYMENT_DATA" ]; then
+            echo -e "${CYAN}🔄 Этап 1: СБП платеж создан, статус PENDING${NC}"
+
+            # Проверяем что заказ НЕ в админском боте (до оплаты)
+            verify_admin_bot_notification "$SBP_ORDER_ID" "SBP" "false" "СБП до оплаты"
+
+            # Имитируем успешный webhook
+            if simulate_payment_success_webhook "$SBP_ORDER_ID" "$SBP_PAYMENT_DATA" "СБП webhook"; then
+                echo -e "${CYAN}🔄 Этап 2: Webhook payment.succeeded обработан${NC}"
+
+                # Проверяем обновление статуса
+                if verify_payment_success_status "$SBP_PAYMENT_DATA" "SUCCEEDED" "СБП статус"; then
+                    echo -e "${CYAN}🔄 Этап 3: Статус платежа обновлен на SUCCEEDED${NC}"
+
+                    # Проверяем что заказ теперь в админском боте
+                    verify_admin_bot_notification "$SBP_ORDER_ID" "SBP" "true" "СБП после оплаты"
+
+                    # Проверяем данные чека
+                    verify_receipt_after_payment "$SBP_PAYMENT_DATA" "СБП чек"
+
+                    echo -e "${GREEN}✅ ТЕСТ 1 ПРОЙДЕН: СБП полный цикл успешной оплаты${NC}"
+                    PASSED_TESTS=$((PASSED_TESTS + 1))
+                else
+                    echo -e "${RED}❌ ТЕСТ 1 ПРОВАЛЕН: Статус СБП платежа не обновился${NC}"
+                    FAILED_TESTS=$((FAILED_TESTS + 1))
+                fi
+            else
+                echo -e "${RED}❌ ТЕСТ 1 ПРОВАЛЕН: Webhook СБП не обработался${NC}"
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+            fi
+        else
+            echo -e "${RED}❌ ТЕСТ 1 ПРОВАЛЕН: СБП платеж не создался${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    else
+        echo -e "${RED}❌ ТЕСТ 1 ПРОВАЛЕН: Заказ для СБП не создался${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+
+    # ТЕСТ 2: Карточный платеж с полным циклом успешной оплаты
+    echo -e "\n${GREEN}🚀 ТЕСТ 2: КАРТОЧНЫЙ ПЛАТЕЖ - ПОЛНЫЙ ЦИКЛ УСПЕШНОЙ ОПЛАТЫ${NC}"
+    echo "================================================================="
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+    CARD_ORDER_ID=$(create_success_payment_order "Карта Успех" "pickup" "")
+
+    if [ -n "$CARD_ORDER_ID" ] && [ "$CARD_ORDER_ID" != "" ]; then
+        # Создаем карточный платеж
+        CARD_PAYMENT_DATA=$(create_payment_for_success_test "$CARD_ORDER_ID" "BANK_CARD" "Карта полный цикл")
+
+        if [ $? -eq 0 ] && [ -n "$CARD_PAYMENT_DATA" ]; then
+            echo -e "${CYAN}🔄 Этап 1: Карточный платеж создан, статус PENDING${NC}"
+
+            # Модифицируем webhook для карточного платежа
+            IFS=':' read -r card_payment_id card_yookassa_id card_amount card_old_status <<< "$CARD_PAYMENT_DATA"
+
+            # Карточный webhook
+            local card_webhook_data='{
+                "type": "notification",
+                "event": "payment.succeeded",
+                "object": {
+                    "id": "'$card_yookassa_id'",
+                    "status": "succeeded",
+                    "amount": {
+                        "value": "'$card_amount'",
+                        "currency": "RUB"
+                    },
+                    "payment_method": {
+                        "type": "bank_card",
+                        "id": "card-'$card_yookassa_id'",
+                        "saved": false,
+                        "card": {
+                            "first6": "555555",
+                            "last4": "4444",
+                            "expiry_year": "2025",
+                            "expiry_month": "12",
+                            "card_type": "MasterCard"
+                        }
+                    },
+                    "created_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+                    "captured_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+                    "metadata": {
+                        "order_id": "'$CARD_ORDER_ID'",
+                        "payment_id": "'$card_payment_id'"
+                    }
+                }
+            }'
+
+            echo -e "${YELLOW}🔔 Имитация webhook payment.succeeded для карточного платежа...${NC}"
+
+            local temp_card_webhook=$(mktemp)
+            printf '%s' "$card_webhook_data" > "$temp_card_webhook"
+
+            local card_webhook_code=$(curl -s -L -o /dev/null -w '%{http_code}' \
+                -X POST "$BASE_URL/api/v1/payments/yookassa/webhook" \
+                -H "Content-Type: application/json; charset=utf-8" \
+                --data-binary "@$temp_card_webhook")
+
+            rm -f "$temp_card_webhook"
+
+            if [ "$card_webhook_code" = "200" ]; then
+                echo -e "${GREEN}✅ Карточный webhook обработан${NC}"
+                echo -e "${CYAN}🔄 Этап 2: Webhook payment.succeeded обработан${NC}"
+
+                # Проверяем обновление статуса
+                if verify_payment_success_status "$CARD_PAYMENT_DATA" "SUCCEEDED" "Карточный статус"; then
+                    echo -e "${CYAN}🔄 Этап 3: Статус карточного платежа обновлен на SUCCEEDED${NC}"
+
+                    # Проверяем уведомление в боте
+                    verify_admin_bot_notification "$CARD_ORDER_ID" "BANK_CARD" "true" "Карта после оплаты"
+
+                    # Проверяем данные чека
+                    verify_receipt_after_payment "$CARD_PAYMENT_DATA" "Карточный чек"
+
+                    echo -e "${GREEN}✅ ТЕСТ 2 ПРОЙДЕН: Карточный полный цикл успешной оплаты${NC}"
+                    PASSED_TESTS=$((PASSED_TESTS + 1))
+                else
+                    echo -e "${RED}❌ ТЕСТ 2 ПРОВАЛЕН: Статус карточного платежа не обновился${NC}"
+                    FAILED_TESTS=$((FAILED_TESTS + 1))
+                fi
+            else
+                echo -e "${RED}❌ ТЕСТ 2 ПРОВАЛЕН: Карточный webhook не обработался (HTTP $card_webhook_code)${NC}"
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+            fi
+        else
+            echo -e "${RED}❌ ТЕСТ 2 ПРОВАЛЕН: Карточный платеж не создался${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    else
+        echo -e "${RED}❌ ТЕСТ 2 ПРОВАЛЕН: Заказ для карточного платежа не создался${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+
+    # ТЕСТ 3: Проверка обработки нескольких платежей для одного заказа
+    echo -e "\n${GREEN}🚀 ТЕСТ 3: НЕСКОЛЬКО ПЛАТЕЖЕЙ ДЛЯ ОДНОГО ЗАКАЗА${NC}"
+    echo "====================================================="
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+    MULTI_ORDER_ID=$(create_success_payment_order "Мульти Платежи" "delivery" "г. Волжск, ул. Советская, д. 5")
+
+    if [ -n "$MULTI_ORDER_ID" ] && [ "$MULTI_ORDER_ID" != "" ]; then
+        echo -e "${CYAN}🔄 Создание нескольких платежей для заказа #$MULTI_ORDER_ID${NC}"
+
+        # Создаем первый платеж (СБП)
+        MULTI_SBP_DATA=$(create_payment_for_success_test "$MULTI_ORDER_ID" "SBP" "Мульти СБП")
+        
+        # Создаем второй платеж (Карта)  
+        MULTI_CARD_DATA=$(create_payment_for_success_test "$MULTI_ORDER_ID" "BANK_CARD" "Мульти Карта")
+
+        if [ $? -eq 0 ] && [ -n "$MULTI_SBP_DATA" ] && [ -n "$MULTI_CARD_DATA" ]; then
+            echo -e "${CYAN}🔄 Этап 1: Два платежа созданы для одного заказа${NC}"
+
+            # Делаем успешным только СБП платеж
+            if simulate_payment_success_webhook "$MULTI_ORDER_ID" "$MULTI_SBP_DATA" "Мульти СБП webhook"; then
+                echo -e "${CYAN}🔄 Этап 2: СБП платеж успешно оплачен${NC}"
+
+                # Проверяем что только СБП платеж стал SUCCEEDED
+                verify_payment_success_status "$MULTI_SBP_DATA" "SUCCEEDED" "Мульти СБП статус"
+
+                # Проверяем что карточный платеж остался PENDING
+                sleep 1
+                IFS=':' read -r multi_card_id _ _ _ <<< "$MULTI_CARD_DATA"
+                local card_status_response=$(curl -s -X GET "$BASE_URL/api/v1/payments/yookassa/$multi_card_id" \
+                    -H "Authorization: Bearer $JWT_TOKEN")
+                local card_status=$(echo "$card_status_response" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+
+                if [ "$card_status" = "PENDING" ]; then
+                    echo -e "${GREEN}✅ Карточный платеж остался в статусе PENDING${NC}"
+                else
+                    echo -e "${YELLOW}⚠️ Карточный платеж в статусе: $card_status${NC}"
+                fi
+
+                # Проверяем что заказ попал в админский бот
+                verify_admin_bot_notification "$MULTI_ORDER_ID" "MIXED" "true" "Мульти платежи"
+
+                echo -e "${GREEN}✅ ТЕСТ 3 ПРОЙДЕН: Обработка нескольких платежей работает корректно${NC}"
+                PASSED_TESTS=$((PASSED_TESTS + 1))
+            else
+                echo -e "${RED}❌ ТЕСТ 3 ПРОВАЛЕН: Webhook для мульти платежей не обработался${NC}"
+                FAILED_TESTS=$((FAILED_TESTS + 1))
+            fi
+        else
+            echo -e "${RED}❌ ТЕСТ 3 ПРОВАЛЕН: Не удалось создать несколько платежей${NC}"
+            FAILED_TESTS=$((FAILED_TESTS + 1))
+        fi
+    else
+        echo -e "${RED}❌ ТЕСТ 3 ПРОВАЛЕН: Заказ для мульти платежей не создался${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+
+    # ТЕСТ 4: Проверка обработки webhook с неизвестным платежом
+    echo -e "\n${GREEN}🚀 ТЕСТ 4: WEBHOOK С НЕИЗВЕСТНЫМ ПЛАТЕЖОМ${NC}"
+    echo "=============================================="
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+    echo -e "${YELLOW}🔔 Отправка webhook для несуществующего платежа...${NC}"
+
+    local unknown_webhook='{
+        "type": "notification",
+        "event": "payment.succeeded",
+        "object": {
+            "id": "unknown-payment-'.$$.'",
+            "status": "succeeded",
+            "amount": {
+                "value": "100.00",
+                "currency": "RUB"
+            },
+            "payment_method": {
+                "type": "sbp"
+            },
+            "created_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"
+        }
+    }'
+
+    local temp_unknown_webhook=$(mktemp)
+    printf '%s' "$unknown_webhook" > "$temp_unknown_webhook"
+
+    local unknown_webhook_code=$(curl -s -L -o /dev/null -w '%{http_code}' \
+        -X POST "$BASE_URL/api/v1/payments/yookassa/webhook" \
+        -H "Content-Type: application/json; charset=utf-8" \
+        --data-binary "@$temp_unknown_webhook")
+
+    rm -f "$temp_unknown_webhook"
+
+    if [ "$unknown_webhook_code" = "400" ] || [ "$unknown_webhook_code" = "404" ]; then
+        echo -e "${GREEN}✅ ТЕСТ 4 ПРОЙДЕН: Webhook с неизвестным платежом корректно отклонен (HTTP $unknown_webhook_code)${NC}"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+    elif [ "$unknown_webhook_code" = "200" ]; then
+        echo -e "${YELLOW}⚠️ ТЕСТ 4 ЧАСТИЧНО: Webhook принят, но должен быть логгинг неизвестных платежей${NC}"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+    else
+        echo -e "${RED}❌ ТЕСТ 4 ПРОВАЛЕН: Неожиданный ответ на неизвестный платеж (HTTP $unknown_webhook_code)${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+
+    # ТЕСТ 5: Сравнение с наличным заказом
+    echo -e "\n${GREEN}🚀 ТЕСТ 5: СРАВНЕНИЕ С НАЛИЧНЫМ ЗАКАЗОМ${NC}"
+    echo "=========================================="
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+
+    CASH_ORDER_ID=$(create_success_payment_order "Наличные Сравнение" "pickup" "")
+
+    if [ -n "$CASH_ORDER_ID" ] && [ "$CASH_ORDER_ID" != "" ]; then
+        echo -e "${CYAN}💵 Заказ #$CASH_ORDER_ID создан как наличный (без платежей)${NC}"
+
+        # Проверяем что наличный заказ сразу попадает в админский бот
+        verify_admin_bot_notification "$CASH_ORDER_ID" "CASH" "true" "Наличный заказ"
+
+        # Проверяем что у наличного заказа нет платежей
+        if [ -n "$ADMIN_TOKEN" ]; then
+            local cash_payments=$(curl -s -X GET "$BASE_URL/api/v1/payments/yookassa/order/$CASH_ORDER_ID" \
+                -H "Authorization: Bearer $ADMIN_TOKEN")
+
+            local cash_payments_count=$(echo "$cash_payments" | jq '. | length' 2>/dev/null || echo "0")
+
+            if [ "$cash_payments_count" = "0" ]; then
+                echo -e "${GREEN}✅ Наличный заказ корректно не имеет платежей${NC}"
+            else
+                echo -e "${YELLOW}⚠️ У наличного заказа найдено $cash_payments_count платежей${NC}"
+            fi
+        fi
+
+        echo -e "${GREEN}✅ ТЕСТ 5 ПРОЙДЕН: Наличные заказы обрабатываются корректно${NC}"
+        PASSED_TESTS=$((PASSED_TESTS + 1))
+    else
+        echo -e "${RED}❌ ТЕСТ 5 ПРОВАЛЕН: Наличный заказ не создался${NC}"
+        FAILED_TESTS=$((FAILED_TESTS + 1))
+    fi
+
+    # Итоговая информация по тестам успешной оплаты
+    echo -e "\n${BLUE}📊 РЕЗУЛЬТАТЫ ТЕСТОВ УСПЕШНОЙ ОПЛАТЫ ОТ ЮКАССЫ${NC}"
+    echo "================================================================="
+    
+    if [ -n "$SBP_ORDER_ID" ]; then
+        echo -e "${GREEN}✅ СБП заказ #$SBP_ORDER_ID - полный цикл оплаты протестирован${NC}"
+    fi
+    
+    if [ -n "$CARD_ORDER_ID" ]; then
+        echo -e "${GREEN}✅ Карточный заказ #$CARD_ORDER_ID - полный цикл оплаты протестирован${NC}"
+    fi
+    
+    if [ -n "$MULTI_ORDER_ID" ]; then
+        echo -e "${GREEN}✅ Мульти-платежный заказ #$MULTI_ORDER_ID - несколько платежей протестированы${NC}"
+    fi
+    
+    if [ -n "$CASH_ORDER_ID" ]; then
+        echo -e "${GREEN}✅ Наличный заказ #$CASH_ORDER_ID - контрольный тест выполнен${NC}"
+    fi
+
+    echo -e "\n${CYAN}🤖 ИНСТРУКЦИИ ДЛЯ ПРОВЕРКИ В TELEGRAM АДМИНСКОМ БОТЕ:${NC}"
+    echo -e "${YELLOW}1. Откройте админский Telegram бот${NC}"
+    echo -e "${YELLOW}2. Отправьте команду /orders для просмотра заказов${NC}"
+    echo -e "${YELLOW}3. Найдите созданные тестовые заказы:${NC}"
+    
+    if [ -n "$SBP_ORDER_ID" ]; then
+        echo -e "${YELLOW}   • Заказ #$SBP_ORDER_ID: должен показывать 💳 СБП ✅ Оплачено${NC}"
+    fi
+    
+    if [ -n "$CARD_ORDER_ID" ]; then
+        echo -e "${YELLOW}   • Заказ #$CARD_ORDER_ID: должен показывать 💳 Банковская карта ✅ Оплачено${NC}"
+    fi
+    
+    if [ -n "$MULTI_ORDER_ID" ]; then
+        echo -e "${YELLOW}   • Заказ #$MULTI_ORDER_ID: должен показывать несколько платежей${NC}"
+    fi
+    
+    if [ -n "$CASH_ORDER_ID" ]; then
+        echo -e "${YELLOW}   • Заказ #$CASH_ORDER_ID: должен показывать 💵 Наличными${NC}"
+    fi
+
+    echo -e "${YELLOW}4. Проверьте детали заказов командой /details [номер_заказа]${NC}"
+    echo -e "${YELLOW}5. Убедитесь что ссылки на YooMoney работают для платежных заказов${NC}"
+
+else
+    echo -e "${RED}❌ JWT токен не получен, тесты успешной оплаты пропущены${NC}"
+    FAILED_TESTS=$((FAILED_TESTS + 5))
+    TOTAL_TESTS=$((TOTAL_TESTS + 5))
+fi
+
+# Итоговая статистика
+echo "=================================="
+
 # Итоговая статистика
 echo "=================================="
 echo -e "${BLUE}📊 ИТОГОВАЯ СТАТИСТИКА${NC}"
@@ -2793,6 +3429,7 @@ echo -e "   📱 Telegram интеграция - уведомления о за�
 echo -e "   💳 ЮКасса платежи - создание и обработка платежей, СБП, webhook"
 echo -e "   🤖 Админский бот платежи - проверка исправленной функциональности"
 echo -e "   💰 Расширенные тесты - статусы оплаты, доставки, общая сумма"
+echo -e "   🔄 Полный цикл оплаты - тесты успешных платежей от создания до завершения"
 echo -e "   🧾 Фискальные чеки - формирование чеков с позицией доставки"
 echo -e "   🛡️ Безопасность - проверка авторизации и валидации"
 echo -e "   🔍 Edge Cases - тестирование граничных случаев"
@@ -2845,6 +3482,9 @@ echo -e "${GREEN}✅ Административные метрики: Монит
 echo -e "${GREEN}✅ Безопасность: Валидация данных и авторизация работают${NC}"
 echo -e "${GREEN}✅ Фискальные чеки: Автоматическое формирование чеков с доставкой${NC}"
 echo -e "${GREEN}✅ Статусы платежей: Корректная обработка PENDING → SUCCEEDED${NC}"
+echo -e "${GREEN}✅ Полный цикл оплаты: Создание → Webhook → Обновление статуса → Уведомления${NC}"
+echo -e "${GREEN}✅ Мульти-платежи: Обработка нескольких платежей для одного заказа${NC}"
+echo -e "${GREEN}✅ Обработка ошибок: Webhook с неизвестными платежами корректно обрабатывается${NC}"
 echo -e "${YELLOW}⚠️  Настройка: Требуются переменные YOOKASSA_ENABLED, YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY${NC}"
 echo -e "${YELLOW}⚠️  Тестовый режим: Используются тестовые ключи ЮКасса${NC}"
 

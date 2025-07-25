@@ -114,7 +114,7 @@ if [ -n "$JWT_TOKEN" ]; then
             "orderId": '$SBP_ORDER_ID',
             "method": "SBP",
             "description": "Тестовый СБП платеж для проверки флоу",
-            "returnUrl": "https://pizzanat.ru/test"
+            "returnUrl": "https://dimbopizza.ru/test"
         }'
         
         sbp_payment_response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/api/v1/payments/yookassa/create" \

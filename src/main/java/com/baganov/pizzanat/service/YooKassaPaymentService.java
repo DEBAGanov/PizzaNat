@@ -9,6 +9,7 @@ package com.baganov.pizzanat.service;
 import com.baganov.pizzanat.config.YooKassaConfig;
 import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.event.NewOrderEvent;
+import com.baganov.pizzanat.event.PaymentAlertEvent;
 import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
 import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.model.dto.payment.SbpBankInfo;
@@ -30,6 +31,9 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
@@ -176,6 +180,14 @@ public class YooKassaPaymentService {
             JsonNode paymentObject = notification.path("object");
             String yookassaPaymentId = paymentObject.path("id").asText();
 
+            // Проверяем тип события согласно документации ЮKassa API
+            if (!isValidPaymentEvent(eventType)) {
+                log.warn("⚠️ Неизвестный тип события ЮKassa: {}", eventType);
+                return false;
+            }
+
+            log.info("📋 Обработка события ЮKassa: {} для платежа {}", eventType, yookassaPaymentId);
+
             // Находим платеж в нашей БД
             Optional<Payment> paymentOpt = paymentRepository.findByYookassaPaymentId(yookassaPaymentId);
             if (paymentOpt.isEmpty()) {
@@ -190,8 +202,8 @@ public class YooKassaPaymentService {
             updatePaymentFromYooKassaResponse(payment, paymentObject);
             payment = paymentRepository.save(payment);
 
-            log.info("📊 Статус платежа {} изменен: {} → {}",
-                    payment.getId(), oldStatus, payment.getStatus());
+            log.info("📊 Статус платежа {} изменен: {} → {} (событие: {})",
+                    payment.getId(), oldStatus, payment.getStatus(), eventType);
 
             // Записываем метрики изменения статуса
             if (oldStatus != payment.getStatus()) {
@@ -199,9 +211,16 @@ public class YooKassaPaymentService {
                 paymentAlertService.onPaymentStatusChanged(payment, oldStatus);
             }
 
-            // Обновляем статус заказа при успешной оплате
-            if (payment.getStatus() == PaymentStatus.SUCCEEDED && oldStatus != PaymentStatus.SUCCEEDED) {
-                updateOrderStatusAfterPayment(payment.getOrder());
+            // Обрабатываем специфичные события ЮKassa
+            switch (eventType) {
+                case "payment.succeeded":
+                    handlePaymentSucceededEvent(payment, oldStatus);
+                    break;
+                case "payment.canceled":
+                    handlePaymentCanceledEvent(payment, oldStatus);
+                    break;
+                default:
+                    log.debug("🔄 Событие {} не требует дополнительной обработки", eventType);
             }
 
             return true;
@@ -209,6 +228,59 @@ public class YooKassaPaymentService {
         } catch (Exception e) {
             log.error("❌ Ошибка обработки webhook ЮKassa: {}", e.getMessage(), e);
             return false;
+        }
+    }
+
+    /**
+     * Проверка валидности типа события согласно API ЮKassa
+     * https://yookassa.ru/developers/using-api/webhooks
+     */
+    private boolean isValidPaymentEvent(String eventType) {
+        return "payment.succeeded".equals(eventType) || 
+               "payment.canceled".equals(eventType);
+    }
+
+    /**
+     * Обработка события payment.succeeded - платеж успешно завершен
+     */
+    private void handlePaymentSucceededEvent(Payment payment, PaymentStatus oldStatus) {
+        if (payment.getStatus() == PaymentStatus.SUCCEEDED && oldStatus != PaymentStatus.SUCCEEDED) {
+            log.info("💰 Платеж {} успешно завершен - обновляем статус заказа", payment.getId());
+            updateOrderStatusAfterPayment(payment.getOrder());
+        } else {
+            log.debug("🔄 Платеж {} уже был в статусе SUCCEEDED", payment.getId());
+        }
+    }
+
+    /**
+     * Обработка события payment.canceled - платеж отменен
+     */
+    private void handlePaymentCanceledEvent(Payment payment, PaymentStatus oldStatus) {
+        if (payment.getStatus() == PaymentStatus.CANCELLED && oldStatus != PaymentStatus.CANCELLED) {
+            log.info("❌ Платеж {} отменен - уведомляем администраторов", payment.getId());
+            
+            // Уведомляем администраторов об отмене платежа через AlertService
+            try {
+                String alertMessage = String.format("❌ *ПЛАТЕЖ ОТМЕНЕН*\n\n" +
+                        "💳 Платеж #%d\n" +
+                        "🆔 Заказ #%d\n" +
+                        "💰 Сумма: %.2f ₽\n" +
+                        "🕐 Время: %s\n\n" +
+                        "Заказ НЕ будет отправлен в работу.",
+                        payment.getId(),
+                        payment.getOrder().getId(),
+                        payment.getAmount().doubleValue(),
+                        LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+                
+                // Отправляем алерт об отмене платежа через PaymentAlertEvent
+                PaymentAlertEvent alertEvent = new PaymentAlertEvent(this, alertMessage, PaymentAlertEvent.AlertType.CRITICAL_PAYMENT_FAILURE);
+                eventPublisher.publishEvent(alertEvent);
+                log.info("✅ Уведомление об отмене платежа {} отправлено администраторам", payment.getId());
+            } catch (Exception e) {
+                log.error("❌ Ошибка отправки уведомления об отмене платежа {}: {}", payment.getId(), e.getMessage());
+            }
+        } else {
+            log.debug("🔄 Платеж {} уже был в статусе CANCELLED", payment.getId());
         }
     }
 

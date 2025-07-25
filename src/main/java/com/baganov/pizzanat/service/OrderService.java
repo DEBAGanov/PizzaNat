@@ -256,7 +256,7 @@ public class OrderService {
             paymentRequest.setMethod(PaymentMethod.SBP); // По умолчанию банковская карта
             paymentRequest.setAmount(order.getTotalAmount()); // Устанавливаем сумму заказа
             paymentRequest.setDescription(description);
-            paymentRequest.setReturnUrl("https://pizzanat.ru/orders/" + order.getId());
+            paymentRequest.setReturnUrl("https://dimbopizza.ru/orders/" + order.getId());
 
             PaymentResponse payment = yooKassaPaymentService.createPayment(paymentRequest);
 
