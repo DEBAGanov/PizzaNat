@@ -19,6 +19,7 @@ import com.baganov.pizzanat.model.dto.payment.ReceiptItemDto;
 import com.baganov.pizzanat.model.dto.payment.AmountDto;
 import com.baganov.pizzanat.repository.OrderRepository;
 import com.baganov.pizzanat.repository.PaymentRepository;
+import com.baganov.pizzanat.repository.OrderStatusRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Timer;
@@ -42,6 +43,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Optional;
 
 /**
  * Сервис для обработки платежей через ЮKassa
@@ -56,6 +58,7 @@ public class YooKassaPaymentService {
     private final WebClient yooKassaWebClient;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
+    private final OrderStatusRepository orderStatusRepository;
     private final ObjectMapper objectMapper;
     private final PaymentMetricsService paymentMetricsService;
     private final PaymentAlertService paymentAlertService;
@@ -542,22 +545,52 @@ public class YooKassaPaymentService {
         try {
             log.info("💰 Заказ {} успешно оплачен через ЮКассу", order.getId());
 
+            // Находим статус "CONFIRMED" для оплаченного заказа
+            Optional<OrderStatus> paidStatusOpt = orderStatusRepository.findByName("CONFIRMED");
+            if (paidStatusOpt.isPresent()) {
+                order.setStatus(paidStatusOpt.get());
+                log.info("📋 Статус заказа {} изменен на CONFIRMED", order.getId());
+            } else {
+                log.warn("⚠️ Статус CONFIRMED не найден в БД");
+            }
+            
+            // Устанавливаем способ оплаты на основе платежа
+            List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(order.getId().longValue());
+            if (!payments.isEmpty()) {
+                Payment successfulPayment = payments.stream()
+                    .filter(p -> p.getStatus() == PaymentStatus.SUCCEEDED)
+                    .findFirst()
+                    .orElse(null);
+                
+                if (successfulPayment != null) {
+                    // Устанавливаем способ оплаты из платежа (уже PaymentMethod enum)
+                    order.setPaymentMethod(successfulPayment.getMethod());
+                    log.info("💳 Заказ {} - установлен способ оплаты: {}", order.getId(), successfulPayment.getMethod());
+                }
+            }
+            
+            // Обновляем время изменения
+            order.setUpdatedAt(LocalDateTime.now());
+            
+            // Сохраняем изменения заказа
+            Order updatedOrder = orderRepository.save(order);
+            log.info("✅ Статус заказа {} обновлен на CONFIRMED, способ оплаты: {}", 
+                    order.getId(), updatedOrder.getPaymentMethod());
+
             // Публикуем событие о новом заказе для админского бота
             // Поскольку платеж завершен, AdminBotService.hasActivePendingPayments() вернет false
             // и уведомление будет отправлено в бот
             try {
-                eventPublisher.publishEvent(new NewOrderEvent(this, order));
-                log.info("✅ Событие о успешно оплаченном заказе #{} опубликовано", order.getId());
+                eventPublisher.publishEvent(new NewOrderEvent(this, updatedOrder));
+                log.info("✅ Событие о успешно оплаченном заказе #{} опубликовано", updatedOrder.getId());
             } catch (Exception e) {
-                log.error("❌ Ошибка публикации события для заказа #{}: {}", order.getId(), e.getMessage(), e);
+                log.error("❌ Ошибка публикации события для заказа #{}: {}", updatedOrder.getId(), e.getMessage(), e);
                 // Не прерываем выполнение, так как основная функция платежа выполнена
             }
 
-            // Здесь можно добавить дополнительную логику обновления статуса заказа
-            // Например, изменить статус на "PAID" или "IN_PROGRESS" если потребуется
-
         } catch (Exception e) {
-            log.error("❌ Ошибка обработки успешного платежа для заказа {}: {}", order.getId(), e.getMessage());
+            log.error("❌ Ошибка обновления статуса заказа #{}: {}", order.getId(), e.getMessage(), e);
+            // Не пробрасываем исключение, чтобы не нарушить обработку webhook
         }
     }
 
