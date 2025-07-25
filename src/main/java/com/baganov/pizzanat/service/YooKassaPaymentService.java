@@ -491,6 +491,8 @@ public class YooKassaPaymentService {
 
     private void updatePaymentFromYooKassaResponse(Payment payment, JsonNode response) {
         try {
+            log.debug("🔍 Обновление платежа {} данными от ЮKassa: {}", payment.getId(), response);
+
             // ID платежа в ЮKassa
             if (response.has("id")) {
                 payment.setYookassaPaymentId(response.get("id").asText());
@@ -501,6 +503,59 @@ public class YooKassaPaymentService {
                 String yookassaStatus = response.get("status").asText();
                 PaymentStatus status = PaymentStatus.fromYookassaStatus(yookassaStatus);
                 payment.setStatus(status);
+                log.debug("📊 Статус платежа обновлен на: {}", status);
+            }
+
+            // Сумма платежа (для подтверждения)
+            if (response.has("amount")) {
+                JsonNode amountNode = response.get("amount");
+                if (amountNode.has("value")) {
+                    BigDecimal webhookAmount = new BigDecimal(amountNode.get("value").asText());
+                    if (!payment.getAmount().equals(webhookAmount)) {
+                        log.warn("⚠️ Сумма в webhook ({}) не совпадает с суммой платежа ({}) для платежа #{}",
+                                webhookAmount, payment.getAmount(), payment.getId());
+                    }
+                }
+            }
+
+            // Время захвата платежа (captured_at)
+            if (response.has("captured_at") && !response.get("captured_at").isNull()) {
+                try {
+                    String capturedAtStr = response.get("captured_at").asText();
+                    // ЮKassa использует ISO 8601 формат: 2023-07-10T15:45:30.123Z
+                    LocalDateTime capturedAt = LocalDateTime.parse(capturedAtStr.substring(0, 19));
+                    payment.setPaidAt(capturedAt);
+                    log.debug("💰 Время захвата платежа: {}", capturedAt);
+                } catch (Exception e) {
+                    log.warn("⚠️ Ошибка парсинга captured_at: {}", e.getMessage());
+                }
+            }
+
+            // Способ оплаты (payment_method)
+            if (response.has("payment_method")) {
+                JsonNode paymentMethodNode = response.get("payment_method");
+                if (paymentMethodNode.has("type")) {
+                    String paymentMethodType = paymentMethodNode.get("type").asText();
+                    
+                    // Логируем дополнительную информацию в зависимости от типа
+                    switch (paymentMethodType) {
+                        case "bank_card":
+                            if (paymentMethodNode.has("card")) {
+                                JsonNode cardNode = paymentMethodNode.get("card");
+                                String cardMask = String.format("%s****%s",
+                                        cardNode.path("first6").asText(""),
+                                        cardNode.path("last4").asText(""));
+                                log.info("💳 Платеж картой: {} ({})", cardMask, 
+                                        cardNode.path("card_type").asText("unknown"));
+                            }
+                            break;
+                        case "sbp":
+                            log.info("📱 Платеж через СБП");
+                            break;
+                        default:
+                            log.info("💰 Платеж через: {}", paymentMethodType);
+                    }
+                }
             }
 
             // URL для подтверждения
@@ -513,30 +568,65 @@ public class YooKassaPaymentService {
                 try {
                     // Сериализуем JsonNode в строку для хранения в JSONB поле
                     payment.setMetadata(objectMapper.writeValueAsString(response.get("metadata")));
+                    log.debug("📋 Метаданные обновлены: {}", payment.getMetadata());
                 } catch (Exception e) {
-                    log.warn("Ошибка сериализации метаданных: {}", e.getMessage());
+                    log.warn("⚠️ Ошибка сериализации метаданных: {}", e.getMessage());
                     payment.setMetadata(response.get("metadata").toString());
                 }
             }
 
-            // URL чека
+            // Данные чека (receipt)
+            if (response.has("receipt")) {
+                JsonNode receiptNode = response.get("receipt");
+                StringBuilder receiptInfo = new StringBuilder();
+                
+                if (receiptNode.has("registered") && receiptNode.get("registered").asBoolean()) {
+                    if (receiptNode.has("fiscal_document_number")) {
+                        receiptInfo.append("ФД: ").append(receiptNode.get("fiscal_document_number").asText());
+                    }
+                    if (receiptNode.has("fiscal_storage_number")) {
+                        receiptInfo.append(", ФН: ").append(receiptNode.get("fiscal_storage_number").asText());
+                    }
+                    
+                    log.info("🧾 Фискальный чек зарегистрирован: {}", receiptInfo.toString());
+                }
+            }
+
+            // URL чека (legacy поддержка)
             if (response.has("receipt_registration") && response.get("receipt_registration").has("status")) {
                 String receiptStatus = response.get("receipt_registration").get("status").asText();
                 if ("succeeded".equals(receiptStatus) && response.get("receipt_registration").has("receipt_url")) {
                     payment.setReceiptUrl(response.get("receipt_registration").get("receipt_url").asText());
+                    log.info("🧾 URL чека: {}", payment.getReceiptUrl());
+                }
+            }
+
+            // Информация о возврате (refund)
+            if (response.has("refunded_amount")) {
+                JsonNode refundedAmountNode = response.get("refunded_amount");
+                if (refundedAmountNode.has("value")) {
+                    BigDecimal refundedAmount = new BigDecimal(refundedAmountNode.get("value").asText());
+                    if (refundedAmount.compareTo(BigDecimal.ZERO) > 0) {
+                        log.warn("🔄 Платеж имеет возврат на сумму: {} ₽", refundedAmount);
+                    }
                 }
             }
 
             // Ошибка
             if (response.has("error")) {
                 JsonNode error = response.get("error");
+                String errorCode = error.path("code").asText("unknown");
                 String errorMessage = error.has("description") ? error.get("description").asText()
                         : "Неизвестная ошибка";
-                payment.setErrorMessage(errorMessage);
+                payment.setErrorMessage(String.format("%s: %s", errorCode, errorMessage));
+                log.error("❌ Ошибка платежа #{}: {} - {}", payment.getId(), errorCode, errorMessage);
             }
 
+            log.info("✅ Платеж #{} обновлен данными от ЮKassa (статус: {})", 
+                    payment.getId(), payment.getStatus());
+
         } catch (Exception e) {
-            log.error("❌ Ошибка обработки ответа ЮKassa: {}", e.getMessage(), e);
+            log.error("❌ Ошибка обработки ответа ЮKassa для платежа #{}: {}", payment.getId(), e.getMessage(), e);
             throw new RuntimeException("Ошибка обработки ответа ЮKassa", e);
         }
     }
