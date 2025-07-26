@@ -423,6 +423,100 @@ public class AdminBotService {
         return message.toString();
     }
 
+    /**
+     * Форматирование сообщения о новом заказе с пометкой о способе оплаты
+     */
+    private String formatNewOrderMessageWithPaymentLabel(Order order, String paymentLabel) {
+        StringBuilder message = new StringBuilder();
+        message.append("🆕 *НОВЫЙ ЗАКАЗ #").append(order.getId()).append(" ").append(paymentLabel).append("*\n\n");
+
+        message.append("🕐 *Время заказа:* ")
+                .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
+
+        // Информация о пользователе из системы
+        if (order.getUser() != null) {
+            message.append("👤 *ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ*\n");
+            message.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()));
+            if (order.getUser().getLastName() != null) {
+                message.append(" ").append(escapeMarkdown(order.getUser().getLastName()));
+            }
+            message.append("\n");
+
+            if (order.getUser().getUsername() != null) {
+                message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+            }
+
+            if (order.getUser().getPhone() != null) {
+                message.append("Телефон: ").append(escapeMarkdown(order.getUser().getPhone())).append("\n");
+            }
+
+            if (order.getUser().getEmail() != null) {
+                message.append("Email: ").append(escapeMarkdown(order.getUser().getEmail())).append("\n");
+            }
+            message.append("\n");
+        }
+
+        // Контактные данные заказа
+        message.append("📞 *КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА*\n");
+        message.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
+        message.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
+
+        // Адрес доставки
+        if (order.getDeliveryAddress() != null) {
+            message.append("📍 *ДОСТАВКА*\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n\n");
+        } else if (order.getDeliveryLocation() != null) {
+            message.append("📍 *ПУНКТ ВЫДАЧИ*\n");
+            message.append("Адрес: ").append(escapeMarkdown(order.getDeliveryLocation().getAddress())).append("\n\n");
+        }
+
+        // Способ доставки
+        if (order.getDeliveryType() != null) {
+            String deliveryIcon = order.isPickup() ? "🏠" : "🚗";
+            message.append("🚛 *Способ доставки:* ").append(deliveryIcon).append(" ")
+                    .append(escapeMarkdown(order.getDeliveryType())).append("\n");
+        }
+        message.append("\n");
+
+        // Комментарий
+        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
+            message.append("💬 *Комментарий:* ").append(escapeMarkdown(order.getComment())).append("\n\n");
+        }
+
+        // Детальный состав заказа
+        message.append("🛒 *СОСТАВ ЗАКАЗА*\n");
+        BigDecimal itemsTotal = BigDecimal.ZERO;
+        
+        for (OrderItem item : order.getItems()) {
+            BigDecimal itemSubtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            itemsTotal = itemsTotal.add(itemSubtotal);
+
+            message.append("• ").append(escapeMarkdown(item.getProduct().getName()))
+                    .append(" x").append(item.getQuantity())
+                    .append(" = ").append(itemSubtotal).append(" ₽\n");
+        }
+
+        // Детальный расчет суммы
+        message.append("\n💰 *ДЕТАЛЬНЫЙ РАСЧЕТ СУММЫ:*\n");
+        message.append("├ Товары: ").append(itemsTotal).append(" ₽\n");
+        
+        if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+            message.append("├ Доставка: ").append(order.getDeliveryCost()).append(" ₽\n");
+        } else if (order.isDeliveryByCourier()) {
+            message.append("├ Доставка: БЕСПЛАТНО\n");
+        } else if (order.isPickup()) {
+            message.append("├ Доставка: Самовывоз (0 ₽)\n");
+        }
+        
+        message.append("└ *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
+
+        // Информация о платеже - добавляем специальную пометку
+        message.append("💳 *СТАТУС ОПЛАТЫ:* ✅ ").append(paymentLabel).append("\n");
+        message.append("💳 *СПОСОБ ОПЛАТЫ:* ").append(order.getPaymentMethod().getDisplayName()).append("\n\n");
+
+        return message.toString();
+    }
+
     private String formatOrderDetails(Order order) {
         StringBuilder message = new StringBuilder();
 
@@ -771,23 +865,17 @@ public class AdminBotService {
         try {
             Order order = event.getOrder();
             
-            // ИСПРАВЛЕННАЯ ЛОГИКА: Проверяем реальные статусы платежей вместо типа оплаты
-            if (hasActivePendingPayments(order)) {
-                // Если есть активные платежи в ожидании, НЕ отправляем уведомление сейчас
-                // Уведомление будет отправлено при получении webhook payment.succeeded
-                log.info("🔄 Заказ #{} с способом оплаты {} имеет активные платежи в ожидании - отложено до успешной оплаты", 
-                    order.getId(), order.getPaymentMethod());
-                return;
-            }
-            
-            // Если нет активных платежей в ожидании (наличные или успешно оплаченные), отправляем уведомление
-            notifyAdminsAboutNewOrder(order);
-            
+            // НОВАЯ ЛОГИКА: Разделяем логику для наличных и онлайн платежей
             if (order.getPaymentMethod() == PaymentMethod.CASH) {
+                // Наличные заказы отправляем сразу
+                notifyAdminsAboutNewOrder(order);
                 log.info("✅ Уведомление о наличном заказе #{} отправлено в админский бот", order.getId());
             } else {
-                log.info("✅ Уведомление о успешно оплаченном заказе #{} (способ: {}) отправлено в админский бот", 
+                // СБП/карточные заказы НЕ отправляем при создании
+                // Они будут отправлены только после подтверждения оплаты через PaymentPollingService
+                log.info("🔄 Заказ #{} с онлайн оплатой {} НЕ отправлен в админский бот - ожидаем подтверждения оплаты", 
                     order.getId(), order.getPaymentMethod());
+                log.info("📊 PaymentPollingService будет опрашивать статус платежей каждую минуту в течение 10 минут");
             }
         } catch (Exception e) {
             log.error("Ошибка обработки события нового заказа #{}: {}", event.getOrder().getId(), e.getMessage(), e);
@@ -833,6 +921,84 @@ public class AdminBotService {
 
         } catch (Exception e) {
             log.error("Ошибка при отправке алерта администраторам: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Отправка алерта об отменённом платеже всем администраторам
+     */
+    public void sendPaymentCancelAlert(Payment payment, String reason) {
+        try {
+            StringBuilder message = new StringBuilder();
+            message.append("❌ *ПЛАТЕЖ ОТМЕНЕН*\n\n");
+            message.append("🆔 Платеж #").append(payment.getId()).append("\n");
+            message.append("🛒 Заказ #").append(payment.getOrder().getId()).append("\n");
+            message.append("💰 Сумма: ").append(payment.getAmount()).append(" ₽\n");
+            message.append("💳 Способ: ").append(payment.getMethod()).append("\n");
+            message.append("⏰ Время: ").append(payment.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n");
+            message.append("📝 Причина: ").append(reason).append("\n\n");
+            message.append("⚠️ Заказ НЕ будет отправлен в работу.");
+
+            notifyAdminsAboutPaymentAlert(message.toString(), PaymentAlertEvent.AlertType.CRITICAL_PAYMENT_FAILURE);
+
+        } catch (Exception e) {
+            log.error("❌ Ошибка отправки алерта об отмене платежа #{}: {}", payment.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Отправка алерта о неудачном платеже всем администраторам
+     */
+    public void sendPaymentFailureAlert(Payment payment, String reason) {
+        try {
+            StringBuilder message = new StringBuilder();
+            message.append("💥 *ПЛАТЕЖ ЗАВЕРШИЛСЯ ОШИБКОЙ*\n\n");
+            message.append("🆔 Платеж #").append(payment.getId()).append("\n");
+            message.append("🛒 Заказ #").append(payment.getOrder().getId()).append("\n");
+            message.append("💰 Сумма: ").append(payment.getAmount()).append(" ₽\n");
+            message.append("💳 Способ: ").append(payment.getMethod()).append("\n");
+            message.append("⏰ Время: ").append(payment.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n");
+            message.append("❌ Ошибка: ").append(payment.getErrorMessage() != null ? payment.getErrorMessage() : "Неизвестная ошибка").append("\n");
+            message.append("📝 Детали: ").append(reason).append("\n\n");
+            message.append("⚠️ Заказ НЕ будет отправлен в работу.");
+
+            notifyAdminsAboutPaymentAlert(message.toString(), PaymentAlertEvent.AlertType.CRITICAL_PAYMENT_FAILURE);
+
+        } catch (Exception e) {
+            log.error("❌ Ошибка отправки алерта о неудаче платежа #{}: {}", payment.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Отправка уведомления о заказе с подтвержденной оплатой
+     */
+    public void sendSuccessfulPaymentOrderNotification(Order order, String paymentLabel) {
+        try {
+            String message = formatNewOrderMessageWithPaymentLabel(order, paymentLabel);
+            
+            List<TelegramAdminUser> activeAdmins = adminUserRepository.findByIsActiveTrue();
+
+            if (activeAdmins.isEmpty()) {
+                log.warn("Нет активных администраторов для отправки уведомления о заказе #{}", order.getId());
+                return;
+            }
+
+            for (TelegramAdminUser admin : activeAdmins) {
+                try {
+                    telegramAdminNotificationService.sendMessage(admin.getTelegramChatId(), message, true);
+                    log.debug("Уведомление о заказе #{} с подтвержденной оплатой отправлено администратору: {}", 
+                            order.getId(), admin.getUsername());
+                } catch (Exception e) {
+                    log.error("Ошибка отправки уведомления администратору {}: {}", admin.getUsername(), e.getMessage());
+                }
+            }
+
+            log.info("✅ Уведомление о заказе #{} с {} отправлено {} администраторам", 
+                    order.getId(), paymentLabel, activeAdmins.size());
+
+        } catch (Exception e) {
+            log.error("❌ Ошибка отправки уведомления о заказе #{} с подтвержденной оплатой: {}", 
+                    order.getId(), e.getMessage(), e);
         }
     }
 

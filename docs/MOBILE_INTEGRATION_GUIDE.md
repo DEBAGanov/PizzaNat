@@ -565,7 +565,7 @@ PizzaNat поддерживает несколько способов автор
   "updatedAt": "2025-01-15T12:00:00",
   "items": [
     {
-      "id": 1,
+    "id": 1,
       "productId": 10,
       "productName": "Пицца Маргарита",
       "price": 599.00,
@@ -1271,7 +1271,7 @@ class DeliveryActivity : AppCompatActivity() {
                         
                         estimateResult.onSuccess { estimate ->
                             showDeliveryInfo(estimate)
-                        }.onFailure { exception ->
+                }.onFailure { exception ->
                             showError("Ошибка расчета доставки: ${exception.message}")
                         }
                     } else {
@@ -1359,7 +1359,7 @@ class PaymentActivity : AppCompatActivity() {
                 )
                 
                 val result = paymentRepository.createMobilePayment(request)
-                
+
                 result.onSuccess { response ->
                     if (response.success && response.confirmationUrl != null) {
                         // Открываем URL оплаты в браузере или WebView
@@ -1412,7 +1412,7 @@ class PaymentActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeat(60) { // Проверяем 60 раз (5 минут)
                 delay(5000) // Каждые 5 секунд
-                
+
                 val result = paymentRepository.getOrderPayments(orderId)
                 result.onSuccess { payments ->
                     val payment = payments.find { it.id == paymentId }
@@ -1427,8 +1427,8 @@ class PaymentActivity : AppCompatActivity() {
                             return@launch
                         }
                         // "PENDING" - продолжаем ждать
+                        }
                     }
-                }
             }
             
             // Таймаут

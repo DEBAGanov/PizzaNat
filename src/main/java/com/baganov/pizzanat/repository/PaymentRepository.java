@@ -93,6 +93,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findPaymentsToCheck(@Param("threshold") LocalDateTime threshold);
 
     /**
+     * Найти активные платежи для опроса ЮКассы (младше 10 минут в статусах PENDING/WAITING_FOR_CAPTURE)
+     */
+    @Query("SELECT p FROM Payment p WHERE p.status IN ('PENDING', 'WAITING_FOR_CAPTURE') " +
+           "AND p.createdAt > :sinceTime AND p.yookassaPaymentId IS NOT NULL " +
+           "ORDER BY p.createdAt ASC")
+    List<Payment> findActivePaymentsForPolling(@Param("sinceTime") LocalDateTime sinceTime);
+
+    /**
      * Подсчитать количество платежей по статусу
      */
     long countByStatus(PaymentStatus status);
