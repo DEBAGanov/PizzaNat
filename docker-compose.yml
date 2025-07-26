@@ -156,13 +156,13 @@ services:
 
       # Telegram Bot настройки (основные уведомления) - ИСПОЛЬЗУЕМ TELEGRAM_AUTH_BOT_TOKEN
       TELEGRAM_ENABLED: true
-      TELEGRAM_BOT_TOKEN: 7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
       TELEGRAM_API_URL: https://api.telegram.org/bot
 
       # Telegram Long Polling настройки (команды бота) - ВКЛЮЧЕНЫ для авторизации и уведомлений
       TELEGRAM_LONGPOLLING_ENABLED: true
       TELEGRAM_BOT_ENABLED: true
-      TELEGRAM_BOT_USERNAME: PizzaNatBot
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-PizzaNatBot}
 
       # Админский Telegram Bot настройки - ВКЛЮЧЕН для административных уведомлений
       TELEGRAM_ADMIN_BOT_ENABLED: true
