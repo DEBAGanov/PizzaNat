@@ -222,17 +222,17 @@ BEGIN
     VALUES
         ('Картофель Фри 100 гр.', 'Картофель Фри 100 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
         ('Картофель Фри 150 гр.', 'СКартофель Фри 150 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
-        ('Нагецы 6 штук', 'Нагецы 6 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
-        ('Нагецы 9 штук', 'Нагецы 9 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
-        ('Нагецы 12 штук', 'Нагецы 12 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
+        ('Нагецы 6 штук', 'Нагецы 6 штук', 599.00, 480, snacks_category_id, 'products/nagets.jpeg', true, true, 15),
+        ('Нагецы 9 штук', 'Нагецы 9 штук', 599.00, 480, snacks_category_id, 'products/nagets.jpeg', true, true, 15),
+        ('Нагецы 12 штук', 'Нагецы 12 штук', 599.00, 480, snacks_category_id, 'products/nagets.jpeg', true, true, 15),
         ('Стрипсы 6 штук', 'Стрипсы 6 штук', 549.00, 470, snacks_category_id, 'products/strips.png', true, false, null),
         ('Стрипсы 9 штук', 'Стрипсы 9 штук', 549.00, 470, snacks_category_id, 'products/strips.png', true, false, null),
         ('Крылья 6 штук', 'Крылья 6 штук', 679.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
         ('Крылья 9 штук', 'Крылья 9 штук', 679.00, 490, snacks_category_id, 'products/snack_cheese_balls.png', true, true, 12),
-        ('Соус Кисло-сладкий', 'Соус Кисло-сладкий', 40.00, 490, snacks_category_id, 'products/souse_kislo.png', true, true, 12),
-        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/souse_shees.png', true, true, 12),
-        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/souse_barbeque.png', true, true, 12),
-        ('Кетчуп', 'Кетчуп', 40.00, 490, snacks_category_id, 'products/snack_ketchyp.jpeg', true, true, 12)
+        ('Соус Кисло-сладкий', 'Соус Кисло-сладкий', 40.00, 490, snacks_category_id, 'products/soyse_kislo.png', true, true, 12),
+        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/soyse_shees.png', true, true, 12),
+        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/soyse_barbeque.jpeg', true, true, 12),
+        ('Кетчуп', 'Кетчуп', 40.00, 490, snacks_category_id, 'products/soyse_ketchyp.jpeg', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
