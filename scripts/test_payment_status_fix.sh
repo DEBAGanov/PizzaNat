@@ -1,183 +1,266 @@
 #!/bin/bash
 
-# Тест исправления поля payment_status в Order entity
-# Проверяем что payment_status корректно обновляется при успешной оплате
+# Тест для проверки исправления проблемы с payment_status и уведомлениями в админский бот
+# После исправления СБП заказы должны отправляться в админский бот после успешной оплаты
 
 set -e
 
+echo "🧪 ТЕСТ: Проверка исправления payment_status и уведомлений в админский бот"
+echo "=================================================="
+
 # Конфигурация
 BASE_URL="http://localhost:8080"
-ADMIN_TOKEN="admin-secret-token-2024"
+AUTH_HEADER=""
 
-# Цвета для вывода
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Функция аутентификации
+authenticate() {
+    echo "🔐 Аутентификация..."
+    
+    # Получаем SMS код
+    local phone="+79999999999"
+    local sms_response=$(curl -s -X POST "$BASE_URL/auth/sms/send" \
+        -H "Content-Type: application/json" \
+        -d "{\"phone\":\"$phone\"}")
+    
+    echo "SMS ответ: $sms_response"
+    
+    # Авторизуемся с кодом 1234
+    local auth_response=$(curl -s -X POST "$BASE_URL/auth/sms/verify" \
+        -H "Content-Type: application/json" \
+        -d "{\"phone\":\"$phone\", \"code\":\"1234\"}")
+    
+    echo "Auth ответ: $auth_response"
+    
+    # Извлекаем JWT токен
+    local jwt_token=$(echo "$auth_response" | jq -r '.token // empty')
+    if [ -n "$jwt_token" ] && [ "$jwt_token" != "null" ]; then
+        AUTH_HEADER="Authorization: Bearer $jwt_token"
+        echo "✅ Аутентификация успешна"
+        return 0
+    else
+        echo "❌ Ошибка аутентификации"
+        return 1
+    fi
+}
 
-echo -e "${BLUE}🧪 ТЕСТ: Исправление поля payment_status в Order entity${NC}"
-echo -e "${BLUE}=================================================${NC}"
-
-# Функция для создания тестового заказа с СБП оплатой
+# Функция создания тестового заказа
 create_test_order() {
-    echo -e "${YELLOW}📝 Создание тестового заказа с СБП оплатой...${NC}"
+    local delivery_type="$1"
+    local payment_method="$2"
     
-    ORDER_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/orders" \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        -d '{
-            "items": [
-                {"productId": 1, "quantity": 1}
-            ],
-            "deliveryLocationId": 1,
-            "contactName": "Тест Пользователь",
-            "contactPhone": "+79001234567",
-            "comment": "Тест payment_status исправления",
-            "deliveryAddress": "Тестовый адрес, 123",
-            "paymentMethod": "SBP"
-        }')
+    echo "📦 Создание тестового заказа (доставка: $delivery_type, оплата: $payment_method)..."
     
-    ORDER_ID=$(echo "$ORDER_RESPONSE" | jq -r '.id')
-    
-    if [ "$ORDER_ID" != "null" ] && [ -n "$ORDER_ID" ]; then
-        echo -e "${GREEN}✅ Заказ создан: ID = $ORDER_ID${NC}"
-        return 0
-    else
-        echo -e "${RED}❌ Ошибка создания заказа${NC}"
-        echo "$ORDER_RESPONSE"
-        return 1
-    fi
-}
-
-# Функция для создания платежа
-create_test_payment() {
-    echo -e "${YELLOW}💳 Создание СБП платежа для заказа #$ORDER_ID...${NC}"
-    
-    PAYMENT_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/payments/create" \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        -d '{
-            "orderId": '$ORDER_ID',
-            "paymentMethod": "SBP",
-            "bankId": "sberbank"
-        }')
-    
-    PAYMENT_ID=$(echo "$PAYMENT_RESPONSE" | jq -r '.paymentId')
-    YOOKASSA_ID=$(echo "$PAYMENT_RESPONSE" | jq -r '.yookassaPaymentId')
-    
-    if [ "$PAYMENT_ID" != "null" ] && [ -n "$PAYMENT_ID" ]; then
-        echo -e "${GREEN}✅ Платеж создан: ID = $PAYMENT_ID, ЮКасса ID = $YOOKASSA_ID${NC}"
-        return 0
-    else
-        echo -e "${RED}❌ Ошибка создания платежа${NC}"
-        echo "$PAYMENT_RESPONSE"
-        return 1
-    fi
-}
-
-# Функция для проверки начального статуса
-check_initial_status() {
-    echo -e "${YELLOW}🔍 Проверка начального статуса заказа...${NC}"
-    
-    # Проверяем статус заказа через API
-    ORDER_STATUS_RESPONSE=$(curl -s -X GET "$BASE_URL/api/v1/orders/$ORDER_ID" \
-        -H "Authorization: Bearer $ADMIN_TOKEN")
-    
-    echo -e "${BLUE}📊 Данные заказа:${NC}"
-    echo "$ORDER_STATUS_RESPONSE" | jq '.'
-    
-    # Проверяем payment_status в БД (через прямой SQL если возможно)
-    echo -e "${YELLOW}🔍 Проверка payment_status в БД...${NC}"
-    echo "SELECT id, payment_status, payment_method, created_at FROM orders WHERE id = $ORDER_ID;" | psql postgresql://gen_user:password@localhost:5432/default_db || true
-}
-
-# Функция для имитации webhook успешной оплаты
-simulate_success_webhook() {
-    echo -e "${YELLOW}🔔 Имитация webhook успешной оплаты...${NC}"
-    
-    WEBHOOK_RESPONSE=$(curl -s -X POST "$BASE_URL/api/v1/payments/webhook" \
-        -H "Content-Type: application/json" \
-        -d '{
-            "event": "payment.succeeded",
-            "object": {
-                "id": "'$YOOKASSA_ID'",
-                "status": "succeeded",
-                "amount": {
-                    "value": "100.00",
-                    "currency": "RUB"
-                },
-                "payment_method": {
-                    "type": "sbp",
-                    "id": "sbp_bank_sberbank"
-                },
-                "created_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
-                "captured_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"
+    local order_data='{
+        "items": [
+            {
+                "productId": 1,
+                "quantity": 1
             }
-        }')
+        ],
+        "deliveryLocationId": 1,
+        "deliveryAddress": "Луговая улица, д 9 кв 22",
+        "contactName": "Тестовый Заказчик",
+        "contactPhone": "+79999999999",
+        "paymentMethod": "'$payment_method'",
+        "comment": "Тестовый заказ для проверки payment_status"
+    }'
     
-    echo -e "${GREEN}✅ Webhook отправлен${NC}"
-    echo "$WEBHOOK_RESPONSE"
+    local response=$(curl -s -X POST "$BASE_URL/orders" \
+        -H "Content-Type: application/json" \
+        -H "$AUTH_HEADER" \
+        -d "$order_data")
+    
+    echo "Order response: $response"
+    
+    local order_id=$(echo "$response" | jq -r '.id // empty')
+    if [ -n "$order_id" ] && [ "$order_id" != "null" ]; then
+        echo "✅ Заказ создан: ID = $order_id"
+        echo "$order_id"
+    else
+        echo "❌ Ошибка создания заказа"
+        return 1
+    fi
 }
 
-# Функция для проверки обновленного статуса
-check_updated_status() {
-    echo -e "${YELLOW}🔍 Проверка обновленного статуса после webhook...${NC}"
+# Функция создания платежа
+create_payment() {
+    local order_id="$1"
+    local payment_method="$2"
     
-    sleep 2  # Даем время на обработку
+    echo "💳 Создание платежа для заказа $order_id (метод: $payment_method)..."
     
-    # Проверяем статус заказа через API
-    ORDER_STATUS_RESPONSE=$(curl -s -X GET "$BASE_URL/api/v1/orders/$ORDER_ID" \
-        -H "Authorization: Bearer $ADMIN_TOKEN")
+    local payment_data='{
+        "orderId": '$order_id',
+        "paymentMethod": "'$payment_method'",
+        "bankId": "sberbank"
+    }'
     
-    echo -e "${BLUE}📊 Обновленные данные заказа:${NC}"
-    echo "$ORDER_STATUS_RESPONSE" | jq '.'
+    local response=$(curl -s -X POST "$BASE_URL/payments/create" \
+        -H "Content-Type: application/json" \
+        -H "$AUTH_HEADER" \
+        -d "$payment_data")
     
-    # Проверяем payment_status в БД
-    echo -e "${YELLOW}🔍 Проверка обновленного payment_status в БД...${NC}"
-    echo "SELECT id, payment_status, payment_method, status_id, updated_at FROM orders WHERE id = $ORDER_ID;" | psql postgresql://gen_user:password@localhost:5432/default_db || true
+    echo "Payment response: $response"
+    
+    local payment_id=$(echo "$response" | jq -r '.paymentId // empty')
+    if [ -n "$payment_id" ] && [ "$payment_id" != "null" ]; then
+        echo "✅ Платеж создан: ID = $payment_id"
+        echo "$payment_id"
+    else
+        echo "❌ Ошибка создания платежа"
+        return 1
+    fi
 }
 
-# Функция для проверки статуса платежа
-check_payment_status() {
-    echo -e "${YELLOW}💳 Проверка статуса платежа...${NC}"
+# Функция имитации webhook от ЮКасса
+simulate_yookassa_webhook() {
+    local payment_id="$1"
     
-    PAYMENT_STATUS_RESPONSE=$(curl -s -X GET "$BASE_URL/api/v1/payments/$PAYMENT_ID" \
-        -H "Authorization: Bearer $ADMIN_TOKEN")
+    echo "🔔 Имитация webhook payment.succeeded от ЮКасса для платежа $payment_id..."
     
-    echo -e "${BLUE}📊 Данные платежа:${NC}"
-    echo "$PAYMENT_STATUS_RESPONSE" | jq '.'
+    local webhook_data='{
+        "type": "notification",
+        "event": "payment.succeeded",
+        "object": {
+            "id": "'$payment_id'",
+            "status": "succeeded",
+            "amount": {
+                "value": "251.00",
+                "currency": "RUB"
+            },
+            "payment_method": {
+                "type": "sbp",
+                "id": "'$payment_id'",
+                "saved": false,
+                "bank_id": "sberbank"
+            },
+            "captured_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+            "created_at": "'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'",
+            "metadata": {
+                "order_id": "1"
+            },
+            "receipt": {
+                "items": [
+                    {
+                        "description": "Пицца 4 сыра",
+                        "amount": {
+                            "value": "251.00",
+                            "currency": "RUB"
+                        },
+                        "vat_code": 1,
+                        "quantity": "1",
+                        "payment_subject": "commodity"
+                    }
+                ],
+                "customer": {
+                    "phone": "+79999999999"
+                }
+            }
+        }
+    }'
+    
+    local response=$(curl -s -X POST "$BASE_URL/payments/yookassa/webhook" \
+        -H "Content-Type: application/json" \
+        -d "$webhook_data")
+    
+    echo "Webhook response: $response"
+    
+    local status=$(echo "$response" | jq -r '.status // empty')
+    if [ "$status" == "success" ]; then
+        echo "✅ Webhook успешно обработан"
+        return 0
+    else
+        echo "❌ Ошибка обработки webhook"
+        return 1
+    fi
 }
 
-# Основной поток тестирования
+# Функция проверки статуса заказа в БД
+check_order_status() {
+    local order_id="$1"
+    
+    echo "🔍 Проверка статуса заказа $order_id в БД..."
+    
+    # Проверяем через API
+    local response=$(curl -s -X GET "$BASE_URL/admin/orders/$order_id" \
+        -H "$AUTH_HEADER")
+    
+    echo "Order status response: $response"
+    
+    local payment_status=$(echo "$response" | jq -r '.paymentStatus // empty')
+    local order_status=$(echo "$response" | jq -r '.status // empty')
+    
+    if [ "$payment_status" == "PAID" ]; then
+        echo "✅ payment_status корректно обновлен на PAID"
+    else
+        echo "❌ payment_status не обновился: $payment_status"
+        return 1
+    fi
+    
+    if [ "$order_status" == "CONFIRMED" ]; then
+        echo "✅ Статус заказа корректно обновлен на CONFIRMED"
+    else
+        echo "⚠️ Статус заказа: $order_status"
+    fi
+}
+
+# Основной тест
 main() {
-    echo -e "${BLUE}🚀 Начало тестирования исправления payment_status${NC}"
+    echo "🚀 Запуск основного теста..."
     
-    # Создаем тестовый заказ
-    if ! create_test_order; then
+    # Аутентификация
+    if ! authenticate; then
+        echo "❌ Тест провален: ошибка аутентификации"
         exit 1
     fi
     
-    # Создаем платеж
-    if ! create_test_payment; then
+    # Создание СБП заказа
+    echo -e "\n📋 ТЕСТ 1: СБП заказ с успешной оплатой"
+    echo "--------------------------------------"
+    
+    local order_id=$(create_test_order "Доставка курьером" "SBP")
+    if [ -z "$order_id" ]; then
+        echo "❌ Не удалось создать заказ"
         exit 1
     fi
     
-    # Проверяем начальный статус
-    check_initial_status
+    # Создание платежа
+    local payment_id=$(create_payment "$order_id" "SBP")
+    if [ -z "$payment_id" ]; then
+        echo "❌ Не удалось создать платеж"
+        exit 1
+    fi
     
-    # Имитируем успешную оплату
-    simulate_success_webhook
+    # Ждем немного
+    echo "⏳ Ждем 3 секунды..."
+    sleep 3
     
-    # Проверяем обновленный статус
-    check_updated_status
+    # Имитация webhook
+    if ! simulate_yookassa_webhook "$payment_id"; then
+        echo "❌ Ошибка обработки webhook"
+        exit 1
+    fi
     
-    # Проверяем статус платежа
-    check_payment_status
+    # Ждем обработки
+    echo "⏳ Ждем обработки webhook (5 секунд)..."
+    sleep 5
     
-    echo -e "${GREEN}✅ Тест завершен успешно${NC}"
-    echo -e "${BLUE}💡 Ожидаемый результат: payment_status должен измениться с UNPAID на PAID${NC}"
+    # Проверка статуса
+    if ! check_order_status "$order_id"; then
+        echo "❌ Статус заказа не обновился корректно"
+        exit 1
+    fi
+    
+    echo -e "\n🎉 ВСЕ ТЕСТЫ ПРОШЛИ УСПЕШНО!"
+    echo "✅ payment_status корректно обновляется на PAID"
+    echo "✅ Webhook от ЮКасса обрабатывается правильно"
+    echo "✅ Заказ должен быть отправлен в админский бот"
+    
+    echo -e "\n📝 РЕКОМЕНДАЦИИ:"
+    echo "1. Проверьте логи админского бота на предмет уведомлений"
+    echo "2. Убедитесь, что в БД payment_status = 'PAID' для заказа $order_id"
+    echo "3. Проверьте, что NewOrderEvent был опубликован после оплаты"
 }
 
-# Запуск тестирования
+# Запуск теста
 main "$@" 

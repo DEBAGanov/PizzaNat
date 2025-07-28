@@ -1,30 +1,18 @@
-/**
- * @file: OrderPaymentStatus.java
- * @description: Статусы оплаты заказов
- * @dependencies: none
- * @created: 2025-01-26
- */
 package com.baganov.pizzanat.entity;
 
 /**
- * Статусы оплаты заказов
- * Синхронизируется с полем payment_status в таблице orders
+ * Статусы оплаты заказа
  */
 public enum OrderPaymentStatus {
     /**
-     * Заказ не оплачен (по умолчанию)
+     * Ожидает оплаты (по умолчанию)
      */
     UNPAID,
     
     /**
-     * Заказ оплачен успешно
+     * Оплачен
      */
     PAID,
-    
-    /**
-     * Оплата в процессе (ожидание подтверждения)
-     */
-    PENDING,
     
     /**
      * Оплата отменена
@@ -32,7 +20,7 @@ public enum OrderPaymentStatus {
     CANCELLED,
     
     /**
-     * Ошибка оплаты
+     * Оплата не удалась
      */
     FAILED
 } 

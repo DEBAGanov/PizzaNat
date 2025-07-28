@@ -644,10 +644,6 @@ public class YooKassaPaymentService {
                 log.warn("⚠️ Статус CONFIRMED не найден в БД");
             }
             
-            // Устанавливаем статус оплаты PAID
-            order.setPaymentStatus(OrderPaymentStatus.PAID);
-            log.info("💰 Заказ {} - статус оплаты установлен: PAID", order.getId());
-            
             // Устанавливаем способ оплаты на основе платежа
             List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(order.getId().longValue());
             if (!payments.isEmpty()) {
@@ -659,7 +655,9 @@ public class YooKassaPaymentService {
                 if (successfulPayment != null) {
                     // Устанавливаем способ оплаты из платежа (уже PaymentMethod enum)
                     order.setPaymentMethod(successfulPayment.getMethod());
-                    log.info("💳 Заказ {} - установлен способ оплаты: {}", order.getId(), successfulPayment.getMethod());
+                    // Устанавливаем статус оплаты как PAID
+                    order.setPaymentStatus(OrderPaymentStatus.PAID);
+                    log.info("💳 Заказ {} - установлен способ оплаты: {}, статус оплаты: PAID", order.getId(), successfulPayment.getMethod());
                 }
             }
             
@@ -668,8 +666,8 @@ public class YooKassaPaymentService {
             
             // Сохраняем изменения заказа
             Order updatedOrder = orderRepository.save(order);
-            log.info("✅ Статус заказа {} обновлен на CONFIRMED, способ оплаты: {}, статус оплаты: {}", 
-                    order.getId(), updatedOrder.getPaymentMethod(), updatedOrder.getPaymentStatus());
+            log.info("✅ Статус заказа {} обновлен на CONFIRMED, способ оплаты: {}", 
+                    order.getId(), updatedOrder.getPaymentMethod());
 
             // Публикуем событие о новом заказе для админского бота
             // Поскольку платеж завершен, AdminBotService.hasActivePendingPayments() вернет false

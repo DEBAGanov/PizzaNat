@@ -65,9 +65,8 @@ public class Order {
     @Builder.Default
     private PaymentMethod paymentMethod = PaymentMethod.CASH;
 
-    // Статус оплаты заказа (синхронизация с полем payment_status в БД)
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", length = 50)
+    @Column(name = "payment_status")
     @Builder.Default
     private OrderPaymentStatus paymentStatus = OrderPaymentStatus.UNPAID;
 

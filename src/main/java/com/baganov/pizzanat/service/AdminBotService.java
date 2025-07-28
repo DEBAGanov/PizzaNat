@@ -12,8 +12,11 @@ import com.baganov.pizzanat.entity.OrderStatus;
 import com.baganov.pizzanat.entity.Payment;
 import com.baganov.pizzanat.entity.PaymentStatus;
 import com.baganov.pizzanat.entity.PaymentMethod;
+import com.baganov.pizzanat.entity.OrderPaymentStatus;
+import com.baganov.pizzanat.entity.OrderDisplayStatus;
 import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.event.PaymentAlertEvent;
+import java.time.temporal.ChronoUnit;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.entity.TelegramAdminUser;
 import com.baganov.pizzanat.repository.TelegramAdminUserRepository;
@@ -334,8 +337,14 @@ public class AdminBotService {
      * Форматирование детального сообщения о новом заказе (включает всю информацию для главного экрана)
      */
     private String formatNewOrderMessage(Order order) {
+        // Определяем визуальный статус заказа
+        Payment latestPayment = getLatestPayment(order);
+        OrderDisplayStatus displayStatus = OrderDisplayStatus.determineStatus(order, latestPayment);
+        
         StringBuilder message = new StringBuilder();
-        message.append("🆕 *НОВЫЙ ЗАКАЗ #").append(order.getId()).append("*\n\n");
+        message.append(displayStatus.getEmoji()).append(" *НОВЫЙ ЗАКАЗ #").append(order.getId())
+               .append(" ").append(displayStatus.getFormattedStatusWithInfo(latestPayment))
+               .append("*\n\n");
 
         message.append("🕐 *Время заказа:* ")
                 .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))).append("\n\n");
@@ -592,7 +601,59 @@ public class AdminBotService {
     }
 
     /**
-     * Добавляет информацию о платеже к сообщению
+     * Добавляет улучшенную информацию о платеже к сообщению
+     */
+    private void appendEnhancedPaymentInfo(StringBuilder message, Order order, Payment latestPayment, OrderDisplayStatus displayStatus) {
+        message.append("💳 *СТАТУС ОПЛАТЫ:* ").append(displayStatus.getFormattedStatusWithInfo(latestPayment)).append("\n");
+
+        // Для наличных заказов
+        if (displayStatus == OrderDisplayStatus.CASH_NEW) {
+            message.append("💰 *СПОСОБ ОПЛАТЫ:* 💵 Наличными при доставке\n\n");
+            return;
+        }
+
+        // Для онлайн платежей
+        if (latestPayment != null) {
+            message.append("💰 *СПОСОБ ОПЛАТЫ:* ").append(getPaymentMethodDisplayName(latestPayment.getMethod())).append("\n");
+
+            if (latestPayment.getCreatedAt() != null) {
+                message.append("🕐 *Время создания платежа:* ")
+                        .append(latestPayment.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
+                        .append("\n");
+            }
+
+            if (latestPayment.getPaidAt() != null) {
+                message.append("✅ *Время оплаты:* ")
+                        .append(latestPayment.getPaidAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")))
+                        .append("\n");
+            }
+
+            // Особая обработка для разных статусов
+            switch (displayStatus) {
+                case PAYMENT_POLLING:
+                    message.append("🔄 *Статус опроса:* Активно проверяется каждую минуту\n");
+                    break;
+                case PAYMENT_TIMEOUT:
+                    message.append("⏰ *Внимание:* Истекло время ожидания оплаты (10 мин)\n");
+                    break;
+                case PAYMENT_CANCELLED:
+                    message.append("❌ *Внимание:* Платеж отменен или завершился ошибкой\n");
+                    break;
+            }
+
+            // Добавляем ссылку на проверку платежа для активных онлайн платежей
+            if (isOnlinePayment(latestPayment.getMethod()) && latestPayment.getYookassaPaymentId() != null
+                && displayStatus != OrderDisplayStatus.PAYMENT_SUCCESS) {
+                String checkUrl = "https://yoomoney.ru/checkout/payments/v2/contract?orderId=" + latestPayment.getYookassaPaymentId();
+                message.append("🔗 *Проверить оплату:* [Открыть в ЮMoney](").append(checkUrl).append(")\n");
+            }
+        }
+
+        message.append("\n");
+    }
+
+    /**
+     * СТАРЫЙ МЕТОД - оставляем для обратной совместимости
      */
     private void appendPaymentInfo(StringBuilder message, Order order) {
         try {
@@ -658,6 +719,50 @@ public class AdminBotService {
                 return "❌ Отменено";
             default:
                 return status.toString();
+        }
+    }
+
+    /**
+     * Получает последний платеж для заказа (helper метод)
+     */
+    private Payment getLatestPayment(Order order) {
+        try {
+            Long orderId = order.getId().longValue();
+            List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
+            return payments.isEmpty() ? null : payments.get(0);
+        } catch (Exception e) {
+            log.error("Ошибка получения платежа для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Добавляет краткую информацию о платеже с улучшенным форматированием
+     */
+    private void appendBriefPaymentInfoEnhanced(StringBuilder message, Order order, Payment latestPayment, OrderDisplayStatus displayStatus) {
+        try {
+            message.append("💳 *Оплата:* ").append(displayStatus.getFormattedStatusWithInfo(latestPayment)).append("\n");
+            
+            // Добавляем дополнительную информацию в зависимости от статуса
+            if (displayStatus == OrderDisplayStatus.PAYMENT_POLLING && latestPayment != null) {
+                message.append("🔄 *Автоопрос:* ").append(OrderDisplayStatus.getPollingIndicator(latestPayment)).append("\n");
+            } else if (displayStatus == OrderDisplayStatus.PAYMENT_TIMEOUT) {
+                message.append("⏰ *Внимание:* Таймаут оплаты\n");
+            } else if (displayStatus == OrderDisplayStatus.PAYMENT_SUCCESS && latestPayment != null && latestPayment.getPaidAt() != null) {
+                message.append("✅ *Оплачено:* ").append(latestPayment.getPaidAt().format(DateTimeFormatter.ofPattern("HH:mm"))).append("\n");
+            }
+            
+            // Ссылка на проверку для неоплаченных онлайн платежей
+            if (latestPayment != null && isOnlinePayment(latestPayment.getMethod()) 
+                && latestPayment.getYookassaPaymentId() != null 
+                && displayStatus != OrderDisplayStatus.PAYMENT_SUCCESS) {
+                String checkUrl = "https://yoomoney.ru/checkout/payments/v2/contract?orderId=" + latestPayment.getYookassaPaymentId();
+                message.append("🔗 [Проверить оплату](").append(checkUrl).append(")\n");
+            }
+            
+        } catch (Exception e) {
+            log.error("Ошибка краткого отображения платежа для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            message.append("💳 *Оплата:* ❓ Ошибка данных\n");
         }
     }
 
@@ -804,9 +909,14 @@ public class AdminBotService {
 
             // Отправляем каждый заказ отдельным сообщением с кнопками
             for (Order order : activeOrders) {
+                // Определяем визуальный статус для каждого заказа
+                Payment latestPayment = getLatestPayment(order);
+                OrderDisplayStatus displayStatus = OrderDisplayStatus.determineStatus(order, latestPayment);
+                
                 StringBuilder orderMessage = new StringBuilder();
-                orderMessage.append("🔸 *Заказ #").append(order.getId()).append("*\n");
+                orderMessage.append(displayStatus.getEmoji()).append(" *Заказ #").append(order.getId()).append("*\n");
                 orderMessage.append("Статус: ").append(getStatusDisplayName(order.getStatus())).append("\n");
+                orderMessage.append("Оплата: ").append(displayStatus.getFormattedStatusWithInfo(latestPayment)).append("\n");
                 orderMessage.append("Сумма: ").append(String.format("%.2f", order.getTotalAmount())).append(" ₽\n");
                 orderMessage.append("Время: ")
                         .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM HH:mm"))).append("\n\n");
@@ -836,8 +946,8 @@ public class AdminBotService {
                         .append("\n");
                 orderMessage.append("📞 *Телефон заказа:* ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
 
-                // Краткая информация о платеже
-                appendBriefPaymentInfo(orderMessage, order);
+                // Краткая информация о платеже с улучшенным форматированием
+                appendBriefPaymentInfoEnhanced(orderMessage, order, latestPayment, displayStatus);
 
                 String finalMessage = orderMessage.toString();
 
@@ -865,13 +975,18 @@ public class AdminBotService {
         try {
             Order order = event.getOrder();
             
-            // НОВАЯ ЛОГИКА: Разделяем логику для наличных и онлайн платежей
+            // ОБНОВЛЕННАЯ ЛОГИКА: Разделяем логику для наличных и онлайн платежей
             if (order.getPaymentMethod() == PaymentMethod.CASH) {
                 // Наличные заказы отправляем сразу
                 notifyAdminsAboutNewOrder(order);
                 log.info("✅ Уведомление о наличном заказе #{} отправлено в админский бот", order.getId());
+            } else if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+                // Оплаченные СБП/карточные заказы отправляем в админский бот
+                notifyAdminsAboutNewOrder(order);
+                log.info("✅ Уведомление об оплаченном заказе #{} (способ: {}) отправлено в админский бот", 
+                    order.getId(), order.getPaymentMethod());
             } else {
-                // СБП/карточные заказы НЕ отправляем при создании
+                // Неоплаченные СБП/карточные заказы НЕ отправляем при создании
                 // Они будут отправлены только после подтверждения оплаты через PaymentPollingService
                 log.info("🔄 Заказ #{} с онлайн оплатой {} НЕ отправлен в админский бот - ожидаем подтверждения оплаты", 
                     order.getId(), order.getPaymentMethod());
