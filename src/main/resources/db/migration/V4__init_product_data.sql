@@ -230,8 +230,8 @@ BEGIN
         ('Крылья 6 штук', 'Крылья 6 штук', 679.00, 490, snacks_category_id, 'products/chiken.png', true, true, 12),
         ('Крылья 9 штук', 'Крылья 9 штук', 679.00, 490, snacks_category_id, 'products/chiken.png', true, true, 12),
         ('Соус Кисло-сладкий', 'Соус Кисло-сладкий', 40.00, 490, snacks_category_id, 'products/soyse_kislo.png', true, true, 12),
-        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/soyse_shees.png', true, true, 12),
-        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/soyse_barbeque.png', true, true, 12),
+        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/soyse_chees.png', true, true, 12),
+        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/soyse_barbeq.png', true, true, 12),
         ('Кетчуп', 'Кетчуп', 40.00, 490, snacks_category_id, 'products/soyse_ketchyp.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
