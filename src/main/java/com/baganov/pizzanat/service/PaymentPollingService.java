@@ -10,7 +10,9 @@ import com.baganov.pizzanat.entity.Payment;
 import com.baganov.pizzanat.entity.PaymentStatus;
 import com.baganov.pizzanat.entity.PaymentMethod;
 import com.baganov.pizzanat.entity.Order;
+import com.baganov.pizzanat.entity.OrderPaymentStatus;
 import com.baganov.pizzanat.repository.PaymentRepository;
+import com.baganov.pizzanat.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -40,6 +42,7 @@ import java.util.List;
 public class PaymentPollingService {
 
     private final PaymentRepository paymentRepository;
+    private final OrderRepository orderRepository;
     private final YooKassaPaymentService yooKassaPaymentService;
     private final AdminBotService adminBotService;
 
@@ -149,6 +152,11 @@ public class PaymentPollingService {
         try {
             log.info("✅ Платеж #{} успешно подтвержден через polling для заказа #{} (способ: {})", 
                 payment.getId(), order.getId(), payment.getMethod());
+            
+            // Обновляем статус оплаты заказа
+            order.setPaymentStatus(OrderPaymentStatus.PAID);
+            orderRepository.save(order);
+            log.info("💰 Заказ #{} - статус оплаты обновлен на PAID через polling", order.getId());
             
             // Определяем пометку о способе оплаты
             String paymentLabel = getPaymentMethodLabel(payment.getMethod());
