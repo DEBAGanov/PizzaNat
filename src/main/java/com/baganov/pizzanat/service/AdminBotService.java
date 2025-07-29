@@ -337,9 +337,9 @@ public class AdminBotService {
      * Форматирование детального сообщения о новом заказе (включает всю информацию для главного экрана)
      */
     private String formatNewOrderMessage(Order order) {
-        // Определяем визуальный статус заказа
+        // Определяем визуальный статус заказа с учетом реальных данных о платежах
         Payment latestPayment = getLatestPayment(order);
-        OrderDisplayStatus displayStatus = OrderDisplayStatus.determineStatus(order, latestPayment);
+        OrderDisplayStatus displayStatus = determineOrderDisplayStatusFixed(order, latestPayment);
         
         StringBuilder message = new StringBuilder();
         message.append(displayStatus.getEmoji()).append(" *НОВЫЙ ЗАКАЗ #").append(order.getId())
@@ -737,6 +737,53 @@ public class AdminBotService {
     }
 
     /**
+     * ИСПРАВЛЕННАЯ версия определения статуса заказа
+     * Учитывает случаи когда Order.paymentMethod=null но есть успешные платежи
+     */
+    private OrderDisplayStatus determineOrderDisplayStatusFixed(Order order, Payment latestPayment) {
+        // Проверяем есть ли успешно завершенные платежи
+        if (latestPayment != null && latestPayment.getStatus() == PaymentStatus.SUCCEEDED) {
+            log.debug("Заказ #{} имеет успешный платеж {} ({})", 
+                order.getId(), latestPayment.getId(), latestPayment.getMethod());
+            return OrderDisplayStatus.PAYMENT_SUCCESS;
+        }
+
+        // Проверяем статус оплаты заказа
+        if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+            log.debug("Заказ #{} имеет paymentStatus=PAID", order.getId());
+            return OrderDisplayStatus.PAYMENT_SUCCESS;
+        }
+
+        // Если есть активные платежи в ожидании
+        if (latestPayment != null) {
+            switch (latestPayment.getStatus()) {
+                case PENDING:
+                case WAITING_FOR_CAPTURE:
+                    // Проверяем возраст платежа для определения таймаута
+                    long minutesElapsed = ChronoUnit.MINUTES.between(
+                        latestPayment.getCreatedAt(), LocalDateTime.now()
+                    );
+                    
+                    if (minutesElapsed >= 10) {
+                        return OrderDisplayStatus.PAYMENT_TIMEOUT;
+                    } else {
+                        return OrderDisplayStatus.PAYMENT_POLLING;
+                    }
+                    
+                case CANCELLED:
+                case FAILED:
+                    return OrderDisplayStatus.PAYMENT_CANCELLED;
+                    
+                default:
+                    return OrderDisplayStatus.PAYMENT_PENDING;
+            }
+        }
+
+        // По умолчанию считаем наличными
+        return OrderDisplayStatus.CASH_NEW;
+    }
+
+    /**
      * Добавляет краткую информацию о платеже с улучшенным форматированием
      */
     private void appendBriefPaymentInfoEnhanced(StringBuilder message, Order order, Payment latestPayment, OrderDisplayStatus displayStatus) {
@@ -909,9 +956,9 @@ public class AdminBotService {
 
             // Отправляем каждый заказ отдельным сообщением с кнопками
             for (Order order : activeOrders) {
-                // Определяем визуальный статус для каждого заказа
+                // Определяем визуальный статус для каждого заказа с исправленной логикой
                 Payment latestPayment = getLatestPayment(order);
-                OrderDisplayStatus displayStatus = OrderDisplayStatus.determineStatus(order, latestPayment);
+                OrderDisplayStatus displayStatus = determineOrderDisplayStatusFixed(order, latestPayment);
                 
                 StringBuilder orderMessage = new StringBuilder();
                 orderMessage.append(displayStatus.getEmoji()).append(" *Заказ #").append(order.getId()).append("*\n");
