@@ -1,94 +1,162 @@
 # PizzaNat - Локальная разработка
 
-## Запуск в режиме разработки
+## Обновления
+Файл `docker-compose.dev.yml` обновлен на основе продакшн версии со всеми переменными окружения.
 
-### Переменные окружения
+## Быстрый старт
 
-Создайте файл `.env.dev` в корне проекта:
-
+### 1. Подготовка переменных окружения
 ```bash
-# База данных
-DB_PASSWORD=strong_password_change_me
-
-# MinIO S3
-MINIO_ROOT_USER=accesskey
-MINIO_ROOT_PASSWORD=secretkey
-
-# JWT
-JWT_SECRET=YTg1MmViNjM0MWY5MTk4NTk1OWM4YzhjZTRlMjIzMTZmNWI1ODk3YmY3YmI3NjhjNWFmYTU1NDYzY2E3OGVmMg==
-
-# Telegram Gateway
-TELEGRAM_GATEWAY_ACCESS_TOKEN=AAGCGwAAIlEzNcCeEbrV5r-w65s_0edegXThOhJ2nq-eBw
-TELEGRAM_GATEWAY_CALLBACK_URL=http://localhost:8080/api/v1/auth/telegram-gateway/callback
-
-# Telegram Auth Bot (основной)
-TELEGRAM_AUTH_BOT_TOKEN=7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4
-TELEGRAM_AUTH_BOT_USERNAME=PizzaNatBot
-TELEGRAM_AUTH_WEBHOOK_URL=http://localhost:8080/api/v1/telegram/webhook
-
-# Telegram Admin Bot (для уведомлений о заказах)
-TELEGRAM_ADMIN_BOT_TOKEN=8052456616:AAEoAzBfr3jRpylDmxR-azNBSqimthPCHeg
-TELEGRAM_ADMIN_BOT_USERNAME=PizzaNatOrders_bot
+# Скопируйте пример переменных окружения
+cp env.dev.example .env
 ```
 
-### Команды запуска
-
+### 2. Запуск всех сервисов
 ```bash
-# Запуск всех сервисов
-docker-compose -f docker-compose.dev.yml --env-file .env.dev up -d
+# Запуск в режиме разработки
+docker-compose -f docker-compose.dev.yml up --build
 
-# Просмотр логов
-docker-compose -f docker-compose.dev.yml logs -f app
-
-# Остановка
-docker-compose -f docker-compose.dev.yml down
-
-# Полная очистка (включая volumes)
-docker-compose -f docker-compose.dev.yml down -v
+# Или в фоновом режиме
+docker-compose -f docker-compose.dev.yml up -d --build
 ```
 
-### Доступные сервисы
-
-- **Приложение**: http://localhost:8080
-- **PostgreSQL**: localhost:5432
-- **MinIO Console**: http://localhost:9001 (accesskey/secretkey)
-- **MinIO API**: http://localhost:9000
-
-### Особенности dev режима
-
-1. **База данных**: Локальная PostgreSQL вместо удаленной
-2. **Профиль**: `SPRING_PROFILES_ACTIVE=dev`
-3. **Логирование**: Более подробное (DEBUG уровень)
-4. **JPA**: `hibernate.ddl-auto=update` и `show-sql=true`
-5. **Health checks**: `show-details=when_authorized`
-6. **S3**: Локальный MinIO вместо Timeweb S3
-
-### Тестирование админского бота
-
-После запуска можно тестировать новый функционал:
-
-1. **Регистрация администратора**:
-   - Найдите бота `@PizzaNatOrders_bot` в Telegram
-   - Отправьте команду `/register`
-
-2. **Тестирование уведомлений**:
-   - Создайте заказ через API или приложение
-   - Проверьте получение уведомления в админском боте
-
-3. **Управление статусами**:
-   - Используйте inline кнопки для изменения статуса заказа
-   - Проверьте команды `/stats` и `/orders`
-
-### Отладка
-
+### 3. Проверка состояния сервисов
 ```bash
-# Проверка статуса контейнеров
+# Проверка логов
+docker-compose -f docker-compose.dev.yml logs -f
+
+# Статус сервисов
 docker-compose -f docker-compose.dev.yml ps
+```
 
-# Подключение к базе данных
+## Сервисы
+
+### PostgreSQL (порт 5432)
+- **База данных**: `pizzanat_db`
+- **Пользователь**: `pizzanat_user`
+- **Пароль**: из переменной `DB_PASSWORD`
+
+### MinIO S3 (порты 9000, 9001)
+- **API**: http://localhost:9000
+- **Консоль**: http://localhost:9001
+- **Пользователь**: из переменной `MINIO_ROOT_USER`
+- **Пароль**: из переменной `MINIO_ROOT_PASSWORD`
+
+### Приложение (порт 8080)
+- **API**: http://localhost:8080
+- **Health Check**: http://localhost:8080/actuator/health
+- **Swagger**: http://localhost:8080/swagger-ui.html
+
+## Основные изменения
+
+### ✅ Добавлено из продакшн версии:
+- **YooKassa**: Полная интеграция с тестовыми ключами
+- **Exolve SMS**: API для отправки SMS (тестовый режим)
+- **Мониторинг**: Метрики и алерты YooKassa
+- **СБП**: Система быстрых платежей
+- **CORS**: Настройки для локальной разработки
+- **Временная зона**: Europe/Moscow
+
+### 🔧 Настройки разработки:
+- **Логирование**: DEBUG уровень для разработки
+- **SQL**: `SPRING_JPA_SHOW_SQL=true`
+- **DDL**: `SPRING_JPA_HIBERNATE_DDL_AUTO=update`
+- **Health Check**: `show_details=when_authorized`
+
+## Переменные окружения
+
+Все переменные настроены с значениями по умолчанию в `env.dev.example`:
+
+### 🔐 Безопасность
+- JWT_SECRET
+- DB_PASSWORD  
+- MINIO_ROOT_USER/PASSWORD
+
+### 📱 Telegram
+- TELEGRAM_AUTH_BOT_TOKEN
+- TELEGRAM_ADMIN_BOT_TOKEN
+- TELEGRAM_GATEWAY_ACCESS_TOKEN
+
+### 💳 Платежи
+- YOOKASSA_* (тестовые ключи)
+- SBP_* настройки
+
+### 📧 SMS
+- EXOLVE_API_KEY (тестовый)
+
+### 🌐 CORS
+- Локальные порты: 3000, 5173, 5174, 8080
+
+## Команды управления
+
+### Остановка сервисов
+```bash
+docker-compose -f docker-compose.dev.yml down
+```
+
+### Очистка данных
+```bash
+# Удаление volumes
+docker-compose -f docker-compose.dev.yml down -v
+
+# Полная очистка
+docker-compose -f docker-compose.dev.yml down -v --rmi all
+```
+
+### Пересборка
+```bash
+# Пересборка только приложения
+docker-compose -f docker-compose.dev.yml build app
+
+# Принудительная пересборка
+docker-compose -f docker-compose.dev.yml build --no-cache
+```
+
+## Тестирование
+
+### API эндпоинты
+```bash
+# Health check
+curl http://localhost:8080/actuator/health
+
+# Swagger UI
+open http://localhost:8080/swagger-ui.html
+
+# Проверка YooKassa
+curl -X GET http://localhost:8080/api/v1/payments/yookassa/status
+```
+
+### MinIO
+```bash
+# Консоль MinIO
+open http://localhost:9001
+```
+
+### База данных
+```bash
+# Подключение к PostgreSQL
 docker exec -it pizzanat-postgres-dev psql -U pizzanat_user -d pizzanat_db
+```
 
-# Просмотр логов конкретного сервиса
-docker-compose -f docker-compose.dev.yml logs -f postgres
-docker-compose -f docker-compose.dev.yml logs -f minio
+## Проблемы и решения
+
+### Проблема с портами
+```bash
+# Проверка занятых портов
+lsof -i :8080
+lsof -i :5432
+lsof -i :9000
+```
+
+### Проблема с volumes
+```bash
+# Очистка volumes
+docker volume prune
+```
+
+### Проблема с сетью
+```bash
+# Пересоздание сети
+docker network rm pizzanat-network-dev
+docker-compose -f docker-compose.dev.yml up
 ```

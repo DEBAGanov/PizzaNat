@@ -73,6 +73,10 @@ services:
         -XX:+UseG1GC
         -Djava.security.egd=file:/dev/./urandom
         -Dspring.jmx.enabled=false
+        -Duser.timezone=Europe/Moscow
+
+      # Временная зона для контейнера
+      TZ: Europe/Moscow
 
       # Локальная база данных PostgreSQL
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/pizzanat_db
@@ -121,46 +125,102 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_ORDER_INSERTS: true
       SPRING_JPA_PROPERTIES_HIBERNATE_ORDER_UPDATES: true
       SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_BATCH_VERSIONED_DATA: true
+      SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE: Europe/Moscow
 
       # Telegram Gateway настройки
-      TELEGRAM_GATEWAY_ENABLED: true
+      TELEGRAM_GATEWAY_ENABLED: ${TELEGRAM_GATEWAY_ENABLED:-true}
       TELEGRAM_GATEWAY_ACCESS_TOKEN: ${TELEGRAM_GATEWAY_ACCESS_TOKEN:-AAGCGwAAIlEzNcCeEbrV5r-w65s_0edegXThOhJ2nq-eBw}
       TELEGRAM_GATEWAY_MESSAGE_TTL: 300
       TELEGRAM_GATEWAY_CALLBACK_URL: ${TELEGRAM_GATEWAY_CALLBACK_URL:-http://localhost:8080/api/v1/auth/telegram-gateway/callback}
       TELEGRAM_GATEWAY_TIMEOUT_SECONDS: 10
       TELEGRAM_GATEWAY_MAX_RETRY_ATTEMPTS: 3
 
-      # Telegram Auth настройки - ОТКЛЮЧЕНЫ для полного перехода на Long Polling
+      # Telegram Auth настройки - ОТКЛЮЧЕНЫ для локальной разработки
       TELEGRAM_AUTH_ENABLED: false
-      TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
-      TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-PizzaNatBot}
-      TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-http://localhost:8080/api/v1/telegram/webhook}
+      TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-}
+      TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-}
+      TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-}
       TELEGRAM_AUTH_WEBHOOK_ENABLED: false
       TELEGRAM_AUTH_TOKEN_TTL_MINUTES: 10
       TELEGRAM_AUTH_RATE_LIMIT_PER_HOUR: 5
 
-      # SMS настройки (отключены для разработки)
-      # SMS_ENABLED: false
-      # SMS_API_KEY: ${SMS_API_KEY:1234567890}
-      # SMS_SENDER_ID: ${SMS_SENDER_ID:1234567890}
-      # SMS_RATE_LIMIT_PER_HOUR: 5
+      # Exolve SMS API настройки (тестовые для разработки)
+      EXOLVE_API_KEY: ${EXOLVE_API_KEY:-test_api_key}
+      EXOLVE_SENDER_NAME: ${EXOLVE_SENDER_NAME:-+79304410750}
+      EXOLVE_API_URL: ${EXOLVE_API_URL:-https://api.exolve.ru/messaging/v1}
+      EXOLVE_TIMEOUT_SECONDS: 10
+      EXOLVE_RETRY_MAX_ATTEMPTS: 3
 
-      # Telegram Bot настройки (основные уведомления) - ИСПОЛЬЗУЕМ TELEGRAM_AUTH_BOT_TOKEN
-      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-true}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
+      # SMS Settings
+      SMS_CODE_LENGTH: 4
+      SMS_CODE_TTL_MINUTES: 10
+      SMS_RATE_LIMIT_PER_HOUR: 3
+      SMS_MAX_ATTEMPTS: 3
+
+      # ЮKassa настройки (тестовые для разработки)
+      YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-true}
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1127550}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_g0tYwSJBL5ahKeMNC2388jdT-3g_VPdJchsNFFJF8o0}
+      YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}
+      YOOKASSA_WEBHOOK_URL: ${YOOKASSA_WEBHOOK_URL:-http://localhost:8080/api/v1/payments/yookassa/webhook}
+      YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-pizzanat://payment/result}
+      YOOKASSA_TIMEOUT_SECONDS: ${YOOKASSA_TIMEOUT_SECONDS:-30}
+      YOOKASSA_MAX_RETRY_ATTEMPTS: ${YOOKASSA_MAX_RETRY_ATTEMPTS:-3}
+
+      # === МОБИЛЬНЫЙ SDK КЛЮЧ ===
+      YOOKASSA_MOBILE_SDK_KEY: ${YOOKASSA_MOBILE_SDK_KEY:-test_MTExNjE0MTdtMbsnxRGOphBSgVFAOYjWsNpAYjFN9Zg}
+
+      # === ТАЙМАУТЫ И ПОВТОРЫ ===
+      YOOKASSA_CONNECTION_TIMEOUT: ${YOOKASSA_CONNECTION_TIMEOUT:-5000}
+      YOOKASSA_READ_TIMEOUT: ${YOOKASSA_READ_TIMEOUT:-10000}
+      YOOKASSA_WRITE_TIMEOUT: ${YOOKASSA_WRITE_TIMEOUT:-10000}
+      YOOKASSA_RETRY_MAX_ATTEMPTS: ${YOOKASSA_RETRY_MAX_ATTEMPTS:-3}
+      YOOKASSA_RETRY_DELAY: ${YOOKASSA_RETRY_DELAY:-1000}
+
+      # === СБП НАСТРОЙКИ ===
+      SBP_ENABLED: ${SBP_ENABLED:-true}
+      SBP_DEFAULT_RETURN_URL: ${SBP_DEFAULT_RETURN_URL:-pizzanat://payment/result}
+
+      # === МОНИТОРИНГ И МЕТРИКИ ===
+      YOOKASSA_METRICS_ENABLED: ${YOOKASSA_METRICS_ENABLED:-true}
+      YOOKASSA_METRICS_UPDATE_INTERVAL: ${YOOKASSA_METRICS_UPDATE_INTERVAL:-60}
+      YOOKASSA_METRICS_RETENTION_HOURS: ${YOOKASSA_METRICS_RETENTION_HOURS:-24}
+
+      # === АЛЕРТЫ ===
+      YOOKASSA_ALERTS_ENABLED: ${YOOKASSA_ALERTS_ENABLED:-true}
+      YOOKASSA_ALERTS_LOW_CONVERSION: ${YOOKASSA_ALERTS_LOW_CONVERSION:-70.0}
+      YOOKASSA_ALERTS_HIGH_FAILURE: ${YOOKASSA_ALERTS_HIGH_FAILURE:-10.0}
+      YOOKASSA_ALERTS_MAX_PENDING: ${YOOKASSA_ALERTS_MAX_PENDING:-30}
+      YOOKASSA_ALERTS_COOLDOWN: ${YOOKASSA_ALERTS_COOLDOWN:-30}
+      YOOKASSA_ALERTS_MIN_PAYMENTS: ${YOOKASSA_ALERTS_MIN_PAYMENTS:-5}
+
+      # === ЛОГИРОВАНИЕ YOOKASSA ===
+      LOGGING_LEVEL_YOOKASSA: ${LOGGING_LEVEL_YOOKASSA:-DEBUG}
+
+      # Telegram Bot настройки (основные уведомления) - ОТКЛЮЧЕНЫ для локальной разработки
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-}
       TELEGRAM_API_URL: https://api.telegram.org/bot
 
-      # Telegram Long Polling настройки (команды бота) - ВКЛЮЧЕНЫ
-      TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-true}
-      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-true}
-      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-PizzaNatBot}
+      # Telegram Long Polling настройки (команды бота) - ОТКЛЮЧЕНЫ для локальной разработки
+      TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-false}
+      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-false}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
 
-      # Админский Telegram Bot настройки - ВКЛЮЧЕН для разработки
+      # Админский Telegram Bot настройки - ВКЛЮЧЕН для тестирования платежей
       TELEGRAM_ADMIN_BOT_ENABLED: ${TELEGRAM_ADMIN_BOT_ENABLED:-true}
       TELEGRAM_ADMIN_BOT_TOKEN: ${TELEGRAM_ADMIN_BOT_TOKEN:-8052456616:AAEoAzBfr3jRpylDmxR-azNBSqimthPCHeg}
       TELEGRAM_ADMIN_BOT_USERNAME: ${TELEGRAM_ADMIN_BOT_USERNAME:-PizzaNatOrders_bot}
       TELEGRAM_ADMIN_BOT_MAX_RETRIES: 3
       TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS: 30
+
+      # CORS настройки для локальной разработки
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:3000}
+      CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS:-GET,POST,PUT,DELETE,OPTIONS,PATCH}
+      CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control,X-Client-Type,X-Client-Version}
+      CORS_EXPOSED_HEADERS: ${CORS_EXPOSED_HEADERS:-Authorization,Content-Type,X-Total-Count,X-Pagination-Page,X-Pagination-Size}
+      CORS_ALLOW_CREDENTIALS: ${CORS_ALLOW_CREDENTIALS:-true}
+      CORS_MAX_AGE: ${CORS_MAX_AGE:-3600}
 
     ports:
       - "8080:8080"
