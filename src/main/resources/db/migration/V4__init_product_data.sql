@@ -124,15 +124,15 @@ BEGIN
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
         ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром "Моцарелла" и помидорами. Вес 580 гр.', 380.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
-        ('Грибная пицца', 'Пицца с шампиньонами и томатным соусом, с сыром "Моцарелла" и ветчиной. Вес 600 гр. ', 469.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
-        ('Сырная пицца', 'Пицца с четырьмя видами сыра (соус томатный, "Моцарелла", "Голландский", "Пармезан", "Масдам". Вес 450 гр.) ', 470.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
-        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)',4901.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
+        ('Грибная пицца', 'Пицца с шампиньонами и томатным соусом, с сыром "Моцарелла" и ветчиной. Вес 600 гр.', 469.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
+        ('Сырная пицца', 'Пицца с четырьмя видами сыра (соус томатный, "Моцарелла", "Голландский", "Пармезан", "Масдам". Вес 450 гр.)', 470.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
+        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)', 490.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
         ('Пицца Пепперони', 'Пицца с пепперони и сыром (соус томатный, сыр "Моцарелла", пеперони. Вес 600 гр.)', 470.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
         ('Пицца Цезарь', 'Фирменная пицца с соусом Цезарь (соус Цезарь, сыр, курица, помидоры, салат. Вес 690 гр.)', 480.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
-        ('Гавайская пицца', 'Пицца с курицей и ананасами (соус сливочный, сыр "Моцарелла", курица, ананасы. Вес 600 гр )', 480.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
+        ('Гавайская пицца', 'Пицца с курицей и ананасами (соус сливочный, сыр "Моцарелла", курица, ананасы. Вес 600 гр.)', 480.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
         ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов (соус томатный, сыр "Моцарелла", курица, колбаски, салями, ветчина. Вес 650 гр.)', 500.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
         ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 480.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
-        ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.  )', 510.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
+        ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.)', 510.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
         ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 440.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12),
         ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.)', 1.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
