@@ -70,9 +70,9 @@ INSERT INTO
         is_active
     )
 VALUES (
-        'Десерты',
-        'Вкусные и ароматные десерты',
-        'categories/desserts.png',
+        'Комбо',
+        'Вкусные и ароматные комбо',
+        'categories/combo.png',
         4,
         true
     ) ON CONFLICT (name) DO NOTHING;
@@ -106,9 +106,9 @@ INSERT INTO
         is_active
     )
 VALUES (
-        'Салаты',
-        'Вкусные и ароматные салаты',
-        'categories/salads.png',
+        'Закрытые пиццы',
+        'Вкусные и ароматные закрытые пиццы',
+        'categories/closed_pizza.png',
         6,
         true
     ) ON CONFLICT (name) DO NOTHING;
@@ -124,17 +124,17 @@ BEGIN
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
         ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром "Моцарелла" и помидорами. Вес 580 гр.', 380.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
-        ('Грибная пицца', 'Пицца с шампиньонами и томатным соусом, с сыром "Моцарелла" и ветчиной. Вес 600 гр. ', 559.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
-        ('Сырная пицца', 'Пицца с четырьмя видами сыра (соус томатный, "Моцарелла", "Голландский", "Пармезан", "Масдам". Вес 450 гр.) ', 1.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
-        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)', 1.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
-        ('Пицца Пепперони', 'Пицца с пепперони и сыром (соус томатный, сыр "Моцарелла", пеперони. Вес 600 гр.)', 1.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
-        ('Пицца Цезарь', 'Фирменная пицца с соусом Цезарь (соус Цезарь, сыр, курица, помидоры, салат. Вес 690 гр.)', 1.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
-        ('Гавайская пицца', 'Пицца с курицей и ананасами (соус сливочный, сыр "Моцарелла", курица, ананасы. Вес 600 гр )', 1.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
-        ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов (соус томатный, сыр "Моцарелла", курица, колбаски, салями, ветчина. Вес 650 гр.)', 1.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
-        ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 1.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
-        ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.  )', 1.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
-        ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 679.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12),
-        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.)', 679.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
+        ('Грибная пицца', 'Пицца с шампиньонами и томатным соусом, с сыром "Моцарелла" и ветчиной. Вес 600 гр. ', 469.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
+        ('Сырная пицца', 'Пицца с четырьмя видами сыра (соус томатный, "Моцарелла", "Голландский", "Пармезан", "Масдам". Вес 450 гр.) ', 470.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
+        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)',4901.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
+        ('Пицца Пепперони', 'Пицца с пепперони и сыром (соус томатный, сыр "Моцарелла", пеперони. Вес 600 гр.)', 470.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
+        ('Пицца Цезарь', 'Фирменная пицца с соусом Цезарь (соус Цезарь, сыр, курица, помидоры, салат. Вес 690 гр.)', 480.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
+        ('Гавайская пицца', 'Пицца с курицей и ананасами (соус сливочный, сыр "Моцарелла", курица, ананасы. Вес 600 гр )', 480.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
+        ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов (соус томатный, сыр "Моцарелла", курица, колбаски, салями, ветчина. Вес 650 гр.)', 500.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
+        ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 480.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
+        ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.  )', 510.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
+        ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 440.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12),
+        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.)', 1.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -154,10 +154,10 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Бургер "Димбургер"', 'Бургер с жареным луком и сыром (куриная котлета, лук, помидоры, салат, двойной сыр, маринованные орурцы, соус)', 1.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
-        ('Бургер "Чизбургер"', 'Бургер с сыром и салатом (куриная котлета, лук, помидоры, салат, сыр, соус)', 599.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, true, 15),
-        ('Бургер "Чикенбургер"', 'Чикенбургер (куриная котлета, лук, помидоры, салат, соус)', 549.00, 470, burgers_category_id, 'products/burger_hawaiian.png', true, false, null),
-        ('Бургер "Джуниор"', 'Джуниор (куриная котлета, лук, помидоры, соус)', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
+        ('Бургер "Димбургер"', 'Бургер с жареным луком и сыром (куриная котлета, лук, помидоры, салат, двойной сыр, маринованные орурцы, соус)', 220.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
+        ('Бургер "Чизбургер"', 'Бургер с сыром и салатом (куриная котлета, лук, помидоры, салат, сыр, соус)', 200.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, true, 15),
+        ('Бургер "Чикенбургер"', 'Чикенбургер (куриная котлета, лук, помидоры, салат, соус)', 180.00, 470, burgers_category_id, 'products/burger_hawaiian.png', true, false, null),
+        ('Бургер "Джуниор"', 'Джуниор (куриная котлета, лук, помидоры, соус)', 160.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
         ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
         ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
@@ -179,8 +179,12 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Молочный коктейль', 'Молочный коктейль с мороженным.', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
-        ('Шоколадный молочный коктейль', 'Молочный коктейль с шоколадным мороженным.', 499.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null)
+        ('Молочный коктейль', 'Молочный коктейль с мороженным.', 180.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
+        ('Шоколадный коктейль', 'Молочный коктейль с шоколадным мороженным.', 180.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
+        ('Клубничный коктейль', 'Молочный коктейль с клубничным мороженным.', 180.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
+        ('Лимонад "Мохито"', 'Освежающий лимонад Мохито.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null)
+        ('Лимонад "Тропический манго"', 'Освежающий мановый лимонад.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null)
+        ('Лимонад "Сочная малина"', 'Освежающий малиновый лимонад.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -195,12 +199,13 @@ DO $$
 DECLARE
     desserts_category_id INTEGER;
 BEGIN
-    SELECT id INTO desserts_category_id FROM categories WHERE name = 'Десерты';
+    SELECT id INTO desserts_category_id FROM categories WHERE name = 'Комбо';
 
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Десерт "Шоколадный"', 'Шоколадный десерт', 499.00, 450, desserts_category_id, 'products/dessert_chocolate.png', true, false, null)
+        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
+        ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -248,15 +253,20 @@ DO $$
 DECLARE
     salads_category_id INTEGER;
 BEGIN
-    SELECT id INTO salads_category_id FROM categories WHERE name = 'Салаты';
+    SELECT id INTO salads_category_id FROM categories WHERE name = 'Закрытые пиццы';
 
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Салат "Цезарь"', 'Салат с курицей и сыром', 499.00, 450, salads_category_id, 'products/salad_caesar.png', true, false, null),
-        ('Салат "Оливье"', 'Салат с курицей и сыром', 599.00, 480, salads_category_id, 'products/salad_olive.png', true, true, 15),
-        ('Салат "Греческий"', 'Салат с курицей и сыром', 549.00, 470, salads_category_id, 'products/salad_greek.png', true, false, null),
-        ('Салат "Русский"', 'Салат с курицей и сыром', 679.00, 490, salads_category_id, 'products/salad_russian.png', true, true, 12)
+        ('Закрытая пицца "Классическая"', 'курица, огурцы, помидоры, капуста', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Куриная"', 'курица, сыр, помидоры', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, true, 15),
+        ('Закрытая пицца "Охотничья"', 'колбаски, маринованные огурцы, сыр', 170.00, 470, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Сырная"', 'сыр, помидоры', 170.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12)
+        ('Закрытая пицца "Гавайская"', 'курица, сыр, ананасы', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
+        ('Закрытая пицца "Грибы/курица"', 'курица, сыр, грибы, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
+        ('Закрытая пицца "Грибы/ветчина"', 'грибы, ветчина, сыр, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
+        ('Закрытая пицца "Курица/фри"', 'курица, сыр, помидоры, фри, лук, морковь', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
+        ('Закрытая пицца "Цезарь"', 'курица, сыр, помидоры, салат', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
