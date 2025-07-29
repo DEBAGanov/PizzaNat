@@ -182,8 +182,8 @@ BEGIN
         ('Молочный коктейль', 'Молочный коктейль с мороженным.', 180.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
         ('Шоколадный коктейль', 'Молочный коктейль с шоколадным мороженным.', 180.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
         ('Клубничный коктейль', 'Молочный коктейль с клубничным мороженным.', 180.00, 450, drinks_category_id, 'products/drink_cola.png', true, false, null),
-        ('Лимонад "Мохито"', 'Освежающий лимонад Мохито.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null)
-        ('Лимонад "Тропический манго"', 'Освежающий мановый лимонад.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null)
+        ('Лимонад "Мохито"', 'Освежающий лимонад Мохито.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null),
+        ('Лимонад "Тропический манго"', 'Освежающий мановый лимонад.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null),
         ('Лимонад "Сочная малина"', 'Освежающий малиновый лимонад.', 180.00, 450, drinks_category_id, 'products/lemonade.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
@@ -204,7 +204,7 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
+        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
         ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
@@ -261,12 +261,12 @@ BEGIN
         ('Закрытая пицца "Классическая"', 'курица, огурцы, помидоры, капуста', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, false, null),
         ('Закрытая пицца "Куриная"', 'курица, сыр, помидоры', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, true, 15),
         ('Закрытая пицца "Охотничья"', 'колбаски, маринованные огурцы, сыр', 170.00, 470, salads_category_id, 'products/closed_pizza.png', true, false, null),
-        ('Закрытая пицца "Сырная"', 'сыр, помидоры', 170.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12)
+        ('Закрытая пицца "Сырная"', 'сыр, помидоры', 170.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
         ('Закрытая пицца "Гавайская"', 'курица, сыр, ананасы', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
         ('Закрытая пицца "Грибы/курица"', 'курица, сыр, грибы, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
         ('Закрытая пицца "Грибы/ветчина"', 'грибы, ветчина, сыр, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
         ('Закрытая пицца "Курица/фри"', 'курица, сыр, помидоры, фри, лук, морковь', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
-        ('Закрытая пицца "Цезарь"', 'курица, сыр, помидоры, салат', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
+        ('Закрытая пицца "Цезарь"', 'курица, сыр, помидоры, салат', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
