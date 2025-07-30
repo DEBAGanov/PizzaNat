@@ -72,7 +72,7 @@ INSERT INTO
 VALUES (
         'Комбо',
         'Вкусные и ароматные комбо',
-        'categories/salads.png',
+        'categories/combo.png',
         4,
         true
     ) ON CONFLICT (name) DO NOTHING;
@@ -204,8 +204,8 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Комбо 3', 'Фри 100 гр.  + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/salad.png', true, false, null),
-        ('Комбо 4', 'Фри 100 гр.  + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/salad.png', true, false, null)
+        ('Комбо 3', 'Фри 100 гр.  + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
+        ('Комбо 4', 'Фри 100 гр.  + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
