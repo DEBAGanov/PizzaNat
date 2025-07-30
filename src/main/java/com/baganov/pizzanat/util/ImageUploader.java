@@ -71,6 +71,14 @@ public class ImageUploader {
         PRODUCT_NAMES.put("salad_olive", "Салат Оливье");
         PRODUCT_NAMES.put("salad_greek", "Салат Греческий");
         PRODUCT_NAMES.put("salad_russian", "Салат Русский");
+        PRODUCT_NAMES.put("combo", "Комбо");
+        PRODUCT_NAMES.put("combo_1", "Комбо 1");
+        PRODUCT_NAMES.put("combo_2", "Комбо 2");
+        PRODUCT_NAMES.put("combo_3", "Комбо 3");
+        PRODUCT_NAMES.put("combo_4", "Комбо 4");
+        PRODUCT_NAMES.put("lemonade", "Лимонад");
+        PRODUCT_NAMES.put("closed_pizza", "Закрытая пицца");
+
     }
 
     @PostConstruct
