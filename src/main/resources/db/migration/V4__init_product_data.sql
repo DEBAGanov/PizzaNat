@@ -106,7 +106,7 @@ INSERT INTO
         is_active
     )
 VALUES (
-        'Закрытые пиццы',
+        'Закрытые_пиццы',
         'Вкусные и ароматные закрытые пиццы',
         'categories/closed_pizza.png',
         6,
@@ -134,7 +134,7 @@ BEGIN
         ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 480.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
         ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.)', 510.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
         ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 440.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12),
-        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.)', 1.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
+        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.', 1.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -226,7 +226,7 @@ BEGIN
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
         ('Картофель Фри 100 гр.', 'Картофель Фри 100 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
-        ('Картофель Фри 150 гр.', 'СКартофель Фри 150 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
+        ('Картофель Фри 150 гр.', 'Картофель Фри 150 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
         ('Нагецы 6 штук', 'Нагецы 6 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
         ('Нагецы 9 штук', 'Нагецы 9 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
         ('Нагецы 12 штук', 'Нагецы 12 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
@@ -253,7 +253,7 @@ DO $$
 DECLARE
     salads_category_id INTEGER;
 BEGIN
-    SELECT id INTO salads_category_id FROM categories WHERE name = 'Закрытые пиццы';
+    SELECT id INTO salads_category_id FROM categories WHERE name = 'Закрытые_пиццы';
 
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
