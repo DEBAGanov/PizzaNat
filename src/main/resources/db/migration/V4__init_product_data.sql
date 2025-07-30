@@ -206,7 +206,7 @@ BEGIN
     VALUES
         ('Комбо 3', 'Фри 100 гр.  + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
         ('Комбо 4', 'Фри 100 гр.  + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
-        ('Комбо 5', 'Фри 100 гр.  + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
+        ('Комбо 5', 'Фри 100 гр.  + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
