@@ -106,7 +106,7 @@ INSERT INTO
         is_active
     )
 VALUES (
-        'Закрытые_пиццы',
+        'Закрытые пиццы',
         'Вкусные и ароматные закрытые пиццы',
         'categories/closed_pizza.png',
         6,
@@ -204,8 +204,8 @@ BEGIN
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
-        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
-        ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
+        ('Комбо 3', 'Фри 100 гр.  + Нагецы 5 штук + соус + напиток 300 мл.', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null),
+        ('Комбо 4', 'Фри 100 гр.  + Чикенбургер + соус + напиток 300 мл', 499.00, 450, desserts_category_id, 'products/combo.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -253,7 +253,7 @@ DO $$
 DECLARE
     salads_category_id INTEGER;
 BEGIN
-    SELECT id INTO salads_category_id FROM categories WHERE name = 'Закрытые_пиццы';
+    SELECT id INTO salads_category_id FROM categories WHERE name = 'Закрытые пиццы';
 
     -- Вставка данных о продуктах с указанием BigDecimal для цены
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
