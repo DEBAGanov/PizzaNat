@@ -102,6 +102,12 @@ dependencies {
     // WebFlux уже добавлен выше
     // Метрики для мониторинга платежей
     implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    // Google Sheets API интеграция
+    implementation 'com.google.apis:google-api-services-sheets:v4-rev612-1.25.0'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.19.0'
+    implementation 'com.google.auth:google-auth-library-credentials:1.19.0'
+    implementation 'com.google.http-client:google-http-client-jackson2:1.43.3'
 }
 
 tasks.named('test') {

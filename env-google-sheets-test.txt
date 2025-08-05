@@ -1,0 +1,83 @@
+# PizzaNat - Конфигурация для тестирования Google Sheets интеграции
+
+# === GOOGLE SHEETS НАСТРОЙКИ ===
+GOOGLE_SHEETS_ENABLED=true
+GOOGLE_SHEETS_SPREADSHEET_ID=1K_g-EGPQgu4aFv4bIPjhjpP6yE_raHyUrlr6GYi-MTEJtu4
+GOOGLE_SHEETS_SHEET_NAME=Лист1
+GOOGLE_APPLICATION_CREDENTIALS=/app/config/google-credentials.json
+
+# === ОСНОВНЫЕ НАСТРОЙКИ YOOKASSA ===
+YOOKASSA_ENABLED=true
+YOOKASSA_SHOP_ID=1116141
+YOOKASSA_SECRET_KEY=test_A_jprj_408ySIz9HzYvC5WzxuB-mwKGqrp-7MfI_2B0
+
+# === МОБИЛЬНЫЙ SDK КЛЮЧ ===
+YOOKASSA_MOBILE_SDK_KEY=test_MTExNjE0MTdtMbsnxRGOphBSgVFAOYjWsNpAYjFN9Zg
+
+# === API НАСТРОЙКИ ===
+YOOKASSA_API_URL=https://api.yookassa.ru/v3
+YOOKASSA_WEBHOOK_URL=http://api.pizzanat.ru/api/v1/payments/yookassa/webhook
+YOOKASSA_RETURN_URL=pizzanat://payment/result
+
+# === ТАЙМАУТЫ И ПОВТОРЫ ===
+YOOKASSA_CONNECTION_TIMEOUT=5000
+YOOKASSA_READ_TIMEOUT=10000
+YOOKASSA_WRITE_TIMEOUT=10000
+YOOKASSA_RETRY_MAX_ATTEMPTS=3
+YOOKASSA_RETRY_DELAY=1000
+
+# === СБП НАСТРОЙКИ ===
+SBP_ENABLED=true
+SBP_DEFAULT_RETURN_URL=pizzanat://payment/result
+
+# База данных
+POSTGRES_DB=pizzanat_db
+POSTGRES_USER=pizzanat_user
+POSTGRES_PASSWORD=pizzanat_password123
+DATABASE_URL=jdbc:postgresql://localhost:5432/pizzanat_db
+
+# Spring настройки
+SPRING_PROFILES_ACTIVE=dev
+SERVER_PORT=8080
+
+# JWT настройки
+JWT_SECRET=your-secret-key-here-change-in-production
+JWT_EXPIRATION=86400000
+
+# Telegram Bot настройки (отключаем для тестов Google Sheets)
+TELEGRAM_ENABLED=false
+TELEGRAM_BOT_ENABLED=false
+TELEGRAM_ADMIN_BOT_ENABLED=false
+TELEGRAM_GATEWAY_ENABLED=false
+TELEGRAM_AUTH_WEBHOOK_ENABLED=false
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_BOT_USERNAME=PizzaNatBot
+TELEGRAM_ADMIN_BOT_TOKEN=
+TELEGRAM_ADMIN_BOT_USERNAME=PizzaNatAdminBot
+
+# Exolve SMS настройки
+EXOLVE_API_KEY=your-exolve-api-key
+EXOLVE_API_URL=https://api.exolve.ru/messaging/v1/SendSMS
+
+# MinIO настройки
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET_NAME=pizzanat
+
+# Yandex Maps API
+YANDEX_MAPS_API_KEY=your-yandex-maps-api-key
+
+# CORS настройки
+CORS_ALLOWED_ORIGINS=https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000
+CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS,PATCH
+CORS_ALLOWED_HEADERS=Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control
+CORS_ALLOW_CREDENTIALS=true
+
+# Мониторинг и метрики
+MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics,prometheus
+MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
+
+# Логирование
+LOGGING_LEVEL_COM_BAGANOV_PIZZANAT=DEBUG
+LOGGING_LEVEL_GOOGLE_SHEETS=DEBUG
