@@ -14,7 +14,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import java.time.Duration;
 
 @Configuration
@@ -151,7 +152,7 @@ public class TelegramConfig {
 
         private boolean enabled = false;
         private String token;
-        private String username;
+        private String username = "DIMBO_pizza_bot";
         private String apiUrl = "https://api.telegram.org/bot";
 
         public String getApiUrl() {
