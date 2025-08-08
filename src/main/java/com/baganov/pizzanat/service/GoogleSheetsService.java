@@ -174,13 +174,13 @@ public class GoogleSheetsService {
         List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(order.getId().longValue());
         Payment lastPayment = payments.isEmpty() ? null : payments.get(0);
         
-        // Форматирование состава заказа
+        // Форматирование состава заказа - каждый товар на новой строке
         String orderItems = order.getItems().stream()
                 .map(item -> String.format("%s x%d (%.0f₽)", 
                         item.getProduct().getName(),
                         item.getQuantity(),
                         item.getPrice()))
-                .collect(Collectors.joining("; "));
+                .collect(Collectors.joining(";\n")); // Используем ;\n для новой строки в ячейке
         
         // Определение статуса платежа
         String paymentStatus = "Не оплачен";
