@@ -84,8 +84,8 @@ public class GoogleCredentialsDownloadService {
             if (Files.exists(localFile)) {
                 log.warn("⚠️ Используем существующий локальный файл credentials");
             } else {
-                log.error("❌ Локальный файл credentials не найден. Google Sheets интеграция может не работать.");
-                throw new RuntimeException("Google Sheets credentials недоступны", e);
+                log.warn("⚠️ Локальный файл credentials не найден. Google Sheets интеграция будет отключена.");
+                // Не выбрасываем исключение - позволяем приложению запуститься без Google Sheets
             }
         }
     }

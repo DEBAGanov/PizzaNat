@@ -55,7 +55,7 @@ services:
       TIMEWEB_S3_BUCKET: f9c8e17a-pizzanat-products
       TIMEWEB_S3_PUBLIC_URL: https://s3.twcstorage.ru/f9c8e17a-pizzanat-products
 
-      # Кэширование
+      # Кэширование (simple для prod без Redis)
       SPRING_CACHE_TYPE: simple
 
       # JWT настройки
@@ -183,7 +183,7 @@ services:
       GOOGLE_SHEETS_ENABLED: ${GOOGLE_SHEETS_ENABLED:-true}
       GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID:-1K_g-EGPQgu4aFv4bIPP6yE_raHyUrlr6GYi-MTEJtu4}
       GOOGLE_SHEETS_SHEET_NAME: ${GOOGLE_SHEETS_SHEET_NAME:-Лист1}
-      GOOGLE_SHEETS_CREDENTIALS_PATH: ${GOOGLE_SHEETS_CREDENTIALS_PATH:-/app/config/google-credentials.json}
+      GOOGLE_SHEETS_CREDENTIALS_PATH: ${GOOGLE_SHEETS_CREDENTIALS_PATH:-/tmp/google-credentials.json}
       GOOGLE_SHEETS_CREDENTIALS_S3_KEY: ${GOOGLE_SHEETS_CREDENTIALS_S3_KEY:-google-credentials.json}
       GOOGLE_SHEETS_APPLICATION_NAME: ${GOOGLE_SHEETS_APPLICATION_NAME:-PizzaNat Order Tracker}
       GOOGLE_SHEETS_CONNECT_TIMEOUT: ${GOOGLE_SHEETS_CONNECT_TIMEOUT:-10000}
