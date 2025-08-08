@@ -6,7 +6,7 @@ echo "🚀 Comprehensive тестирование PizzaNat API"
 #BASE_URL="https://debaganov-pizzanat-0177.twc1.net"
 #BASE_URL="https://pizzanat.ru"
 #BASE_URL="https://api.dimbopizza.ru"
-#BASE_URL="http://localhost:8080"
+BASE_URL="http://localhost:8080"
 
 
 GREEN='\033[0;32m'

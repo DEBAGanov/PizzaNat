@@ -46,14 +46,8 @@ WORKDIR /app
 # Копируем JAR файл
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-# Создаем директорию для конфигурации
-RUN mkdir -p /app/config
-
-# Примечание: Google credentials должны быть переданы через volume или secret
-# При деплое используйте: -v /path/to/google-credentials.json:/app/config/google-credentials.json
-
 # Меняем владельца
-RUN chown -R pizzanat:pizzanat app.jar config/
+RUN chown pizzanat:pizzanat app.jar
 
 # Переключаемся на непривилегированного пользователя
 USER pizzanat

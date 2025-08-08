@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(name = "google.sheets.enabled", havingValue = "true")
 public class GoogleSheetsService {
 
-    private final Sheets sheetsService;
+    private final Sheets sheetsClient;
     private final GoogleSheetsConfiguration config;
     private final PaymentRepository paymentRepository;
     
@@ -62,7 +62,7 @@ public class GoogleSheetsService {
             ValueRange headerRange = new ValueRange()
                     .setValues(Arrays.asList(headers));
             
-            UpdateValuesResponse response = sheetsService.spreadsheets().values()
+            UpdateValuesResponse response = sheetsClient.spreadsheets().values()
                     .update(config.getSpreadsheetId(), HEADER_RANGE, headerRange)
                     .setValueInputOption("RAW")
                     .execute();
@@ -120,7 +120,7 @@ public class GoogleSheetsService {
             ValueRange valueRange = new ValueRange()
                     .setValues(Arrays.asList(Arrays.asList(newStatus)));
             
-            sheetsService.spreadsheets().values()
+            sheetsClient.spreadsheets().values()
                     .update(config.getSpreadsheetId(), range, valueRange)
                     .setValueInputOption("RAW")
                     .execute();
@@ -153,7 +153,7 @@ public class GoogleSheetsService {
             ValueRange valueRange = new ValueRange()
                     .setValues(Arrays.asList(Arrays.asList(paymentStatus)));
             
-            sheetsService.spreadsheets().values()
+            sheetsClient.spreadsheets().values()
                     .update(config.getSpreadsheetId(), range, valueRange)
                     .setValueInputOption("RAW")
                     .execute();
@@ -240,7 +240,7 @@ public class GoogleSheetsService {
         BatchUpdateSpreadsheetRequest batchRequest = new BatchUpdateSpreadsheetRequest()
                 .setRequests(Arrays.asList(new Request().setInsertDimension(insertRequest)));
 
-        sheetsService.spreadsheets()
+        sheetsClient.spreadsheets()
                 .batchUpdate(config.getSpreadsheetId(), batchRequest)
                 .execute();
 
@@ -248,7 +248,7 @@ public class GoogleSheetsService {
         ValueRange valueRange = new ValueRange()
                 .setValues(Arrays.asList(rowData));
 
-        sheetsService.spreadsheets().values()
+        sheetsClient.spreadsheets().values()
                 .update(config.getSpreadsheetId(), INSERT_RANGE, valueRange)
                 .setValueInputOption("RAW")
                 .execute();
@@ -259,7 +259,7 @@ public class GoogleSheetsService {
      */
     private int findOrderRow(Integer orderId) throws IOException {
         String range = String.format("%s!A:A", config.getSheetName());
-        ValueRange response = sheetsService.spreadsheets().values()
+                    ValueRange response = sheetsClient.spreadsheets().values()
                 .get(config.getSpreadsheetId(), range)
                 .execute();
 
@@ -279,7 +279,7 @@ public class GoogleSheetsService {
      * Получение ID листа
      */
     private Integer getSheetId() throws IOException {
-        Spreadsheet spreadsheet = sheetsService.spreadsheets()
+                    Spreadsheet spreadsheet = sheetsClient.spreadsheets()
                 .get(config.getSpreadsheetId())
                 .execute();
         

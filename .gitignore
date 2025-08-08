@@ -42,10 +42,3 @@ out/
 .specstoty
 
 .env
-
-# Google Credentials (sensitive)
-config/google-credentials.json
-google-credentials.json
-
-# Environment files with secrets
-env-google-sheets-test.txt

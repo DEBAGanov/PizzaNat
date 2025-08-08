@@ -73,12 +73,10 @@ get_auth_token() {
         local register_response=$(curl -s -X POST "$BASE_URL/api/v1/auth/register" \
             -H "Content-Type: application/json" \
             -d '{
-                "username": "googlesheets_test",
                 "email": "googlesheets_test@example.com",
                 "password": "password123",
                 "firstName": "Google",
-                "lastName": "Sheets Test",
-                "phone": "+79999999999"
+                "lastName": "Sheets Test"
             }')
         
         if [[ "$register_response" == *"token"* ]]; then

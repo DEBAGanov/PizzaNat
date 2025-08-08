@@ -6,6 +6,7 @@
  */
 package com.baganov.pizzanat.config;
 
+
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
@@ -35,14 +36,14 @@ public class GoogleSheetsApiConfiguration {
     private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 
     @Bean
-    public Sheets sheetsService() throws IOException, GeneralSecurityException {
+    public Sheets sheetsClient() throws IOException, GeneralSecurityException {
         log.info("🔧 Инициализация Google Sheets API сервиса");
         
         try {
             // HTTP Transport
             HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
             
-            // Credentials
+            // Credentials из локального файла
             GoogleCredentials credentials = GoogleCredentials
                     .fromStream(new FileInputStream(config.getCredentialsPath()))
                     .createScoped(Collections.singleton(SheetsScopes.SPREADSHEETS));

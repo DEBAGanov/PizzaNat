@@ -36,6 +36,11 @@ public class GoogleSheetsConfiguration {
     private String credentialsPath = "/app/config/google-credentials.json";
     
     /**
+     * Ключ файла credentials в S3 (для Timeweb Cloud)
+     */
+    private String credentialsS3Key;
+    
+    /**
      * Название приложения для Google API
      */
     private String applicationName = "PizzaNat Order Tracker";
