@@ -10,7 +10,6 @@ import com.baganov.pizzanat.config.YooKassaConfig;
 import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.event.PaymentAlertEvent;
-import com.baganov.pizzanat.event.PaymentStatusChangedEvent;
 import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
 import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.model.dto.payment.SbpBankInfo;
@@ -214,16 +213,6 @@ public class YooKassaPaymentService {
                 paymentMetricsService.recordPaymentStatusChange(payment, oldStatus);
                 paymentAlertService.onPaymentStatusChanged(payment, oldStatus);
                 
-                // Публикуем событие изменения статуса платежа для Google Sheets
-                try {
-                    eventPublisher.publishEvent(new PaymentStatusChangedEvent(
-                        this, payment.getOrder().getId(), oldStatus, payment.getStatus()));
-                    log.debug("📊 Событие PaymentStatusChangedEvent опубликовано для заказа #{}", 
-                        payment.getOrder().getId());
-                } catch (Exception e) {
-                    log.error("❌ Ошибка публикации PaymentStatusChangedEvent для заказа #{}: {}", 
-                        payment.getOrder().getId(), e.getMessage(), e);
-                }
             }
 
             // Обрабатываем специфичные события ЮKassa
