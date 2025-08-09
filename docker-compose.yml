@@ -162,7 +162,7 @@ services:
       # Telegram Long Polling настройки (команды бота) - ВКЛЮЧЕНЫ для авторизации и уведомлений
       TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-true}
       TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-true}
-      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-PizzaNatBot}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-DIMBOpizzaBot}
 
       # Админский Telegram Bot настройки - ВКЛЮЧЕН для административных уведомлений
       TELEGRAM_ADMIN_BOT_ENABLED: ${TELEGRAM_ADMIN_BOT_ENABLED:-true}
