@@ -29,8 +29,8 @@ class PizzaNatMiniApp {
             // Авторизация
             await this.authenticate();
             
-            // Загрузка данных
-            await this.loadInitialData();
+            // Загрузка категорий
+            await this.loadCategories();
             
             // Настройка UI
             this.setupUI();
@@ -136,28 +136,19 @@ class PizzaNatMiniApp {
     }
 
     /**
-     * Загрузка начальных данных
+     * Загрузка категорий
      */
-    async loadInitialData() {
-        console.log('📊 Loading initial data...');
+    async loadCategories() {
+        console.log('📊 Loading categories...');
 
         try {
-            // Загружаем категории и корзину параллельно
-            const [categories, cart] = await Promise.all([
-                this.api.getCategories(),
-                this.api.getCart().catch(() => ({ items: [], totalAmount: 0 }))
-            ]);
+            // Загружаем только категории
+            this.categories = await this.api.getCategories();
 
-            this.categories = categories || [];
-            this.cart = cart || { items: [], totalAmount: 0 };
-
-            console.log('✅ Initial data loaded:', {
-                categories: this.categories.length,
-                cartItems: this.cart.items?.length || 0
-            });
+            console.log('✅ Categories loaded:', this.categories.length);
 
         } catch (error) {
-            console.error('❌ Failed to load initial data:', error);
+            console.error('❌ Failed to load categories:', error);
             throw error;
         }
     }
@@ -170,9 +161,6 @@ class PizzaNatMiniApp {
 
         // Отображаем категории
         this.renderCategories();
-        
-        // Отображаем корзину
-        this.updateCartUI();
         
         // Настраиваем обработчики событий
         this.setupEventListeners();

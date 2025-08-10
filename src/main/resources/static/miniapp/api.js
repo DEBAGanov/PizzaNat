@@ -19,6 +19,14 @@ class PizzaAPI {
     }
 
     /**
+     * Установка токена авторизации
+     */
+    setAuthToken(token) {
+        this.authToken = token;
+        localStorage.setItem('pizzanat_token', token);
+    }
+
+    /**
      * Авторизация через Telegram WebApp
      */
     async authenticateWebApp(initDataRaw) {
@@ -69,6 +77,14 @@ class PizzaAPI {
         }
         
         return this.makeRequest(url);
+    }
+
+    /**
+     * Получение продуктов по категории
+     */
+    async getProductsByCategory(categoryId) {
+        console.log('🍕 Loading products by category:', categoryId);
+        return this.makeRequest(`/products/category/${categoryId}`);
     }
 
     /**

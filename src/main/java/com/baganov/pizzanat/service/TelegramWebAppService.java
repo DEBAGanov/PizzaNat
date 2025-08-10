@@ -297,11 +297,13 @@ public class TelegramWebAppService {
 
 
     /**
-     * Вычисление секретного ключа
+     * Вычисление секретного ключа согласно документации Telegram
      */
     private byte[] computeSecretKey(String botToken) throws Exception {
-        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-        return sha256.digest(botToken.getBytes(StandardCharsets.UTF_8));
+        Mac sha256Hmac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec secretKey = new SecretKeySpec("WebAppData".getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        sha256Hmac.init(secretKey);
+        return sha256Hmac.doFinal(botToken.getBytes(StandardCharsets.UTF_8));
     }
 
     /**

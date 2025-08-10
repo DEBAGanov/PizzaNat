@@ -31,7 +31,7 @@ error() {
 }
 
 # Конфигурация
-BASE_URL="${1:-http://localhost:8080}"
+BASE_URL="${1:-https://dimbopizza.ru/miniapp}"
 TIMEOUT=10
 
 info "🍕 Начинаем тестирование Telegram Mini App интеграции..."

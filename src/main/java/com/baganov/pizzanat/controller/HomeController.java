@@ -57,6 +57,14 @@ public class HomeController {
         return ResponseEntity.status(302).headers(headers).build();
     }
 
+    @GetMapping("/miniapp/menu")
+    @Hidden
+    public ResponseEntity<Void> miniAppMenu() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Location", "/miniapp/menu.html");
+        return ResponseEntity.status(302).headers(headers).build();
+    }
+
     /**
      * Обработчик для проверки состояния API
      * 

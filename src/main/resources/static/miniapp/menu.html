@@ -3,27 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>PizzaNat - Заказ пиццы</title>
+    <title>PizzaNat - Меню</title>
     
     <!-- Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
-    
-    <!-- App Icons -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/static/images/categories/pizza.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/images/categories/pizza.png">
+    <link rel="stylesheet" href="menu-styles.css">
     
     <!-- Meta for Telegram -->
     <meta name="telegram-bot-username" content="DIMBOpizzaBot">
     <meta name="theme-color" content="#1a1a1a">
 </head>
-<body class="telegram-theme">
+<body class="telegram-theme menu-page">
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Загрузка...</div>
+        <div class="loading-text">Загрузка меню...</div>
     </div>
 
     <!-- App Container -->
@@ -44,37 +41,32 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Categories -->
-            <section class="categories-section" id="categories-section">
-                <h2 class="section-title">Меню</h2>
-                <div class="categories-grid" id="categories-grid">
-                    <!-- Categories will be loaded here -->
-                </div>
-                <!-- Link to full menu -->
-                <div class="menu-link-section">
-                    <a href="menu.html" class="menu-link-button" id="menu-link-button">
-                        📋 Посмотреть все товары (/menu)
-                    </a>
+            <!-- Menu Grid -->
+            <section class="menu-section">
+                <div class="menu-grid" id="menu-grid">
+                    <!-- Products will be loaded here -->
                 </div>
             </section>
         </main>
 
-        <!-- Cart -->
+        <!-- Cart Overlay -->
         <div class="cart-overlay" id="cart-overlay" style="display: none;">
             <div class="cart-container">
                 <div class="cart-header">
-                    <h3>Корзина</h3>
+                    <h3>YOUR ORDER</h3>
                     <button class="cart-close" id="cart-close">✕</button>
+                    <button class="edit-button">Edit</button>
                 </div>
                 <div class="cart-content" id="cart-content">
                     <!-- Cart items will be loaded here -->
                 </div>
+                <div class="cart-comment">
+                    <input type="text" placeholder="Add comment..." class="comment-input">
+                    <div class="comment-placeholder">Any special requests, details, final wishes etc.</div>
+                </div>
                 <div class="cart-footer">
-                    <div class="cart-total">
-                        Итого: <span id="cart-total">0 ₽</span>
-                    </div>
-                    <button class="checkout-button" id="checkout-button">
-                        Оформить заказ
+                    <button class="pay-button" id="pay-button">
+                        PAY <span id="cart-total">₽0</span>
                     </button>
                 </div>
             </div>
@@ -82,14 +74,9 @@
 
         <!-- Bottom Bar -->
         <div class="bottom-bar" id="bottom-bar" style="display: none;">
-            <div class="bottom-bar-content">
-                <div class="total-info">
-                    <span id="bottom-total">0 ₽</span>
-                </div>
-                <button class="view-cart-button" id="view-cart-button">
-                    Корзина (<span id="bottom-count">0</span>)
-                </button>
-            </div>
+            <button class="view-order-button" id="view-order-button">
+                VIEW ORDER
+            </button>
         </div>
     </div>
 
@@ -102,6 +89,6 @@
 
     <!-- Scripts -->
     <script src="api.js"></script>
-    <script src="app.js"></script>
+    <script src="menu-app.js"></script>
 </body>
 </html>
