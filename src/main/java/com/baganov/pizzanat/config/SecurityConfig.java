@@ -49,7 +49,7 @@ public class SecurityConfig {
     @Value("${app.security.disable-jwt-auth:false}")
     private boolean disableJwtAuth;
 
-    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*}")
+    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*,https://t.me/DIMBOpizzaBot/*}")
     private String[] corsAllowedOrigins;
 
     @Value("${app.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")
@@ -135,6 +135,11 @@ public class SecurityConfig {
             // Delivery Locations (только GET для Android приложения)
             "/api/v1/delivery-locations",
             "/api/v1/delivery-locations/*",
+            // Telegram WebApp endpoints
+            "/api/v1/telegram-webapp/**",
+            // Mini App static resources
+            "/miniapp/**",
+            "/miniapp",
             // В dev режиме разрешаем все
             "/api/v1/cart",
             "/api/v1/cart/**",

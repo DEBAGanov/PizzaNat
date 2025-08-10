@@ -36,6 +36,28 @@ public class HomeController {
     }
 
     /**
+     * Telegram Mini App
+     */
+    @GetMapping("/miniapp")
+    @Hidden
+    public ResponseEntity<Void> miniApp() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Location", "/miniapp/index.html");
+        return ResponseEntity.status(302).headers(headers).build();
+    }
+
+    /**
+     * Telegram Mini App (со слешем)
+     */
+    @GetMapping("/miniapp/")
+    @Hidden
+    public ResponseEntity<Void> miniAppSlash() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Location", "/miniapp/index.html");
+        return ResponseEntity.status(302).headers(headers).build();
+    }
+
+    /**
      * Обработчик для проверки состояния API
      * 
      * @return информация о сервисе
