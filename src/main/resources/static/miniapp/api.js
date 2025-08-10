@@ -76,7 +76,9 @@ class PizzaAPI {
             url = `/products/category/${categoryId}`;
         }
         
-        return this.makeRequest(url, { requiresAuth: false });
+        const response = await this.makeRequest(url, { requiresAuth: false });
+        // API возвращает объект с полем content (пагинация)
+        return response.content || response || [];
     }
 
     /**
@@ -84,7 +86,9 @@ class PizzaAPI {
      */
     async getProductsByCategory(categoryId) {
         console.log('🍕 Loading products by category:', categoryId);
-        return this.makeRequest(`/products/category/${categoryId}`, { requiresAuth: false });
+        const response = await this.makeRequest(`/products/category/${categoryId}`, { requiresAuth: false });
+        // API возвращает объект с полем content (пагинация)
+        return response.content || response || [];
     }
 
     /**

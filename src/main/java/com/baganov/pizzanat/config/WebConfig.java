@@ -9,6 +9,7 @@ package com.baganov.pizzanat.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
@@ -27,5 +28,18 @@ public class WebConfig implements WebMvcConfigurer {
                 .exposedHeaders("Authorization", "Content-Type", "X-Total-Count")
                 .allowCredentials(true)
                 .maxAge(3600);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Статические ресурсы Mini App
+        registry.addResourceHandler("/miniapp/**")
+                .addResourceLocations("classpath:/static/miniapp/")
+                .setCachePeriod(3600); // 1 час кеширования
+        
+        // Обычные статические ресурсы
+        registry.addResourceHandler("/static/**")
+                .addResourceLocations("classpath:/static/")
+                .setCachePeriod(3600);
     }
 }
