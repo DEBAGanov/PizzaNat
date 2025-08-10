@@ -109,11 +109,12 @@ class PizzaNatMenuApp {
      */
     async authenticate() {
         if (!this.tg?.initData) {
-            console.warn('⚠️ No Telegram initData available');
+            console.warn('⚠️ No Telegram initData available - using demo mode');
             return;
         }
 
         console.log('🔐 Authenticating user...');
+        console.log('InitData:', this.tg.initData);
 
         try {
             const response = await this.api.authenticateWebApp(this.tg.initData);
@@ -125,6 +126,7 @@ class PizzaNatMenuApp {
             console.log('✅ User authenticated');
         } catch (error) {
             console.error('❌ Authentication failed:', error);
+            console.error('Error details:', error);
             // Продолжаем без авторизации для демонстрации
         }
     }

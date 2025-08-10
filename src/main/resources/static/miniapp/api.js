@@ -62,7 +62,7 @@ class PizzaAPI {
      */
     async getCategories() {
         console.log('📂 Loading categories...');
-        return this.makeRequest('/categories');
+        return this.makeRequest('/categories', { requiresAuth: false });
     }
 
     /**
@@ -76,7 +76,7 @@ class PizzaAPI {
             url = `/products/category/${categoryId}`;
         }
         
-        return this.makeRequest(url);
+        return this.makeRequest(url, { requiresAuth: false });
     }
 
     /**
@@ -84,7 +84,7 @@ class PizzaAPI {
      */
     async getProductsByCategory(categoryId) {
         console.log('🍕 Loading products by category:', categoryId);
-        return this.makeRequest(`/products/category/${categoryId}`);
+        return this.makeRequest(`/products/category/${categoryId}`, { requiresAuth: false });
     }
 
     /**
@@ -187,7 +187,7 @@ class PizzaAPI {
     async createPayment(orderId, method = 'SBP', bankId = null) {
         console.log('💳 Creating payment...', { orderId, method, bankId });
         
-        return this.makeRequest('/mobile/payments/create', {
+        return this.makeRequest('/payments/yookassa/create', {
             method: 'POST',
             body: JSON.stringify({
                 orderId: orderId,
