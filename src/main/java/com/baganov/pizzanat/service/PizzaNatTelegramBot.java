@@ -22,8 +22,10 @@ import org.telegram.telegrambots.meta.api.objects.Contact;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.User;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
@@ -405,24 +407,30 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    /**
+        /**
      * Обработка команды /menu
      */
     private void handleMenuCommand(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText(
-                "🍕 *Меню PizzaNat*\n\n" +
-                        "Для просмотра полного меню и оформления заказа используйте наше мобильное приложение.\n\n" +
-                        "После авторизации через этого бота вы сможете:\n" +
-                        "• Просматривать меню\n" +
-                        "• Оформлять заказы\n" +
-                        "• Отслеживать статус доставки\n" +
-                        "• Получать уведомления");
+        message.setText("🍕 *Меню DIMBO Pizza*\n\n" +
+                "Откройте наш каталог товаров прямо в Telegram!\n\n" +
+                "🔗 [Посмотреть меню](https://api.dimbopizza.ru/miniapp/menu)");
         message.setParseMode("Markdown");
+
+        // Создаем простую URL кнопку
+        InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
+        InlineKeyboardButton menuButton = InlineKeyboardButton.builder()
+                .text("📋 Открыть меню")
+                .url("https://api.dimbopizza.ru/miniapp/menu")
+                .build();
+
+        keyboard.setKeyboard(List.of(List.of(menuButton)));
+        message.setReplyMarkup(keyboard);
 
         try {
             execute(message);
+            log.info("Отправлено меню с URL кнопкой для чата: {}", chatId);
         } catch (TelegramApiException e) {
             log.error("Ошибка отправки меню: {}", e.getMessage());
         }

@@ -65,6 +65,14 @@ public class HomeController {
         return ResponseEntity.status(302).headers(headers).build();
     }
 
+    @GetMapping("/miniapp/checkout")
+    @Hidden
+    public ResponseEntity<Void> miniAppCheckout() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Location", "/miniapp/checkout.html");
+        return ResponseEntity.status(302).headers(headers).build();
+    }
+
     /**
      * Обработчик для проверки состояния API
      * 

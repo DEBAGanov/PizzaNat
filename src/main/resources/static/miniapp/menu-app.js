@@ -138,13 +138,52 @@ class PizzaNatMenuApp {
         console.log('📦 Loading products...');
 
         try {
-            // Загружаем все категории и их товары
-            const categories = await this.api.getCategories();
-            const allProducts = [];
+            // Загружаем все товары через основной эндпоинт с увеличенным размером страницы
+            let allProducts = [];
+            let page = 0;
+            const pageSize = 100;
+            let hasMore = true;
 
-            for (const category of categories) {
-                const products = await this.api.getProductsByCategory(category.id);
-                allProducts.push(...products);
+            while (hasMore) {
+                console.log(`📄 Loading page ${page} with size ${pageSize}...`);
+                const response = await this.api.getProducts(null, page, pageSize);
+                
+                if (response && response.length > 0) {
+                    allProducts.push(...response);
+                    page++;
+                    
+                    // Если получили меньше товаров чем размер страницы, это последняя страница
+                    if (response.length < pageSize) {
+                        hasMore = false;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            // Если не получили товары через основной API, пробуем загрузить по категориям
+            if (allProducts.length === 0) {
+                console.log('🔄 Fallback to category-based loading...');
+                const categories = await this.api.getCategories();
+                
+                for (const category of categories) {
+                    let categoryPage = 0;
+                    let categoryHasMore = true;
+                    
+                    while (categoryHasMore) {
+                        const products = await this.api.getProductsByCategory(category.id);
+                        if (products && products.length > 0) {
+                            allProducts.push(...products);
+                            categoryPage++;
+                            
+                            if (products.length < pageSize) {
+                                categoryHasMore = false;
+                            }
+                        } else {
+                            categoryHasMore = false;
+                        }
+                    }
+                }
             }
 
             this.products = allProducts;
@@ -257,6 +296,32 @@ class PizzaNatMenuApp {
             }
         });
 
+        // Обработчики кнопок в корзине
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('cart-quantity-btn')) {
+                const productId = parseInt(e.target.dataset.productId);
+                if (!productId) return;
+
+                console.log('Cart button clicked:', e.target.className, 'Product ID:', productId);
+
+                if (e.target.classList.contains('plus')) {
+                    console.log('Adding product from cart controls');
+                    const product = this.products.find(p => p.id === productId);
+                    if (product) {
+                        this.addToCart(product, 1);
+                    }
+                } else if (e.target.classList.contains('minus')) {
+                    console.log('Removing product from cart controls');
+                    this.removeFromCart(productId, 1);
+                }
+
+                // Haptic feedback
+                if (this.tg?.HapticFeedback) {
+                    this.tg.HapticFeedback.impactOccurred('light');
+                }
+            }
+        });
+
         // Retry button
         document.getElementById('retry-button')?.addEventListener('click', () => {
             location.reload();
@@ -365,9 +430,13 @@ class PizzaNatMenuApp {
                      class="cart-item-image">
                 <div class="cart-item-info">
                     <div class="cart-item-title">${item.name}</div>
-                    <div class="cart-item-subtitle">Meat™</div>
+                    <div class="cart-item-subtitle">₽${item.price} за шт.</div>
                 </div>
-                <div class="cart-item-quantity">${item.quantity}x</div>
+                <div class="cart-item-controls">
+                    <button class="cart-quantity-btn minus" data-product-id="${item.productId}">−</button>
+                    <span class="cart-item-quantity">${item.quantity}</span>
+                    <button class="cart-quantity-btn plus" data-product-id="${item.productId}">+</button>
+                </div>
                 <div class="cart-item-price">₽${item.subtotal}</div>
             `;
             cartContent.appendChild(itemElement);
@@ -412,25 +481,11 @@ class PizzaNatMenuApp {
             this.tg.HapticFeedback.impactOccurred('heavy');
         }
 
-        // Запрашиваем контактную информацию если доступно
-        if (this.tg?.requestContact) {
-            try {
-                await this.requestUserContact();
-                return; // Продолжение в handleContactReceived
-            } catch (error) {
-                console.warn('Не удалось запросить контакт, используем стандартные данные');
-            }
-        }
-
-        // Создаем заказ со стандартными данными
-        await this.createOrderWithData({
-            deliveryAddress: 'г. Волжск, адрес будет уточнен',
-            deliveryType: 'Доставка курьером',
-            contactName: this.tg?.initDataUnsafe?.user?.first_name || 'Пользователь',
-            contactPhone: '+79999999999',
-            comment: 'Заказ через Telegram Mini App',
-            paymentMethod: 'SBP'
-        });
+        // Сохраняем корзину в localStorage
+        this.saveCartToStorage();
+        
+        // Переходим на страницу оформления заказа
+        window.location.href = 'checkout.html';
     }
 
     /**

@@ -45,6 +45,7 @@ public class AdminBotService {
     private final TelegramAdminUserRepository adminUserRepository;
     private final OrderService orderService;
     private final TelegramAdminNotificationService telegramAdminNotificationService;
+    private final TelegramUserNotificationService telegramUserNotificationService;
     private final PaymentRepository paymentRepository;
 
     /**
@@ -158,6 +159,9 @@ public class AdminBotService {
                 }
 
                 OrderDTO updatedOrder = orderService.updateOrderStatus(orderId.intValue(), newStatusStr);
+
+                // Отправляем уведомление пользователю о изменении статуса
+                sendStatusNotificationToUser(orderId, newStatusStr);
 
                 String statusDisplayName = getStatusDisplayNameByString(newStatusStr);
 
@@ -1283,5 +1287,107 @@ public class AdminBotService {
         appendPaymentInfo(message, order);
 
         return message.toString();
+    }
+
+    /**
+     * Отправка уведомления пользователю об изменении статуса заказа
+     */
+    private void sendStatusNotificationToUser(Long orderId, String newStatus) {
+        try {
+            // Получаем заказ
+            Optional<Order> orderOpt = orderService.findById(orderId);
+            if (!orderOpt.isPresent()) {
+                log.warn("Заказ #{} не найден для отправки уведомления", orderId);
+                return;
+            }
+
+            Order order = orderOpt.get();
+
+            // Проверяем, есть ли у пользователя Telegram ID
+            if (order.getUser() == null || order.getUser().getTelegramId() == null) {
+                log.info("У заказа #{} нет пользователя с Telegram ID, уведомление не отправляется", orderId);
+                return;
+            }
+
+            Long userTelegramId = order.getUser().getTelegramId();
+
+            // Формируем сообщение о статусе
+            String statusMessage = formatStatusNotificationMessage(order, newStatus);
+
+            // Отправляем уведомление пользователю
+            telegramUserNotificationService.sendPersonalMessage(userTelegramId, statusMessage);
+
+            log.info("Уведомление о статусе заказа #{} отправлено пользователю {}", orderId, userTelegramId);
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки уведомления пользователю о статусе заказа #{}: {}", orderId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Форматирование сообщения уведомления о статусе заказа
+     */
+    private String formatStatusNotificationMessage(Order order, String status) {
+        String statusEmoji = getStatusEmoji(status);
+        String statusText = getStatusDisplayNameByString(status);
+        String statusDescription = getStatusDescription(status);
+
+        StringBuilder message = new StringBuilder();
+        message.append(statusEmoji).append(" <b>Статус вашего заказа изменился</b>\n\n");
+        message.append("🆔 <b>Заказ #").append(order.getId()).append("</b>\n");
+        message.append("📊 <b>Новый статус:</b> ").append(statusText).append("\n");
+        message.append("📝 ").append(statusDescription).append("\n\n");
+
+        // Добавляем информацию о времени доставки для соответствующих статусов
+        if ("READY".equalsIgnoreCase(status) && order.getDeliveryType() != null && order.getDeliveryType().contains("курьер")) {
+            message.append("🚗 <b>Курьер скоро выедет к вам!</b>\n");
+        } else if ("DELIVERING".equalsIgnoreCase(status)) {
+            message.append("🚗 <b>Курьер уже в пути!</b>\n");
+            message.append("📞 Ожидайте звонка курьера\n");
+        } else if ("DELIVERED".equalsIgnoreCase(status)) {
+            message.append("🎉 <b>Спасибо за заказ!</b>\n");
+            message.append("🌟 Будем рады видеть вас снова!\n");
+        }
+
+        message.append("\n💬 Есть вопросы? Напишите /start для связи с нами");
+
+        return message.toString();
+    }
+
+    /**
+     * Получение эмодзи для статуса
+     */
+    private String getStatusEmoji(String status) {
+        switch (status.toUpperCase()) {
+            case "CONFIRMED": return "✅";
+            case "PREPARING": return "👨‍🍳";
+            case "READY": return "🍕";
+            case "DELIVERING": return "🚗";
+            case "DELIVERED": return "🎉";
+            case "CANCELLED": return "❌";
+            default: return "📋";
+        }
+    }
+
+    /**
+     * Получение описания статуса для пользователя
+     */
+    private String getStatusDescription(String status) {
+        switch (status.toUpperCase()) {
+            case "CONFIRMED": 
+                return "Ваш заказ подтвержден и принят в работу";
+            case "PREPARING": 
+                return "Повар уже готовит ваш заказ";
+            case "READY": 
+                return "Заказ готов! Ожидает доставки или самовывоза";
+            case "DELIVERING": 
+                return "Курьер доставляет ваш заказ";
+            case "DELIVERED": 
+                return "Заказ успешно доставлен";
+            case "CANCELLED": 
+                return "К сожалению, заказ был отменен";
+            default: 
+                return "Статус заказа обновлен";
+        }
     }
 }

@@ -1,0 +1,589 @@
+/**
+ * PizzaNat Mini App - Checkout Page
+ * Order processing with delivery and payment selection
+ */
+
+class PizzaNatCheckoutApp {
+    constructor() {
+        this.tg = window.Telegram?.WebApp;
+        this.api = window.PizzaAPI;
+        this.cart = { items: [], totalAmount: 0 };
+        this.deliveryMethod = 'DELIVERY'; // Default to delivery
+        this.paymentMethod = 'SBP'; // Default to SBP
+        this.deliveryCost = 200; // Default delivery cost
+        this.address = '';
+        this.authToken = null;
+        
+        // Load cart from localStorage
+        this.loadCartFromStorage();
+        
+        // Initialize app
+        this.init();
+    }
+
+    /**
+     * Инициализация приложения
+     */
+    async init() {
+        console.log('🚀 Initializing PizzaNat Checkout...');
+        
+        try {
+            // Настройка Telegram WebApp
+            this.setupTelegramWebApp();
+            
+            // Авторизация
+            await this.authenticate();
+            
+            // Проверка корзины
+            if (this.cart.items.length === 0) {
+                this.showError('Корзина пуста');
+                return;
+            }
+            
+            // Настройка UI
+            this.setupUI();
+            
+            // Загрузка данных
+            await this.loadUserData();
+            
+            // Показываем приложение
+            this.showApp();
+            
+            console.log('✅ Checkout initialized successfully');
+            
+        } catch (error) {
+            console.error('❌ Checkout initialization failed:', error);
+            this.showError('Ошибка загрузки формы заказа');
+        }
+    }
+
+    /**
+     * Настройка Telegram WebApp
+     */
+    setupTelegramWebApp() {
+        if (!this.tg) {
+            console.warn('⚠️ Telegram WebApp API not available');
+            return;
+        }
+
+        console.log('📱 Setting up Telegram WebApp...');
+
+        // Разворачиваем приложение
+        this.tg.expand();
+        
+        // Настраиваем тему
+        this.applyTelegramTheme();
+        
+        // Настраиваем back button
+        if (this.tg.BackButton) {
+            this.tg.BackButton.show();
+            this.tg.BackButton.onClick(() => {
+                window.history.back();
+            });
+        }
+        
+        // Подписываемся на события
+        this.tg.onEvent('themeChanged', () => this.applyTelegramTheme());
+        
+        console.log('✅ Telegram WebApp configured');
+    }
+
+    /**
+     * Применение темы Telegram
+     */
+    applyTelegramTheme() {
+        if (!this.tg?.themeParams) return;
+
+        const themeParams = this.tg.themeParams;
+        const root = document.documentElement;
+
+        // Применяем цвета темы
+        if (themeParams.bg_color) {
+            root.style.setProperty('--tg-theme-bg-color', themeParams.bg_color);
+        }
+        if (themeParams.text_color) {
+            root.style.setProperty('--tg-theme-text-color', themeParams.text_color);
+        }
+        if (themeParams.button_color) {
+            root.style.setProperty('--tg-theme-button-color', themeParams.button_color);
+        }
+        if (themeParams.button_text_color) {
+            root.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color);
+        }
+    }
+
+    /**
+     * Авторизация пользователя
+     */
+    async authenticate() {
+        if (!this.tg?.initData) {
+            console.warn('⚠️ No Telegram initData available - using demo mode');
+            return;
+        }
+
+        console.log('🔐 Authenticating user...');
+
+        try {
+            const response = await this.api.authenticateWebApp(this.tg.initData);
+            this.authToken = response.token;
+            
+            // Устанавливаем токен в API
+            this.api.setAuthToken(this.authToken);
+            
+            console.log('✅ User authenticated');
+        } catch (error) {
+            console.error('❌ Authentication failed:', error);
+            // Продолжаем без авторизации для демонстрации
+        }
+    }
+
+    /**
+     * Загрузка данных пользователя
+     */
+    async loadUserData() {
+        try {
+            console.log('📋 Loading user data from auth...');
+            
+            // Получаем данные пользователя из профиля
+            const userProfile = await this.api.getUserProfile();
+            console.log('👤 User profile:', userProfile);
+            
+            if (userProfile) {
+                // Обновляем отображение имени
+                const userNameEl = document.getElementById('user-name');
+                if (userNameEl) {
+                    userNameEl.textContent = userProfile.name || 'Пользователь';
+                }
+                
+                // Обновляем отображение телефона
+                const userPhoneEl = document.getElementById('user-phone');
+                if (userPhoneEl) {
+                    userPhoneEl.textContent = userProfile.phone || 'Телефон не указан';
+                }
+                
+                // Сохраняем данные для отправки заказа
+                this.userData = {
+                    name: userProfile.name,
+                    phone: userProfile.phone
+                };
+                
+                console.log('✅ User data loaded successfully');
+            } else {
+                console.warn('⚠️ No user profile found');
+                this.handleMissingUserData();
+            }
+            
+        } catch (error) {
+            console.error('❌ Failed to load user data:', error);
+            this.handleMissingUserData();
+        }
+    }
+    
+    /**
+     * Обработка отсутствующих данных пользователя
+     */
+    handleMissingUserData() {
+        // Показываем сообщение о необходимости авторизации
+        const userNameEl = document.getElementById('user-name');
+        const userPhoneEl = document.getElementById('user-phone');
+        
+        if (userNameEl) {
+            userNameEl.textContent = 'Данные не загружены';
+            userNameEl.style.color = 'var(--tg-theme-destructive-text-color, #ff6b6b)';
+        }
+        
+        if (userPhoneEl) {
+            userPhoneEl.textContent = 'Требуется авторизация';
+            userPhoneEl.style.color = 'var(--tg-theme-destructive-text-color, #ff6b6b)';
+        }
+        
+        // Отключаем кнопку заказа
+        const submitButton = document.getElementById('submit-order');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'Требуется авторизация';
+        }
+    }
+
+    /**
+     * Настройка UI и обработчиков событий
+     */
+    setupUI() {
+        // Отображаем товары заказа
+        this.renderOrderItems();
+        
+        // Back button
+        document.getElementById('back-button')?.addEventListener('click', () => {
+            window.history.back();
+        });
+
+        // Delivery method change
+        document.querySelectorAll('input[name="deliveryMethod"]').forEach(input => {
+            input.addEventListener('change', (e) => {
+                this.handleDeliveryMethodChange(e.target.value);
+            });
+        });
+
+        // Payment method change
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(input => {
+            input.addEventListener('change', (e) => {
+                this.handlePaymentMethodChange(e.target.value);
+            });
+        });
+
+        // Address input
+        const addressInput = document.getElementById('address-input');
+        if (addressInput) {
+            addressInput.addEventListener('input', this.debounce((e) => {
+                this.handleAddressInput(e.target.value);
+            }, 300));
+        }
+
+        // Submit order
+        document.getElementById('submit-order')?.addEventListener('click', () => {
+            this.submitOrder();
+        });
+
+        // Initialize with default values
+        this.handleDeliveryMethodChange(this.deliveryMethod);
+        this.handlePaymentMethodChange(this.paymentMethod);
+    }
+
+    /**
+     * Отображение товаров заказа
+     */
+    renderOrderItems() {
+        const container = document.getElementById('order-items');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        this.cart.items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'order-item';
+            itemElement.innerHTML = `
+                <img src="${item.imageUrl || '/static/images/products/pizza_4_chees.png'}" 
+                     alt="${item.name}" 
+                     class="order-item-image">
+                <div class="order-item-info">
+                    <div class="order-item-title">${item.name}</div>
+                    <div class="order-item-details">${item.quantity} шт. × ₽${item.price}</div>
+                </div>
+                <div class="order-item-price">₽${item.subtotal}</div>
+            `;
+            container.appendChild(itemElement);
+        });
+
+        this.updateTotals();
+    }
+
+    /**
+     * Обработка изменения способа доставки
+     */
+    async handleDeliveryMethodChange(method) {
+        this.deliveryMethod = method;
+        const addressSection = document.getElementById('address-section');
+
+        if (method === 'DELIVERY') {
+            // Показываем поле адреса
+            addressSection.style.display = 'block';
+            this.deliveryCost = 200; // Default delivery cost
+            
+            // Если адрес уже введен, пересчитываем стоимость
+            const address = document.getElementById('address-input')?.value;
+            if (address) {
+                await this.calculateDeliveryCost(address);
+            }
+        } else {
+            // Скрываем поле адреса
+            addressSection.style.display = 'none';
+            this.deliveryCost = 0;
+        }
+
+        this.updateDeliveryPrice();
+        this.updateTotals();
+    }
+
+    /**
+     * Обработка изменения способа оплаты
+     */
+    handlePaymentMethodChange(method) {
+        this.paymentMethod = method;
+        console.log('Payment method changed to:', method);
+    }
+
+    /**
+     * Обработка ввода адреса
+     */
+    async handleAddressInput(address) {
+        this.address = address;
+
+        if (address.length < 3) return;
+
+        try {
+            // Получаем подсказки адресов
+            await this.loadAddressSuggestions(address);
+            
+            // Рассчитываем стоимость доставки
+            if (this.deliveryMethod === 'DELIVERY') {
+                await this.calculateDeliveryCost(address);
+            }
+        } catch (error) {
+            console.warn('Ошибка при обработке адреса:', error);
+        }
+    }
+
+    /**
+     * Загрузка подсказок адресов
+     */
+    async loadAddressSuggestions(query) {
+        try {
+            // Здесь должен быть вызов API для получения подсказок
+            // Пока используем заглушку
+            const suggestions = [
+                `г. Волжск, ул. ${query}`,
+                `г. Волжск, пр. ${query}`,
+                `г. Волжск, ${query}`
+            ];
+
+            this.showAddressSuggestions(suggestions);
+        } catch (error) {
+            console.warn('Не удалось загрузить подсказки адресов:', error);
+        }
+    }
+
+    /**
+     * Отображение подсказок адресов
+     */
+    showAddressSuggestions(suggestions) {
+        const container = document.getElementById('address-suggestions');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        if (suggestions.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        suggestions.forEach(suggestion => {
+            const item = document.createElement('div');
+            item.className = 'address-suggestion';
+            item.textContent = suggestion;
+            item.addEventListener('click', () => {
+                document.getElementById('address-input').value = suggestion;
+                this.address = suggestion;
+                container.style.display = 'none';
+                this.calculateDeliveryCost(suggestion);
+            });
+            container.appendChild(item);
+        });
+
+        container.style.display = 'block';
+    }
+
+    /**
+     * Расчет стоимости доставки
+     */
+    async calculateDeliveryCost(address) {
+        try {
+            console.log('Calculating delivery cost for:', address);
+            
+            // Вызываем API расчета доставки
+            const response = await fetch(`/api/v1/delivery/calculate?address=${encodeURIComponent(address)}&orderAmount=${this.cart.totalAmount}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.deliveryAvailable) {
+                    this.deliveryCost = data.deliveryCost || 200;
+                    console.log('Delivery cost calculated:', this.deliveryCost);
+                } else {
+                    this.deliveryCost = 250; // Fallback cost
+                    console.warn('Delivery not available, using fallback cost');
+                }
+            } else {
+                this.deliveryCost = 200; // Default cost
+                console.warn('Failed to calculate delivery cost, using default');
+            }
+        } catch (error) {
+            console.warn('Error calculating delivery cost:', error);
+            this.deliveryCost = 200; // Default cost
+        }
+
+        this.updateDeliveryPrice();
+        this.updateTotals();
+    }
+
+    /**
+     * Обновление отображения стоимости доставки
+     */
+    updateDeliveryPrice() {
+        const priceElement = document.getElementById('delivery-price');
+        if (priceElement) {
+            priceElement.textContent = this.deliveryCost > 0 ? `₽${this.deliveryCost}` : 'Бесплатно';
+        }
+    }
+
+    /**
+     * Обновление итоговых сумм
+     */
+    updateTotals() {
+        const itemsTotal = this.cart.totalAmount;
+        const totalAmount = itemsTotal + this.deliveryCost;
+
+        // Обновляем отображение
+        document.getElementById('items-total').textContent = `₽${itemsTotal}`;
+        document.getElementById('delivery-cost').textContent = `₽${this.deliveryCost}`;
+        document.getElementById('total-amount').textContent = `₽${totalAmount}`;
+        document.getElementById('final-total').textContent = `₽${totalAmount}`;
+    }
+
+    /**
+     * Оформление заказа
+     */
+    async submitOrder() {
+        try {
+            // Validation - проверяем данные пользователя из авторизации
+            if (!this.userData || !this.userData.name) {
+                this.showError('Данные пользователя не загружены. Пожалуйста, авторизуйтесь');
+                return;
+            }
+
+            if (!this.userData.phone) {
+                this.showError('Номер телефона не указан. Пожалуйста, обновите профиль');
+                return;
+            }
+
+            if (this.deliveryMethod === 'DELIVERY' && !this.address) {
+                this.showError('Укажите адрес доставки');
+                return;
+            }
+
+            // Disable submit button
+            const submitButton = document.getElementById('submit-order');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Оформляем заказ...';
+
+            // Подготавливаем данные заказа (используем данные из авторизации)
+            const orderData = {
+                items: this.cart.items.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: item.price
+                })),
+                deliveryType: this.deliveryMethod === 'DELIVERY' ? 'Доставка курьером' : 'Самовывоз',
+                deliveryAddress: this.address || 'Самовывоз из ресторана',
+                deliveryCost: this.deliveryCost,
+                contactName: this.userData.name,
+                contactPhone: this.userData.phone,
+                comment: document.getElementById('order-comment')?.value.trim() || '',
+                paymentMethod: this.paymentMethod,
+                isDeliveryByCourier: this.deliveryMethod === 'DELIVERY'
+            };
+
+            console.log('Creating order with data:', orderData);
+
+            // Создаем заказ
+            const order = await this.api.createOrder(orderData);
+            
+            if (this.paymentMethod === 'SBP') {
+                // Создаем платеж для СБП
+                const payment = await this.api.createPayment(order.id, 'SBP');
+                
+                if (payment.success && payment.confirmationUrl) {
+                    // Очищаем корзину
+                    this.clearCart();
+                    
+                    // Открываем страницу оплаты
+                    this.tg?.openLink(payment.confirmationUrl);
+                    
+                    // Показываем уведомление
+                    this.tg?.showAlert('Заказ создан! Переходим к оплате...');
+                    
+                } else {
+                    throw new Error(payment.message || 'Ошибка создания платежа');
+                }
+            } else {
+                // Для наличной оплаты показываем успех
+                this.clearCart();
+                this.tg?.showAlert('Заказ успешно оформлен! Мы свяжемся с вами для подтверждения. Уведомления о статусе придут в чат.');
+                
+                // Возвращаемся в меню
+                setTimeout(() => {
+                    window.location.href = 'menu.html';
+                }, 3000);
+            }
+            
+        } catch (error) {
+            console.error('❌ Order submission failed:', error);
+            this.showError('Ошибка оформления заказа: ' + error.message);
+            
+            // Re-enable submit button
+            const submitButton = document.getElementById('submit-order');
+            submitButton.disabled = false;
+            this.updateTotals(); // This will update the button text
+        }
+    }
+
+    /**
+     * Очистка корзины
+     */
+    clearCart() {
+        this.cart = { items: [], totalAmount: 0 };
+        localStorage.removeItem('pizzanat_cart');
+    }
+
+    /**
+     * Загрузка корзины из localStorage
+     */
+    loadCartFromStorage() {
+        try {
+            const saved = localStorage.getItem('pizzanat_cart');
+            if (saved) {
+                this.cart = JSON.parse(saved);
+            }
+        } catch (error) {
+            console.warn('Failed to load cart from localStorage:', error);
+            this.cart = { items: [], totalAmount: 0 };
+        }
+    }
+
+    /**
+     * Показать приложение
+     */
+    showApp() {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+    }
+
+    /**
+     * Показать ошибку
+     */
+    showError(message) {
+        if (this.tg?.showAlert) {
+            this.tg.showAlert(message);
+        } else {
+            alert(message);
+        }
+    }
+
+    /**
+     * Debounce функция
+     */
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+}
+
+// Инициализация приложения
+document.addEventListener('DOMContentLoaded', () => {
+    new PizzaNatCheckoutApp();
+});

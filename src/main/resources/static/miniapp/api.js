@@ -203,6 +203,14 @@ class PizzaAPI {
     }
 
     /**
+     * Получение профиля пользователя
+     */
+    async getUserProfile() {
+        console.log('👤 Loading user profile...');
+        return this.makeRequest('/user/profile');
+    }
+
+    /**
      * Получение банков СБП
      */
     async getSbpBanks() {
