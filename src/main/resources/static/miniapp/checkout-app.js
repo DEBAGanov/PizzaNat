@@ -354,7 +354,27 @@ class PizzaNatCheckoutApp {
         try {
             // Получаем подсказки адресов через API
             const suggestions = await this.api.getAddressSuggestions(query);
-            this.displayAddressSuggestions(suggestions);
+            console.log('📍 Address suggestions received:', suggestions);
+            
+            // Обрабатываем ответ API - может быть массив объектов или строк
+            let formattedSuggestions;
+            if (Array.isArray(suggestions)) {
+                formattedSuggestions = suggestions.map(suggestion => {
+                    if (typeof suggestion === 'string') {
+                        return suggestion;
+                    } else if (suggestion.value) {
+                        return suggestion.value;
+                    } else if (suggestion.unrestricted_value) {
+                        return suggestion.unrestricted_value;
+                    } else {
+                        return JSON.stringify(suggestion);
+                    }
+                });
+            } else {
+                formattedSuggestions = [];
+            }
+            
+            this.displayAddressSuggestions(formattedSuggestions);
         } catch (error) {
             console.warn('Ошибка при загрузке подсказок адресов:', error);
             // Fallback to local suggestions
@@ -398,21 +418,19 @@ class PizzaNatCheckoutApp {
         try {
             console.log('Calculating delivery cost for:', address);
             
-            // Вызываем API расчета доставки
-            const response = await fetch(`/api/v1/delivery/calculate?address=${encodeURIComponent(address)}&orderAmount=${this.cart.totalAmount}`);
+            // Используем API для расчета стоимости доставки
+            const data = await this.api.calculateDeliveryCost(address, this.cart.totalAmount);
+            console.log('📊 Delivery cost response:', data);
             
-            if (response.ok) {
-                const data = await response.json();
-                if (data.deliveryAvailable) {
-                    this.deliveryCost = data.deliveryCost || 200;
-                    console.log('Delivery cost calculated:', this.deliveryCost);
-                } else {
-                    this.deliveryCost = 250; // Fallback cost
-                    console.warn('Delivery not available, using fallback cost');
-                }
+            if (data && typeof data.deliveryCost === 'number') {
+                this.deliveryCost = data.deliveryCost;
+                console.log('✅ Delivery cost calculated:', this.deliveryCost);
+            } else if (data && data.isDeliveryAvailable === false) {
+                this.deliveryCost = 0; // Доставка недоступна
+                console.warn('⚠️ Delivery not available for this address');
             } else {
                 this.deliveryCost = 200; // Default cost
-                console.warn('Failed to calculate delivery cost, using default');
+                console.warn('⚠️ Using default delivery cost');
             }
         } catch (error) {
             console.warn('Error calculating delivery cost:', error);
@@ -489,7 +507,7 @@ class PizzaNatCheckoutApp {
                 addressInput.blur();
                 
                 // Обновляем стоимость доставки
-                this.updateDeliveryCost();
+                this.calculateDeliveryCost(selectedAddress);
             }
         });
     }
@@ -547,22 +565,24 @@ class PizzaNatCheckoutApp {
             submitButton.disabled = true;
             submitButton.textContent = 'Оформляем заказ...';
 
-            // Подготавливаем данные заказа (используем данные из авторизации)
+            // Подготавливаем данные заказа согласно API (как в тестах)
             const orderData = {
-                items: this.cart.items.map(item => ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    price: item.price
-                })),
-                deliveryType: this.deliveryMethod === 'DELIVERY' ? 'Доставка курьером' : 'Самовывоз',
-                deliveryAddress: this.address || 'Самовывоз из ресторана',
-                deliveryCost: this.deliveryCost,
                 contactName: this.userData.name,
                 contactPhone: this.userData.phone,
                 comment: document.getElementById('order-comment')?.value.trim() || '',
-                paymentMethod: this.paymentMethod,
-                isDeliveryByCourier: this.deliveryMethod === 'DELIVERY'
+                paymentMethod: this.paymentMethod
             };
+
+            // Добавляем данные доставки в зависимости от выбранного метода
+            if (this.deliveryMethod === 'DELIVERY') {
+                orderData.deliveryAddress = this.address;
+                orderData.deliveryType = 'Доставка курьером';
+                orderData.deliveryCost = this.deliveryCost;
+            } else {
+                orderData.deliveryLocationId = 1; // ID самовывоза
+                orderData.deliveryType = 'Самовывоз';
+                orderData.deliveryCost = 0;
+            }
 
             console.log('Creating order with data:', orderData);
 

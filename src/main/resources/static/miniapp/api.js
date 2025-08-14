@@ -223,7 +223,15 @@ class PizzaAPI {
      */
     async getAddressSuggestions(query) {
         console.log('🔍 Loading address suggestions for:', query);
-        return this.makeRequest(`/address-suggestions?query=${encodeURIComponent(query)}`);
+        return this.makeRequest(`/address/suggestions?query=${encodeURIComponent(query)}`);
+    }
+
+    /**
+     * Расчет стоимости доставки
+     */
+    async calculateDeliveryCost(address, orderAmount = 0) {
+        console.log('💰 Calculating delivery cost for:', address, 'Order amount:', orderAmount);
+        return this.makeRequest(`/delivery/cost?address=${encodeURIComponent(address)}&orderAmount=${orderAmount}`);
     }
 
     /**
