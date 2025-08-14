@@ -409,3 +409,60 @@
     outline: none;
     border-color: var(--tg-theme-button-color, #007aff);
 }
+
+/* Address suggestions positioning */
+.address-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--tg-theme-secondary-bg-color, #2c2c2c);
+    border: 1px solid var(--tg-theme-hint-color, #444444);
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.address-suggestions.keyboard-visible {
+    position: fixed;
+    bottom: 220px; /* Поднимаем над клавиатурой */
+    left: 16px;
+    right: 16px;
+    top: auto;
+}
+
+.address-suggestion-item {
+    padding: 12px;
+    border-bottom: 1px solid var(--tg-theme-hint-color, #444444);
+    cursor: pointer;
+    color: var(--tg-theme-text-color, #ffffff);
+    transition: background-color 0.2s;
+}
+
+.address-suggestion-item:hover {
+    background: var(--tg-theme-bg-color, #1e1e1e);
+}
+
+.address-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.address-input-container {
+    position: relative;
+}
+
+/* Keyboard handling */
+body.keyboard-visible .address-section {
+    margin-bottom: 250px; /* Дополнительное пространство */
+}
+
+body.keyboard-visible .main-content {
+    padding-bottom: 300px; /* Увеличиваем отступ снизу */
+}
+
+/* Auto-scroll to input when focused */
+.address-input:focus {
+    scroll-margin-top: 100px;
+}

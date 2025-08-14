@@ -149,22 +149,30 @@ class PizzaNatCheckoutApp {
             console.log('👤 User profile:', userProfile);
             
             if (userProfile) {
+                // Формируем полное имя из firstName и lastName
+                const fullName = [userProfile.firstName, userProfile.lastName]
+                    .filter(part => part && part.trim())
+                    .join(' ') || userProfile.displayName || userProfile.username || 'Пользователь';
+                
+                // Получаем телефон из разных возможных полей
+                const phoneNumber = userProfile.phone || userProfile.phoneNumber || '';
+                
                 // Обновляем отображение имени
                 const userNameEl = document.getElementById('user-name');
                 if (userNameEl) {
-                    userNameEl.textContent = userProfile.name || 'Пользователь';
+                    userNameEl.textContent = fullName;
                 }
                 
                 // Обновляем отображение телефона
                 const userPhoneEl = document.getElementById('user-phone');
                 if (userPhoneEl) {
-                    userPhoneEl.textContent = userProfile.phone || 'Телефон не указан';
+                    userPhoneEl.textContent = phoneNumber || 'Телефон не указан';
                 }
                 
                 // Сохраняем данные для отправки заказа
                 this.userData = {
-                    name: userProfile.name,
-                    phone: userProfile.phone
+                    name: fullName,
+                    phone: phoneNumber
                 };
                 
                 console.log('✅ User data loaded successfully');
@@ -243,6 +251,12 @@ class PizzaNatCheckoutApp {
         document.getElementById('submit-order')?.addEventListener('click', () => {
             this.submitOrder();
         });
+
+        // Обработка ввода адреса и подсказок
+        this.setupAddressInput();
+
+        // Обработка клавиатуры для мобильных устройств
+        this.setupKeyboardHandling();
 
         // Initialize with default values
         this.handleDeliveryMethodChange(this.deliveryMethod);
@@ -338,24 +352,25 @@ class PizzaNatCheckoutApp {
      */
     async loadAddressSuggestions(query) {
         try {
-            // Здесь должен быть вызов API для получения подсказок
-            // Пока используем заглушку
-            const suggestions = [
+            // Получаем подсказки адресов через API
+            const suggestions = await this.api.getAddressSuggestions(query);
+            this.displayAddressSuggestions(suggestions);
+        } catch (error) {
+            console.warn('Ошибка при загрузке подсказок адресов:', error);
+            // Fallback to local suggestions
+            const fallbackSuggestions = [
                 `г. Волжск, ул. ${query}`,
                 `г. Волжск, пр. ${query}`,
                 `г. Волжск, ${query}`
             ];
-
-            this.showAddressSuggestions(suggestions);
-        } catch (error) {
-            console.warn('Не удалось загрузить подсказки адресов:', error);
+            this.displayAddressSuggestions(fallbackSuggestions);
         }
     }
 
     /**
      * Отображение подсказок адресов
      */
-    showAddressSuggestions(suggestions) {
+    displayAddressSuggestions(suggestions) {
         const container = document.getElementById('address-suggestions');
         if (!container) return;
 
@@ -368,14 +383,8 @@ class PizzaNatCheckoutApp {
 
         suggestions.forEach(suggestion => {
             const item = document.createElement('div');
-            item.className = 'address-suggestion';
+            item.className = 'address-suggestion-item';
             item.textContent = suggestion;
-            item.addEventListener('click', () => {
-                document.getElementById('address-input').value = suggestion;
-                this.address = suggestion;
-                container.style.display = 'none';
-                this.calculateDeliveryCost(suggestion);
-            });
             container.appendChild(item);
         });
 
@@ -438,6 +447,80 @@ class PizzaNatCheckoutApp {
         document.getElementById('final-total').textContent = `₽${totalAmount}`;
     }
 
+    /**
+     * Настройка обработки ввода адреса и подсказок
+     */
+    setupAddressInput() {
+        const addressInput = document.getElementById('address-input');
+        const addressSuggestions = document.getElementById('address-suggestions');
+        
+        if (!addressInput || !addressSuggestions) return;
+        
+        // Обработка фокуса на поле ввода
+        addressInput.addEventListener('focus', () => {
+            document.body.classList.add('keyboard-visible');
+            addressSuggestions.classList.add('keyboard-visible');
+            
+            // Прокручиваем к полю ввода
+            setTimeout(() => {
+                addressInput.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            }, 300);
+        });
+        
+        // Обработка потери фокуса
+        addressInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                document.body.classList.remove('keyboard-visible');
+                addressSuggestions.classList.remove('keyboard-visible');
+            }, 150); // Небольшая задержка для обработки кликов по подсказкам
+        });
+        
+        // Обработка кликов по подсказкам
+        addressSuggestions.addEventListener('click', (e) => {
+            const suggestionItem = e.target.closest('.address-suggestion-item');
+            if (suggestionItem) {
+                const selectedAddress = suggestionItem.textContent.trim();
+                addressInput.value = selectedAddress;
+                this.address = selectedAddress;
+                addressSuggestions.innerHTML = '';
+                addressInput.blur();
+                
+                // Обновляем стоимость доставки
+                this.updateDeliveryCost();
+            }
+        });
+    }
+    
+    /**
+     * Настройка обработки клавиатуры для мобильных устройств
+     */
+    setupKeyboardHandling() {
+        if (!this.tg) return;
+        
+        // Обработка изменения высоты viewport (появление/скрытие клавиатуры)
+        let initialViewportHeight = window.visualViewport?.height || window.innerHeight;
+        
+        const handleViewportChange = () => {
+            const currentHeight = window.visualViewport?.height || window.innerHeight;
+            const heightDiff = initialViewportHeight - currentHeight;
+            
+            if (heightDiff > 150) { // Клавиатура появилась
+                document.body.classList.add('keyboard-visible');
+            } else { // Клавиатура скрылась
+                document.body.classList.remove('keyboard-visible');
+            }
+        };
+        
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleViewportChange);
+        } else {
+            window.addEventListener('resize', handleViewportChange);
+        }
+    }
+    
     /**
      * Оформление заказа
      */

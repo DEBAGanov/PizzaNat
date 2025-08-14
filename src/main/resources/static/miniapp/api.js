@@ -219,6 +219,14 @@ class PizzaAPI {
     }
 
     /**
+     * Получение подсказок адресов
+     */
+    async getAddressSuggestions(query) {
+        console.log('🔍 Loading address suggestions for:', query);
+        return this.makeRequest(`/address-suggestions?query=${encodeURIComponent(query)}`);
+    }
+
+    /**
      * Получение пунктов доставки
      */
     async getDeliveryLocations() {
