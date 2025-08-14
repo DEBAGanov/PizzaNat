@@ -356,18 +356,27 @@ class PizzaNatCheckoutApp {
             const suggestions = await this.api.getAddressSuggestions(query);
             console.log('📍 Address suggestions received:', suggestions);
             
-            // Обрабатываем ответ API - может быть массив объектов или строк
+            // Обрабатываем ответ API - извлекаем только краткий адрес
             let formattedSuggestions;
             if (Array.isArray(suggestions)) {
                 formattedSuggestions = suggestions.map(suggestion => {
                     if (typeof suggestion === 'string') {
                         return suggestion;
+                    } else if (suggestion.shortAddress) {
+                        // Используем краткий адрес (только улица и дом)
+                        return suggestion.shortAddress;
+                    } else if (suggestion.address) {
+                        // Извлекаем часть после "Волжск, "
+                        const fullAddress = suggestion.address;
+                        const volzhskIndex = fullAddress.indexOf('Волжск, ');
+                        if (volzhskIndex !== -1) {
+                            return fullAddress.substring(volzhskIndex + 8).trim();
+                        }
+                        return fullAddress;
                     } else if (suggestion.value) {
                         return suggestion.value;
-                    } else if (suggestion.unrestricted_value) {
-                        return suggestion.unrestricted_value;
                     } else {
-                        return JSON.stringify(suggestion);
+                        return 'Неизвестный адрес';
                     }
                 });
             } else {
@@ -544,6 +553,12 @@ class PizzaNatCheckoutApp {
      */
     async submitOrder() {
         try {
+            // Validation - проверяем корзину
+            if (!this.cart.items || this.cart.items.length === 0) {
+                this.showError('Корзина пуста. Добавьте товары для оформления заказа');
+                return;
+            }
+
             // Validation - проверяем данные пользователя из авторизации
             if (!this.userData || !this.userData.name) {
                 this.showError('Данные пользователя не загружены. Пожалуйста, авторизуйтесь');
@@ -570,7 +585,13 @@ class PizzaNatCheckoutApp {
                 contactName: this.userData.name,
                 contactPhone: this.userData.phone,
                 comment: document.getElementById('order-comment')?.value.trim() || '',
-                paymentMethod: this.paymentMethod
+                paymentMethod: this.paymentMethod,
+                // Добавляем товары из корзины
+                items: this.cart.items.map(item => ({
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    price: item.price
+                }))
             };
 
             // Добавляем данные доставки в зависимости от выбранного метода
