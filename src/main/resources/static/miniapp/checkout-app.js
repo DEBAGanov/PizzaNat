@@ -205,6 +205,12 @@ class PizzaNatCheckoutApp {
             userPhoneEl.style.color = 'var(--tg-theme-destructive-text-color, #ff6b6b)';
         }
         
+        // Запрашиваем номер телефона если его нет
+        if (this.tg && this.tg.requestContact) {
+            console.log('📱 Requesting phone contact from user...');
+            this.tg.requestContact();
+        }
+        
         // Отключаем кнопку заказа
         const submitButton = document.getElementById('submit-order');
         if (submitButton) {
@@ -516,7 +522,8 @@ class PizzaNatCheckoutApp {
                 addressInput.blur();
                 
                 // Обновляем стоимость доставки
-                this.calculateDeliveryCost(selectedAddress);
+                console.log('🚗 Calculating delivery cost for selected address:', selectedAddress);
+                await this.calculateDeliveryCost(selectedAddress);
             }
         });
     }
@@ -607,8 +614,35 @@ class PizzaNatCheckoutApp {
 
             console.log('Creating order with data:', orderData);
 
-            // Создаем заказ
-            const order = await this.api.createOrder(orderData);
+            // Сначала очищаем корзину на бэкенде и добавляем все товары
+            console.log('🛒 Adding items to backend cart...');
+            await this.api.clearCart();
+            
+            for (const item of this.cart.items) {
+                await this.api.addToCart(item.productId, item.quantity);
+            }
+
+            // Создаем заказ (без поля items - бэкенд возьмет из корзины)
+            const orderDataForAPI = {
+                contactName: orderData.contactName,
+                contactPhone: orderData.contactPhone,
+                comment: orderData.comment,
+                paymentMethod: orderData.paymentMethod
+            };
+
+            // Добавляем данные доставки
+            if (this.deliveryMethod === 'DELIVERY') {
+                orderDataForAPI.deliveryAddress = this.address;
+                orderDataForAPI.deliveryType = 'Доставка курьером';
+                orderDataForAPI.deliveryCost = this.deliveryCost;
+            } else {
+                orderDataForAPI.deliveryLocationId = 1;
+                orderDataForAPI.deliveryType = 'Самовывоз';
+                orderDataForAPI.deliveryCost = 0;
+            }
+
+            console.log('Creating order with backend cart data:', orderDataForAPI);
+            const order = await this.api.createOrder(orderDataForAPI);
             
             if (this.paymentMethod === 'SBP') {
                 // Создаем платеж для СБП
