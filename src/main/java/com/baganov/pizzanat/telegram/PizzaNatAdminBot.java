@@ -90,6 +90,8 @@ public class PizzaNatAdminBot extends TelegramLongPollingBot {
             handleStatsCommand(chatId);
         } else if (messageText.startsWith("/orders")) {
             handleOrdersCommand(chatId);
+        } else if (messageText.startsWith("/message ")) {
+            handleBroadcastCommand(chatId, messageText);
         } else {
             handleUnknownCommand(chatId);
         }
@@ -153,12 +155,14 @@ public class PizzaNatAdminBot extends TelegramLongPollingBot {
                 "/register - Зарегистрироваться как администратор\n" +
                 "/help - Показать эту справку\n" +
                 "/stats - Показать статистику заказов за сегодня\n" +
-                "/orders - Показать список активных заказов\n\n" +
+                "/orders - Показать список активных заказов\n" +
+                "/message <текст> - Массовая рассылка от @DIMBOpizzaBot\n\n" +
                 "*Функции бота:*\n" +
                 "• 🔔 Автоматические уведомления о новых заказах\n" +
                 "• ⚡ Быстрое изменение статуса заказа через кнопки\n" +
                 "• 📊 Просмотр статистики и активных заказов\n" +
-                "• 👥 Управление доступом администраторов\n\n" +
+                "• 👥 Управление доступом администраторов\n" +
+                "• 📢 Массовая рассылка от @DIMBOpizzaBot (с соблюдением лимитов)\n\n" +
                 "*Статусы заказов:*\n" +
                 "🆕 PENDING - Новый заказ\n" +
                 "✅ CONFIRMED - Подтвержден\n" +
@@ -201,6 +205,35 @@ public class PizzaNatAdminBot extends TelegramLongPollingBot {
             callbackHandler.handleCommand("/orders", chatId, null, null);
         } else {
             sendMessage(chatId, "❌ Сервис временно недоступен", false);
+        }
+    }
+
+    /**
+     * Команда /message для массовой рассылки
+     */
+    private void handleBroadcastCommand(Long chatId, String messageText) {
+        // Проверяем, что администратор зарегистрирован
+        if (callbackHandler == null) {
+            sendMessage(chatId, "❌ Сервис недоступен", false);
+            return;
+        }
+
+        // Извлекаем текст сообщения после команды
+        String broadcastText = messageText.substring("/message ".length()).trim();
+        
+        if (broadcastText.isEmpty()) {
+            sendMessage(chatId, "❌ Укажите текст сообщения\n\nИспользование: /message Ваш текст", false);
+            return;
+        }
+
+        try {
+            // Отправляем запрос в AdminBotService для рассылки
+            if (callbackHandler != null) {
+                callbackHandler.handleBroadcastMessage(chatId, broadcastText);
+            }
+        } catch (Exception e) {
+            log.error("Ошибка обработки команды /message: {}", e.getMessage(), e);
+            sendMessage(chatId, "❌ Ошибка при отправке сообщения", false);
         }
     }
 

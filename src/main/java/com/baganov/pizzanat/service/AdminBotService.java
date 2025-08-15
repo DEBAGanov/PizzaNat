@@ -47,6 +47,8 @@ public class AdminBotService {
     private final TelegramAdminNotificationService telegramAdminNotificationService;
     private final TelegramUserNotificationService telegramUserNotificationService;
     private final PaymentRepository paymentRepository;
+    private final UserService userService;
+    private final TelegramRateLimitService rateLimitService;
 
     /**
      * Регистрация администратора
@@ -1390,4 +1392,137 @@ public class AdminBotService {
                 return "Статус заказа обновлен";
         }
     }
+
+    /**
+     * Массовая рассылка сообщения всем авторизованным пользователям
+     * с учетом лимитов Telegram API
+     */
+    @Async
+    public void broadcastMessageToAllUsers(Long adminChatId, String messageText) {
+        try {
+            // Получаем всех пользователей с подтвержденным Telegram ID
+            List<com.baganov.pizzanat.entity.User> users = userService.getAllUsersWithTelegramId();
+            
+            if (users.isEmpty()) {
+                sendMessageToAdmin(adminChatId, "ℹ️ Нет пользователей для отправки сообщения");
+                return;
+            }
+
+            // Создаем рассылку для отслеживания прогресса
+            String broadcastId = rateLimitService.createBroadcast(users.size());
+            
+            // Отправляем сообщение как есть (без префикса) от пользовательского бота @DIMBOpizzaBot
+            String broadcastMessage = messageText;
+
+            log.info("📤 Начинаем массовую рассылку {} пользователям (ID: {})", users.size(), broadcastId);
+            
+            // Уведомляем администратора о начале рассылки
+            sendMessageToAdmin(adminChatId, String.format(
+                "🚀 *Рассылка запущена от @DIMBOpizzaBot*\n\n" +
+                "👥 Пользователей: %d\n" +
+                "📝 Сообщение: \"%s\"\n\n" +
+                "⏳ Ожидаемое время: ~%d мин\n" +
+                "_Соблюдаем лимиты Telegram API (20 сообщений/сек)_",
+                users.size(), 
+                messageText.length() > 50 ? messageText.substring(0, 50) + "..." : messageText,
+                estimateBroadcastTime(users.size())
+            ));
+
+            // Обрабатываем пользователей пакетами
+            int batchSize = 10; // Размер пакета
+            int totalBatches = (int) Math.ceil((double) users.size() / batchSize);
+            
+            for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+                int startIndex = batchIndex * batchSize;
+                int endIndex = Math.min(startIndex + batchSize, users.size());
+                List<com.baganov.pizzanat.entity.User> batch = users.subList(startIndex, endIndex);
+                
+                log.debug("📦 Обрабатываем пакет {}/{}: пользователи {}-{}", 
+                    batchIndex + 1, totalBatches, startIndex + 1, endIndex);
+                
+                // Обрабатываем пакет
+                processBatch(batch, broadcastMessage, broadcastId);
+                
+                // Задержка между пакетами (кроме последнего)
+                if (batchIndex < totalBatches - 1) {
+                    Thread.sleep(1000); // 1 секунда между пакетами
+                }
+            }
+
+            // Завершаем рассылку и получаем финальную статистику
+            TelegramRateLimitService.BroadcastProgress finalProgress = rateLimitService.finalizeBroadcast(broadcastId);
+            
+            // Отчет для администратора
+            String reportMessage = String.format(
+                "✅ *Рассылка от @DIMBOpizzaBot завершена*\n\n" +
+                "📊 *Статистика:*\n" +
+                "👥 Всего пользователей: %d\n" +
+                "✅ Успешно отправлено: %d\n" +
+                "❌ Ошибок: %d\n" +
+                "⏱ Время выполнения: %d мин\n\n" +
+                "📝 *Текст сообщения:*\n\"%s\"\n\n" +
+                "_Соблюдены лимиты Telegram API (20 сообщений/сек)_",
+                finalProgress.getTotalUsers(), 
+                finalProgress.getSuccessCount(), 
+                finalProgress.getFailureCount(),
+                java.time.temporal.ChronoUnit.MINUTES.between(finalProgress.getStartedAt(), finalProgress.getCompletedAt()),
+                messageText
+            );
+
+            sendMessageToAdmin(adminChatId, reportMessage);
+            
+            log.info("✅ Массовая рассылка {} завершена: успешно={}, ошибок={}, всего={}", 
+                    broadcastId, finalProgress.getSuccessCount(), finalProgress.getFailureCount(), finalProgress.getTotalUsers());
+
+        } catch (Exception e) {
+            log.error("❌ Ошибка при массовой рассылке: {}", e.getMessage(), e);
+            sendMessageToAdmin(adminChatId, "❌ Произошла ошибка при массовой рассылке: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Обрабатывает пакет пользователей с учетом лимитов
+     */
+    private void processBatch(List<com.baganov.pizzanat.entity.User> batch, String message, String broadcastId) {
+        for (com.baganov.pizzanat.entity.User user : batch) {
+            try {
+                // Проверяем лимиты перед отправкой
+                if (!rateLimitService.canSendMessage()) {
+                    long delay = rateLimitService.getRecommendedDelay();
+                    log.debug("⏳ Достигнут лимит, ожидаем {}мс", delay);
+                    Thread.sleep(delay);
+                }
+                
+                // Отправляем сообщение
+                telegramUserNotificationService.sendPersonalMessage(user.getTelegramId(), message);
+                rateLimitService.registerMessageSent();
+                rateLimitService.updateBroadcastProgress(broadcastId, true);
+                
+                // Базовая задержка между сообщениями
+                Thread.sleep(rateLimitService.getRecommendedDelay());
+                
+            } catch (Exception e) {
+                log.warn("⚠️ Ошибка отправки сообщения пользователю {}: {}", user.getTelegramId(), e.getMessage());
+                rateLimitService.updateBroadcastProgress(broadcastId, false);
+                
+                // При ошибке увеличиваем задержку
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Оценивает время выполнения рассылки
+     */
+    private int estimateBroadcastTime(int userCount) {
+        // Примерно 20 сообщений в секунду с учетом задержек и пакетной обработки
+        int estimatedSeconds = (userCount / 15) + (userCount / 10); // Консервативная оценка
+        return Math.max(1, estimatedSeconds / 60); // Минимум 1 минута
+    }
+
 }

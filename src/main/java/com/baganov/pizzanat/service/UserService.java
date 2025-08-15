@@ -83,4 +83,14 @@ public class UserService implements UserDetailsService {
 
         return userRepository.save(existingUser);
     }
+
+    /**
+     * Получение всех пользователей с подтвержденным Telegram ID
+     * для массовой рассылки сообщений
+     * 
+     * @return список пользователей с Telegram ID
+     */
+    public java.util.List<User> getAllUsersWithTelegramId() {
+        return userRepository.findByTelegramIdIsNotNullAndIsTelegramVerifiedTrue();
+    }
 }

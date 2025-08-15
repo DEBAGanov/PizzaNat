@@ -83,4 +83,18 @@ public class AdminBotCallbackHandler {
         adminBotService.sendActiveOrdersWithButtons(chatId);
         log.debug("Список заказов с кнопками отправлен: chatId={}", chatId);
     }
+
+    /**
+     * Обработка команды массовой рассылки сообщения
+     */
+    public void handleBroadcastMessage(Long adminChatId, String messageText) {
+        if (!adminBotService.isRegisteredAdmin(adminChatId)) {
+            log.warn("Неавторизованная попытка массовой рассылки: chatId={}", adminChatId);
+            adminBotService.sendMessageToAdmin(adminChatId, "❌ У вас нет прав для отправки сообщений");
+            return;
+        }
+
+        log.info("Администратор {} инициировал массовую рассылку: '{}'", adminChatId, messageText);
+        adminBotService.broadcastMessageToAllUsers(adminChatId, messageText);
+    }
 }
