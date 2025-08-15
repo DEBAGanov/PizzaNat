@@ -689,20 +689,27 @@ class PizzaNatCheckoutApp {
             
             if (this.paymentMethod === 'SBP') {
                 // Создаем платеж для СБП
+                console.log('💳 Creating SBP payment for order:', order.id);
                 const payment = await this.api.createPayment(order.id, 'SBP');
                 
-                if (payment.success && payment.confirmationUrl) {
+                console.log('💳 Payment response:', payment);
+                
+                // Проверяем структуру ответа ЮКассы
+                if (payment && (payment.confirmation?.confirmation_url || payment.confirmationUrl)) {
+                    const paymentUrl = payment.confirmation?.confirmation_url || payment.confirmationUrl;
+                    
                     // Очищаем корзину
                     this.clearCart();
                     
                     // Открываем страницу оплаты
-                    this.tg?.openLink(payment.confirmationUrl);
+                    this.tg?.openLink(paymentUrl);
                     
                     // Показываем уведомление
                     this.tg?.showAlert('Заказ создан! Переходим к оплате...');
                     
                 } else {
-                    throw new Error(payment.message || 'Ошибка создания платежа');
+                    console.error('❌ Invalid payment response structure:', payment);
+                    throw new Error('Ошибка: получен некорректный ответ от платежной системы');
                 }
             } else {
                 // Для наличной оплаты показываем успех
@@ -717,7 +724,22 @@ class PizzaNatCheckoutApp {
             
         } catch (error) {
             console.error('❌ Order submission failed:', error);
-            this.showError('Ошибка оформления заказа: ' + error.message);
+            console.error('❌ Error details:', {
+                message: error.message,
+                stack: error.stack,
+                response: error.response
+            });
+            
+            // Более детальная ошибка
+            let errorMessage = 'Ошибка оформления заказа';
+            if (error.message.includes('payment')) {
+                errorMessage = 'Ошибка создания платежа';
+            } else if (error.message.includes('order')) {
+                errorMessage = 'Ошибка создания заказа';
+            }
+            errorMessage += ': ' + error.message;
+            
+            this.showError(errorMessage);
             
             // Re-enable submit button
             const submitButton = document.getElementById('submit-order');
