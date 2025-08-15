@@ -387,7 +387,7 @@ class PizzaNatMenuApp {
 
         this.updateCartTotals();
         this.saveCartToStorage();
-        this.renderProducts(); // Обновляем отображение
+        this.updateCartUI(); // Обновляем отображение корзины
     }
 
     /**

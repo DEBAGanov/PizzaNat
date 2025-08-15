@@ -1,8 +1,8 @@
 /* Checkout Page Styles */
 
 .checkout-page {
-    background: var(--tg-theme-bg-color, #1e1e1e);
-    color: var(--tg-theme-text-color, #ffffff);
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
 }
 
 /* Header */
@@ -33,7 +33,7 @@
 .delivery-section,
 .payment-section,
 .user-info-section {
-    background: var(--tg-theme-secondary-bg-color, #2c2c2c);
+    background: var(--tg-theme-secondary-bg-color, #f5f5f5);
     border-radius: 12px;
     padding: 16px;
     margin-bottom: 16px;
@@ -45,7 +45,7 @@
 .user-info-section h3 {
     font-size: 18px;
     font-weight: 600;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
     margin: 0 0 12px 0;
 }
 
