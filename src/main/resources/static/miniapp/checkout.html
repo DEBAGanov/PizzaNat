@@ -139,7 +139,37 @@
     </div>
 
     <!-- Scripts -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="api.js"></script>
     <script src="checkout-app.js"></script>
+    <script>
+        // Debug logging
+        console.log('🔧 DEBUG: DOM loaded, starting initialization...');
+        
+        // Error handler for debugging
+        window.addEventListener('error', (e) => {
+            console.error('🚨 Global error:', e.error);
+            console.error('🚨 Error details:', e.message, e.filename, e.lineno);
+        });
+        
+        // Unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('🚨 Unhandled promise rejection:', e.reason);
+        });
+        
+        // Инициализация приложения
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔧 DEBUG: DOMContentLoaded fired');
+            
+            try {
+                console.log('🔧 DEBUG: Creating PizzaNatCheckoutApp...');
+                const app = new PizzaNatCheckoutApp();
+                console.log('🔧 DEBUG: App created successfully:', app);
+            } catch (error) {
+                console.error('🚨 Failed to create app:', error);
+                document.body.innerHTML += '<div style="color: red; padding: 20px;">Error: ' + error.message + '</div>';
+            }
+        });
+    </script>
 </body>
 </html>
