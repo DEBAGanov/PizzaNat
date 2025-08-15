@@ -5,8 +5,8 @@
 
 class PizzaAPI {
     constructor() {
-        // API base URL - определяется автоматически
-        this.baseURL = window.location.origin;
+        // API base URL - всегда используем api.dimbopizza.ru
+        this.baseURL = 'https://api.dimbopizza.ru';
         this.apiPath = '/api/v1';
         
         // Auth token

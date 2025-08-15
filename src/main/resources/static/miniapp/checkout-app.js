@@ -439,8 +439,8 @@ class PizzaNatCheckoutApp {
             
             if (data && typeof data.deliveryCost === 'number') {
                 this.deliveryCost = data.deliveryCost;
-                console.log('✅ Delivery cost calculated:', this.deliveryCost);
-            } else if (data && data.isDeliveryAvailable === false) {
+                console.log('✅ Delivery cost calculated:', this.deliveryCost, 'rubles');
+            } else if (data && data.deliveryAvailable === false) {
                 this.deliveryCost = 0; // Доставка недоступна
                 console.warn('⚠️ Delivery not available for this address');
             } else {
