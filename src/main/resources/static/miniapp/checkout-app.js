@@ -555,7 +555,7 @@ class PizzaNatCheckoutApp {
         });
         
         // Обработка кликов по подсказкам
-        addressSuggestions.addEventListener('click', (e) => {
+        addressSuggestions.addEventListener('click', async (e) => {
             const suggestionItem = e.target.closest('.address-suggestion-item');
             if (suggestionItem) {
                 const selectedAddress = suggestionItem.textContent.trim();
@@ -784,7 +784,5 @@ class PizzaNatCheckoutApp {
     }
 }
 
-// Инициализация приложения
-document.addEventListener('DOMContentLoaded', () => {
-    new PizzaNatCheckoutApp();
-});
+// Делаем класс доступным глобально
+window.PizzaNatCheckoutApp = PizzaNatCheckoutApp;
