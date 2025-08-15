@@ -413,15 +413,15 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
     private void handleMenuCommand(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("🍕 *Меню DIMBO Pizza*\n\n" +
-                "Откройте наш каталог товаров прямо в Telegram!\n\n" +
-                "🔗 [Посмотреть меню](https://api.dimbopizza.ru/miniapp/menu)");
+        message.setText("🍕 *Добро пожаловать в DIMBO Pizza!*\n\n" +
+                "Откройте наше меню для заказа 🚀\n\n" +
+                "_Для лучшего опыта используйте мобильную версию Telegram_");
         message.setParseMode("Markdown");
 
-        // Создаем простую URL кнопку
+        // Создаем обычную кнопку с URL (временное решение)
         InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
         InlineKeyboardButton menuButton = InlineKeyboardButton.builder()
-                .text("📋 Открыть меню")
+                .text("🍕 Открыть меню")
                 .url("https://api.dimbopizza.ru/miniapp/menu")
                 .build();
 

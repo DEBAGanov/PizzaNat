@@ -221,7 +221,7 @@ class PizzaNatMenuApp {
                     <div class="menu-item-price">₽${product.price}</div>
                     <div class="menu-item-actions">
                         ${quantity === 0 ? 
-                            `<button class="add-button" data-product-id="${product.id}">🛒</button>` :
+                            `<button class="add-button" data-product-id="${product.id}">в корзину</button>` :
                             `<div class="quantity-controls active">
                                 <button class="quantity-btn minus" data-product-id="${product.id}">−</button>
                                 <button class="quantity-btn plus" data-product-id="${product.id}">+</button>
