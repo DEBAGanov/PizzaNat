@@ -1,8 +1,8 @@
-/* Menu Page Styles - @DurgerKingBot Style */
+/* Menu Page Styles - Light Theme */
 
 .menu-page {
-    background: var(--tg-theme-bg-color, #1e1e1e);
-    color: var(--tg-theme-text-color, #ffffff);
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
 }
 
 /* Menu Grid */
@@ -16,7 +16,7 @@
 
 /* Menu Item */
 .menu-item {
-    background: var(--tg-theme-secondary-bg-color, #2c2c2c);
+    background: var(--tg-theme-secondary-bg-color, #f5f5f5);
     border-radius: 12px;
     padding: 12px 8px;
     text-align: center;
@@ -51,7 +51,7 @@
 .menu-item-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
     line-height: 1.2;
     margin-bottom: 4px;
     display: -webkit-box;
@@ -63,7 +63,7 @@
 .menu-item-price {
     font-size: 14px;
     font-weight: 700;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
     margin-bottom: 8px;
 }
 
@@ -173,7 +173,7 @@
 }
 
 .cart-container {
-    background: var(--tg-theme-bg-color, #1e1e1e);
+    background: var(--tg-theme-bg-color, #ffffff);
     border-radius: 16px 16px 0 0;
     width: 100%;
     max-height: 80vh;
@@ -192,7 +192,7 @@
 
 .cart-header {
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -226,7 +226,7 @@
 .cart-header h3 {
     font-size: 18px;
     font-weight: 700;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
     margin: 0;
 }
 
@@ -263,7 +263,7 @@
     display: flex;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .cart-item:last-child {
@@ -285,7 +285,7 @@
 .cart-item-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
     margin-bottom: 2px;
 }
 
@@ -336,12 +336,12 @@
 .cart-item-price {
     font-size: 14px;
     font-weight: 600;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
 }
 
 .cart-comment {
     padding: 16px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .comment-input {
@@ -349,7 +349,7 @@
     background: transparent;
     border: none;
     font-size: 16px;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
     padding: 8px 0;
     outline: none;
 }
