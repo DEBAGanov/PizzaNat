@@ -58,6 +58,9 @@ class PizzaNatCheckoutApp {
             // Загрузка данных
             await this.loadUserData();
             
+            // Загрузка последнего адреса доставки
+            await this.loadLastDeliveryAddress();
+            
             // Показываем приложение
             this.showApp();
             
@@ -260,8 +263,42 @@ class PizzaNatCheckoutApp {
             submitButton.disabled = true;
             submitButton.textContent = 'Требуется авторизация';
         }
-    }
+        }
 
+    /**
+     * Загрузка последнего адреса доставки
+     */
+    async loadLastDeliveryAddress() {
+        try {
+            console.log('📍 Loading last delivery address...');
+            const lastDelivery = await this.api.getLastDeliveryAddress();
+            
+            if (lastDelivery && lastDelivery.address) {
+                console.log('✅ Last delivery address found:', lastDelivery);
+                
+                // Заполняем поле адреса
+                const addressInput = document.getElementById('address-input');
+                if (addressInput) {
+                    addressInput.value = lastDelivery.address;
+                    this.address = lastDelivery.address;
+                }
+                
+                // Устанавливаем стоимость доставки
+                this.deliveryCost = lastDelivery.deliveryCost;
+                
+                // Обновляем отображение
+                this.updateDeliveryPrice();
+                this.updateTotals();
+                
+                console.log(`📍 Address prefilled: ${lastDelivery.address}, cost: ${lastDelivery.deliveryCost}₽`);
+            } else {
+                console.log('ℹ️ No previous delivery address found');
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not load last delivery address:', error);
+        }
+    }
+    
     /**
      * Настройка UI и обработчиков событий
      */

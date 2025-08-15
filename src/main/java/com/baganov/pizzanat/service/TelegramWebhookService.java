@@ -252,7 +252,7 @@ public class TelegramWebhookService {
      */
     private void sendAuthConfirmationMessage(Long chatId, String authToken, TelegramUserData user) {
         String message = String.format(
-                "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
+                "🍕 *Добро пожаловать в ДИМБО ПИЦЦА!*\n\n" +
                         "Привет, %s!\n\n" +
                         "Для завершения авторизации:\n" +
                         "1️⃣ Нажмите \"📱 Отправить телефон\" для быстрого заказа\n" +
@@ -349,7 +349,7 @@ public class TelegramWebhookService {
      * @param chatId ID чата
      */
     private void sendWelcomeMessage(Long chatId) {
-        String message = "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
+        String message = "🍕 *Добро пожаловать в ДИМБО ПИЦЦА!*\n\n" +
                 "Это бот для аутентификации в мобильном приложении.\n\n" +
                 "Для входа в приложение используйте ссылку из приложения.\n\n" +
                 "Команды:\n" +
@@ -364,7 +364,7 @@ public class TelegramWebhookService {
      * @param chatId ID чата
      */
     private void sendHelpMessage(Long chatId) {
-        String message = "ℹ️ *Справка PizzaNat Bot*\n\n" +
+        String message = "ℹ️ *Справка ДИМБО ПИЦЦА*\n\n" +
                 "*Как войти в приложение:*\n" +
                 "1. Откройте мобильное приложение PizzaNat\n" +
                 "2. Выберите \"Войти через Telegram\"\n" +

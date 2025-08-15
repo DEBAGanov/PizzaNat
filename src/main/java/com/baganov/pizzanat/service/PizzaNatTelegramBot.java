@@ -178,7 +178,7 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
      */
     private void sendContactRequestMessage(Long chatId, String authToken, TelegramUserData userData) {
         String message = String.format(
-                "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
+                "🍕 *Добро пожаловать в ДИМБО ПИЦЦА!*\n\n" +
                         "Привет, %s!\n\n" +
                         "Для завершения авторизации нажмите кнопку ниже и поделитесь номером телефона:",
                 userData.getDisplayName());

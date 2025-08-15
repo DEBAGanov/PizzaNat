@@ -178,6 +178,30 @@ class PizzaAPI {
     }
 
     /**
+     * Получение последнего адреса доставки пользователя
+     */
+    async getLastDeliveryAddress() {
+        console.log('📍 Loading last delivery address...');
+        try {
+            const orders = await this.getUserOrders();
+            if (orders && orders.length > 0) {
+                // Ищем последний заказ с адресом доставки
+                const lastOrderWithAddress = orders.find(order => order.deliveryAddress);
+                if (lastOrderWithAddress) {
+                    return {
+                        address: lastOrderWithAddress.deliveryAddress,
+                        deliveryCost: lastOrderWithAddress.deliveryCost || 200
+                    };
+                }
+            }
+            return null;
+        } catch (error) {
+            console.warn('Could not load last delivery address:', error);
+            return null;
+        }
+    }
+
+    /**
      * Получение информации о заказе
      */
     async getOrder(orderId) {

@@ -305,10 +305,15 @@ class PizzaNatMenuApp {
                 console.log('Cart button clicked:', e.target.className, 'Product ID:', productId);
 
                 if (e.target.classList.contains('plus')) {
-                    console.log('Adding product from cart controls');
-                    const product = this.products.find(p => p.id === productId);
-                    if (product) {
-                        this.addToCart(product, 1);
+                    console.log('Increasing quantity from cart controls');
+                    const existingItem = this.cart.items.find(item => item.productId === productId);
+                    if (existingItem) {
+                        existingItem.quantity += 1;
+                        existingItem.subtotal = existingItem.quantity * existingItem.price;
+                        this.updateCartTotals();
+                        this.saveCartToStorage();
+                        this.updateCartUI();
+                        console.log(`📈 Increased quantity to ${existingItem.quantity}`);
                     }
                 } else if (e.target.classList.contains('minus')) {
                     console.log('Removing product from cart controls');
@@ -320,6 +325,11 @@ class PizzaNatMenuApp {
                     this.tg.HapticFeedback.impactOccurred('light');
                 }
             }
+        });
+
+        // Clear cart button
+        document.getElementById('clear-cart-button')?.addEventListener('click', () => {
+            this.clearCart();
         });
 
         // Retry button
@@ -378,6 +388,41 @@ class PizzaNatMenuApp {
         this.updateCartTotals();
         this.saveCartToStorage();
         this.renderProducts(); // Обновляем отображение
+    }
+
+    /**
+     * Очистка корзины
+     */
+    clearCart() {
+        if (this.cart.items.length === 0) return;
+        
+        // Подтверждение очистки
+        if (this.tg?.showConfirm) {
+            this.tg.showConfirm('Очистить корзину?', (confirmed) => {
+                if (confirmed) {
+                    this.performClearCart();
+                }
+            });
+        } else if (confirm('Очистить корзину?')) {
+            this.performClearCart();
+        }
+    }
+
+    /**
+     * Выполнение очистки корзины
+     */
+    performClearCart() {
+        console.log('🗑️ Clearing cart');
+        this.cart.items = [];
+        this.cart.totalAmount = 0;
+        this.saveCartToStorage();
+        this.updateCartUI();
+        this.closeCart();
+        
+        // Haptic feedback
+        if (this.tg?.HapticFeedback) {
+            this.tg.HapticFeedback.impactOccurred('medium');
+        }
     }
 
     /**

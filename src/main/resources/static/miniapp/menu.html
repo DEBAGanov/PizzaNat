@@ -33,7 +33,7 @@
                     <span class="brand-name">DIMBO Pizza</span>
                 </div>
                 <div class="cart-button" id="cart-button">
-                    <span class="cart-icon">🛒</span>
+                    <span class="cart-icon">в корзину</span>
                     <span class="cart-count" id="cart-count">0</span>
                 </div>
             </div>
@@ -54,8 +54,10 @@
             <div class="cart-container">
                 <div class="cart-header">
                     <h3>ВАШ ЗАКАЗ</h3>
-                    <button class="cart-close" id="cart-close">✕</button>
-                    <button class="edit-button">Edit</button>
+                    <div class="cart-header-actions">
+                        <button class="clear-cart-button" id="clear-cart-button">🗑️</button>
+                        <button class="cart-close" id="cart-close">✕</button>
+                    </div>
                 </div>
                 <div class="cart-content" id="cart-content">
                     <!-- Cart items will be loaded here -->
