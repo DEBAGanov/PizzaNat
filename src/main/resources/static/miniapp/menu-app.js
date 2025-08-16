@@ -19,6 +19,19 @@ class PizzaNatMenuApp {
     }
 
     /**
+     * Склонение слова "товар" в зависимости от количества
+     */
+    getProductWord(count) {
+        if (count === 1) {
+            return 'ТОВАР';
+        } else if (count >= 2 && count <= 4) {
+            return 'ТОВАРА';
+        } else {
+            return 'ТОВАРОВ';
+        }
+    }
+
+    /**
      * Инициализация приложения
      */
     async init() {
@@ -453,11 +466,17 @@ class PizzaNatMenuApp {
         const cartTotalElements = document.querySelectorAll('#cart-total');
         cartTotalElements.forEach(el => el.textContent = `₽${totalAmount}`);
 
-        // Обновляем bottom bar
+        // Обновляем bottom bar с правильным склонением
         const bottomCountElement = document.getElementById('bottom-count');
         const bottomTotalElement = document.getElementById('bottom-total');
         if (bottomCountElement) bottomCountElement.textContent = cartCount;
         if (bottomTotalElement) bottomTotalElement.textContent = `₽${totalAmount}`;
+        
+        // Обновляем текст кнопки с правильным склонением
+        const viewOrderButton = document.getElementById('view-order-button');
+        if (viewOrderButton && cartCount > 0) {
+            viewOrderButton.innerHTML = `<span id="bottom-count">${cartCount}</span> ${this.getProductWord(cartCount)} НА <span id="bottom-total">₽${totalAmount}</span>`;
+        }
 
         // Показываем/скрываем bottom bar
         const bottomBar = document.getElementById('bottom-bar');
@@ -487,7 +506,6 @@ class PizzaNatMenuApp {
                      class="cart-item-image">
                 <div class="cart-item-info">
                     <div class="cart-item-title">${item.name}</div>
-                    <div class="cart-item-subtitle">₽${item.price} за шт.</div>
                 </div>
                 <div class="cart-item-controls">
                     <button class="cart-quantity-btn minus" data-product-id="${item.productId}">−</button>

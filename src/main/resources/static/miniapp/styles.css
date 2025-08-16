@@ -504,7 +504,7 @@ body {
     height: 60px;
     border-radius: var(--radius-sm);
     object-fit: cover;
-    background: var(--border-color);
+    background: white;
 }
 
 .cart-item-info {
