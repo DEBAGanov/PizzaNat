@@ -221,7 +221,7 @@ class PizzaNatMenuApp {
                     <div class="menu-item-price">₽${product.price}</div>
                     <div class="menu-item-actions">
                         ${quantity === 0 ? 
-                            `<button class="add-button" data-product-id="${product.id}">корзина</button>` :
+                            `<button class="add-button" data-product-id="${product.id}">добавить</button>` :
                             `<div class="quantity-controls active">
                                 <button class="quantity-btn minus" data-product-id="${product.id}">−</button>
                                 <button class="quantity-btn plus" data-product-id="${product.id}">+</button>
@@ -242,12 +242,15 @@ class PizzaNatMenuApp {
      * Настройка UI и обработчиков событий
      */
     setupUI() {
-        // Кнопки товаров
+        // Кнопки товаров (только для карточек товаров, не для корзины)
         document.addEventListener('click', (e) => {
+            // Проверяем, что это не кнопка в корзине
+            if (e.target.classList.contains('cart-quantity-btn')) return;
+            
             const productId = e.target.dataset.productId;
             if (!productId) return;
 
-            console.log('Button clicked:', e.target.className, 'Product ID:', productId);
+            console.log('Product button clicked:', e.target.className, 'Product ID:', productId);
 
             const product = this.products.find(p => p.id === parseInt(productId));
             if (!product) {
@@ -258,10 +261,10 @@ class PizzaNatMenuApp {
             if (e.target.classList.contains('add-button')) {
                 console.log('Adding product via ADD button');
                 this.addToCart(product, 1);
-            } else if (e.target.classList.contains('plus')) {
+            } else if (e.target.classList.contains('plus') && !e.target.classList.contains('cart-quantity-btn')) {
                 console.log('Adding product via PLUS button');
                 this.addToCart(product, 1);
-            } else if (e.target.classList.contains('minus')) {
+            } else if (e.target.classList.contains('minus') && !e.target.classList.contains('cart-quantity-btn')) {
                 console.log('Removing product via MINUS button');
                 this.removeFromCart(product.id, 1);
             }
@@ -299,6 +302,9 @@ class PizzaNatMenuApp {
         // Обработчики кнопок в корзине
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('cart-quantity-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const productId = parseInt(e.target.dataset.productId);
                 if (!productId) return;
 
@@ -312,7 +318,7 @@ class PizzaNatMenuApp {
                         existingItem.subtotal = existingItem.quantity * existingItem.price;
                         this.updateCartTotals();
                         this.saveCartToStorage();
-                        this.updateCartUI();
+                        this.renderProducts(); // Перерисовываем продукты чтобы обновить количество
                         console.log(`📈 Increased quantity to ${existingItem.quantity}`);
                     }
                 } else if (e.target.classList.contains('minus')) {
@@ -440,12 +446,18 @@ class PizzaNatMenuApp {
         const cartCount = this.cart.items.reduce((total, item) => total + item.quantity, 0);
         const totalAmount = this.cart.totalAmount;
 
-        // Обновляем счетчики
+        // Обновляем счетчики в header (если есть)
         const cartCountElements = document.querySelectorAll('#cart-count');
         cartCountElements.forEach(el => el.textContent = cartCount);
 
         const cartTotalElements = document.querySelectorAll('#cart-total');
         cartTotalElements.forEach(el => el.textContent = `₽${totalAmount}`);
+
+        // Обновляем bottom bar
+        const bottomCountElement = document.getElementById('bottom-count');
+        const bottomTotalElement = document.getElementById('bottom-total');
+        if (bottomCountElement) bottomCountElement.textContent = cartCount;
+        if (bottomTotalElement) bottomTotalElement.textContent = `₽${totalAmount}`;
 
         // Показываем/скрываем bottom bar
         const bottomBar = document.getElementById('bottom-bar');
