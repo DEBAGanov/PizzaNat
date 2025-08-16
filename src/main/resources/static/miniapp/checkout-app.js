@@ -96,6 +96,14 @@ class PizzaNatCheckoutApp {
         }
 
         console.log('📱 Setting up Telegram WebApp...');
+        console.log('🔍 Telegram API version:', this.tg.version);
+        console.log('🔍 Telegram platform:', this.tg.platform);
+        console.log('🔍 Telegram WebApp features:', {
+            requestContact: typeof this.tg.requestContact,
+            requestWriteAccess: typeof this.tg.requestWriteAccess,
+            showAlert: typeof this.tg.showAlert,
+            showPopup: typeof this.tg.showPopup
+        });
 
         // Разворачиваем приложение
         this.tg.expand();
@@ -111,23 +119,35 @@ class PizzaNatCheckoutApp {
             });
         }
         
-        // Подписываемся на события
+        // Подписываемся на события согласно официальной документации
         this.tg.onEvent('themeChanged', () => this.applyTelegramTheme());
-        this.tg.onEvent('contactRequested', (data) => this.handleContactReceived(data));
         
-        // Альтернативные обработчики для контактов
-        this.tg.onEvent('contact_requested', (data) => this.handleContactReceived(data));
-        this.tg.onEvent('contact', (data) => this.handleContactReceived(data));
+        // Основное событие запроса контакта (Bot API 6.9+)
+        this.tg.onEvent('contactRequested', (data) => {
+            console.log('📞 contactRequested event received:', data);
+            this.handleContactReceived(data);
+        });
         
-        // Обработчик для глобального события контакта
-        if (this.tg.onEvent) {
-            this.tg.onEvent('*', (eventType, data) => {
-                console.log('🔧 Telegram event received:', eventType, data);
-                if (eventType.includes('contact') || eventType.includes('Contact')) {
-                    this.handleContactReceived(data);
-                }
+        // Событие записи в ЛС (может быть связано)
+        this.tg.onEvent('writeAccessRequested', (data) => {
+            console.log('✍️ writeAccessRequested event received:', data);
+        });
+        
+        // Глобальный обработчик для отладки ВСЕХ событий
+        const originalOnEvent = this.tg.onEvent;
+        this.tg.onEvent = (eventType, handler) => {
+            console.log('🔧 Registering event handler for:', eventType);
+            return originalOnEvent.call(this.tg, eventType, (data) => {
+                console.log(`🎯 Event '${eventType}' fired with data:`, data);
+                handler(data);
             });
-        }
+        };
+        
+        // Переподписываемся с новым обработчиком
+        this.tg.onEvent('contactRequested', (data) => {
+            console.log('📞 contactRequested event received:', data);
+            this.handleContactReceived(data);
+        });
         
         console.log('✅ Telegram WebApp configured');
     }
@@ -194,33 +214,49 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Обработка полученной контактной информации
+     * Обработка полученной контактной информации согласно Telegram API
      */
     handleContactReceived(data) {
         console.log('📞 Получена контактная информация:', data);
-        console.log('📞 Тип события:', typeof data, data);
+        console.log('📞 Тип данных:', typeof data);
+        console.log('📞 Структура данных:', JSON.stringify(data, null, 2));
 
-        // Проверяем разные форматы данных контакта
+        // Согласно официальной документации Telegram Bot API 6.9+
+        // событие contactRequested возвращает объект со статусом
         let contactData = null;
+        let contactReceived = false;
         
-        if (data && data.status === 'sent' && data.contact) {
-            // Формат 1: {status: 'sent', contact: {...}}
-            contactData = data.contact;
-        } else if (data && data.contact) {
-            // Формат 2: {contact: {...}}
-            contactData = data.contact;
-        } else if (data && data.first_name && data.phone_number) {
-            // Формат 3: прямые данные контакта
-            contactData = data;
-        } else if (this.tg && this.tg.initDataUnsafe && this.tg.initDataUnsafe.user) {
-            // Формат 4: берем из initData
-            const user = this.tg.initDataUnsafe.user;
-            if (user.phone_number) {
-                contactData = {
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    phone_number: user.phone_number
-                };
+        if (data) {
+            // Проверяем статус согласно официальной документации
+            if (data.status === 'sent' || data.status === 'allowed') {
+                console.log('✅ Статус контакта: разрешено');
+                contactReceived = true;
+                
+                // Пытаемся получить данные контакта из разных источников
+                if (data.contact) {
+                    contactData = data.contact;
+                } else if (this.tg?.initDataUnsafe?.user) {
+                    // Получаем из initData после разрешения
+                    const user = this.tg.initDataUnsafe.user;
+                    contactData = {
+                        first_name: user.first_name,
+                        last_name: user.last_name,
+                        phone_number: user.phone_number
+                    };
+                }
+            } else if (data.status === 'cancelled') {
+                console.log('❌ Пользователь отменил предоставление контакта');
+                this.handleContactCancelled();
+                return;
+            } else {
+                console.log('⚠️ Неизвестный статус контакта:', data.status);
+            }
+            
+            // Fallback: если нет статуса, но есть контактные данные
+            if (!contactReceived && (data.contact || (data.first_name && data.phone_number))) {
+                console.log('🔄 Fallback: обрабатываем прямые контактные данные');
+                contactData = data.contact || data;
+                contactReceived = true;
             }
         }
 
@@ -273,16 +309,24 @@ class PizzaNatCheckoutApp {
             }
         } else {
             console.warn('⚠️ Контактные данные не найдены или пользователь отменил:', data);
-            
-            // Пробуем альтернативный способ - проверить initData
-            setTimeout(() => {
-                this.tryAlternativeContactMethod();
-            }, 1000);
-            
-            if (this.pendingOrderSubmission) {
-                this.pendingOrderSubmission = false;
-            }
+            this.handleContactCancelled();
         }
+    }
+
+    /**
+     * Обработка отмены предоставления контакта
+     */
+    handleContactCancelled() {
+        console.log('🚫 Обработка отмены контакта');
+        
+        if (this.pendingOrderSubmission) {
+            this.pendingOrderSubmission = false;
+        }
+        
+        // Пробуем альтернативный способ через 2 секунды
+        setTimeout(() => {
+            this.tryAlternativeContactMethod();
+        }, 2000);
     }
 
     /**
@@ -341,18 +385,51 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Повторный запрос контакта
+     * Повторный запрос контакта согласно Telegram API
      */
     requestContactAgain() {
         console.log('📱 Повторный запрос контакта...');
         
-        if (this.tg && this.tg.requestContact) {
-            this.tg.requestContact();
-        } else {
-            console.warn('⚠️ requestContact недоступен');
-            if (this.tg?.showAlert) {
-                this.tg.showAlert('Запрос контакта недоступен. Пожалуйста, введите номер вручную.');
+        // Проверяем доступность API
+        if (!this.tg) {
+            console.error('❌ Telegram WebApp API недоступен');
+            this.showManualPhoneInput();
+            return;
+        }
+        
+        // Проверяем версию API
+        console.log('🔍 Telegram WebApp version:', this.tg.version);
+        console.log('🔍 Available methods:', Object.keys(this.tg));
+        
+        if (typeof this.tg.requestContact === 'function') {
+            console.log('✅ requestContact доступен, выполняем запрос...');
+            
+            try {
+                // Вызываем согласно официальной документации Bot API 6.9+
+                this.tg.requestContact();
+                console.log('📞 requestContact() вызван успешно');
+                
+                // Устанавливаем таймаут на случай если событие не придет
+                setTimeout(() => {
+                    console.log('⏰ Таймаут ожидания контакта, показываем ручной ввод');
+                    this.showManualPhoneInput();
+                }, 10000); // 10 секунд ожидания
+                
+            } catch (error) {
+                console.error('❌ Ошибка при вызове requestContact:', error);
+                this.showManualPhoneInput();
             }
+        } else {
+            console.warn('⚠️ requestContact недоступен. Доступные методы:', Object.keys(this.tg).filter(key => typeof this.tg[key] === 'function'));
+            
+            if (this.tg?.showAlert) {
+                this.tg.showAlert('Функция запроса контакта недоступна в данной версии Telegram. Пожалуйста, введите номер вручную.');
+            }
+            
+            // Показываем ручной ввод
+            setTimeout(() => {
+                this.showManualPhoneInput();
+            }, 1000);
         }
     }
 
