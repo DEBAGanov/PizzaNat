@@ -6,7 +6,7 @@
 class PizzaNatCheckoutApp {
     constructor() {
         this.tg = window.Telegram?.WebApp;
-        this.api = window.PizzaAPI;
+        this.api = null; // Будет инициализировано в init()
         this.cart = { items: [], totalAmount: 0 };
         this.deliveryMethod = 'DELIVERY'; // Default to delivery
         this.paymentMethod = 'SBP'; // Default to SBP
@@ -29,6 +29,17 @@ class PizzaNatCheckoutApp {
         console.log('🚀 Initializing PizzaNat Checkout...');
         
         try {
+            // Инициализация API
+            if (!this.api) {
+                if (window.PizzaAPI) {
+                    this.api = window.PizzaAPI;
+                } else {
+                    // Создаем новый экземпляр API если глобальный не найден
+                    this.api = new PizzaAPI();
+                }
+                console.log('📡 API initialized:', this.api.baseURL);
+            }
+            
             // Настройка Telegram WebApp
             this.setupTelegramWebApp();
             
@@ -46,7 +57,8 @@ class PizzaNatCheckoutApp {
                         name: 'Тестовая пицца',
                         price: 500,
                         quantity: 1,
-                        imageUrl: 'https://via.placeholder.com/100'
+                        subtotal: 500,
+                        imageUrl: '/static/images/products/pizza_4_chees.png'
                     }
                 ];
                 this.cart.totalAmount = 500;
@@ -69,7 +81,8 @@ class PizzaNatCheckoutApp {
             
         } catch (error) {
             console.error('❌ Checkout initialization failed:', error);
-            this.showError('Ошибка загрузки формы заказа');
+            console.error('❌ Error stack:', error.stack);
+            this.showError(`Ошибка загрузки формы заказа: ${error.message}`);
         }
     }
 
@@ -142,15 +155,14 @@ class PizzaNatCheckoutApp {
             return;
         }
 
+        if (!this.api) {
+            console.error('❌ API not initialized for authentication');
+            return;
+        }
+
         console.log('🔐 Authenticating user with initData...');
 
         try {
-            // Создаем API если его нет
-            if (!this.api) {
-                this.api = new PizzaAPI();
-                console.log('📡 API instance created with baseURL:', this.api.baseURL);
-            }
-            
             const response = await this.api.authenticateWebApp(this.tg.initData);
             console.log('🔐 Auth response:', response);
             
@@ -436,6 +448,12 @@ class PizzaNatCheckoutApp {
         // Submit order
         document.getElementById('submit-order')?.addEventListener('click', () => {
             this.submitOrder();
+        });
+
+        // Повторная попытка при ошибке
+        document.getElementById('retry-button')?.addEventListener('click', () => {
+            console.log('🔄 Retry button clicked, reloading page...');
+            window.location.reload();
         });
 
         // Обработка ввода адреса и подсказок

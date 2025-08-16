@@ -143,32 +143,84 @@
     <script src="checkout-app.js"></script>
     <script>
         // Debug logging
-        console.log('🔧 DEBUG: DOM loaded, starting initialization...');
+        console.log('🔧 DEBUG: Script loaded, checking dependencies...');
+        console.log('🔧 DEBUG: Telegram WebApp available:', !!window.Telegram?.WebApp);
+        console.log('🔧 DEBUG: PizzaAPI class available:', !!window.PizzaAPI);
+        console.log('🔧 DEBUG: PizzaNatCheckoutApp class available:', !!window.PizzaNatCheckoutApp);
         
         // Error handler for debugging
         window.addEventListener('error', (e) => {
             console.error('🚨 Global error:', e.error);
             console.error('🚨 Error details:', e.message, e.filename, e.lineno);
+            
+            // Показываем ошибку на экране для отладки
+            const errorScreen = document.getElementById('error-screen');
+            const errorMessage = document.getElementById('error-message');
+            if (errorScreen && errorMessage) {
+                errorMessage.textContent = `Ошибка: ${e.message} в ${e.filename}:${e.lineno}`;
+                errorScreen.style.display = 'flex';
+            }
         });
         
         // Unhandled promise rejection handler
         window.addEventListener('unhandledrejection', (e) => {
             console.error('🚨 Unhandled promise rejection:', e.reason);
+            
+            // Показываем ошибку на экране
+            const errorScreen = document.getElementById('error-screen');
+            const errorMessage = document.getElementById('error-message');
+            if (errorScreen && errorMessage) {
+                errorMessage.textContent = `Promise error: ${e.reason?.message || e.reason}`;
+                errorScreen.style.display = 'flex';
+            }
         });
         
-        // Инициализация приложения
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🔧 DEBUG: DOMContentLoaded fired');
+        // Функция инициализации с проверками
+        function initializeApp() {
+            console.log('🔧 DEBUG: Starting app initialization...');
+            
+            // Проверяем наличие всех необходимых классов
+            if (typeof PizzaNatCheckoutApp === 'undefined') {
+                throw new Error('PizzaNatCheckoutApp class not found');
+            }
+            
+            if (typeof PizzaAPI === 'undefined') {
+                console.warn('⚠️ PizzaAPI class not found, will be created in app');
+            }
             
             try {
                 console.log('🔧 DEBUG: Creating PizzaNatCheckoutApp...');
                 const app = new PizzaNatCheckoutApp();
                 console.log('🔧 DEBUG: App created successfully:', app);
+                
+                // Сохраняем глобально для отладки
+                window.checkoutApp = app;
             } catch (error) {
                 console.error('🚨 Failed to create app:', error);
-                document.body.innerHTML += '<div style="color: red; padding: 20px;">Error: ' + error.message + '</div>';
+                console.error('🚨 Error stack:', error.stack);
+                
+                // Показываем подробную ошибку на экране
+                const errorScreen = document.getElementById('error-screen');
+                const errorMessage = document.getElementById('error-message');
+                if (errorScreen && errorMessage) {
+                    errorMessage.textContent = `Ошибка инициализации: ${error.message}`;
+                    errorScreen.style.display = 'flex';
+                }
+                
+                throw error;
             }
-        });
+        }
+        
+        // Инициализация приложения
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('🔧 DEBUG: DOMContentLoaded fired');
+                setTimeout(initializeApp, 100); // Небольшая задержка для загрузки всех скриптов
+            });
+        } else {
+            console.log('🔧 DEBUG: DOM already ready');
+            setTimeout(initializeApp, 100);
+        }
     </script>
 </body>
 </html>
