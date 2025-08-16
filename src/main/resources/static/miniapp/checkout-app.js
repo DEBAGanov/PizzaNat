@@ -313,15 +313,19 @@ class PizzaNatCheckoutApp {
      */
     updateSubmitButtonState() {
         const submitButton = document.getElementById('submit-order');
-        if (!submitButton) return;
+        if (!submitButton) {
+            console.warn('⚠️ Submit button not found in DOM');
+            return;
+        }
 
         const hasName = this.userData?.name && this.userData.name !== 'Данные не загружены';
         const hasPhone = this.userData?.phone && this.userData.phone.length > 0;
         const hasCart = this.cart?.items && this.cart.items.length > 0;
+        const totalAmount = (this.cart?.totalAmount || 0) + (this.deliveryCost || 0);
 
         if (hasName && hasPhone && hasCart) {
             submitButton.disabled = false;
-            submitButton.textContent = `Оформить заказ ₽${this.cart.totalAmount + this.deliveryCost}`;
+            submitButton.textContent = `Оформить заказ ₽${totalAmount}`;
             submitButton.style.opacity = '1';
         } else {
             submitButton.disabled = true;
@@ -472,27 +476,38 @@ class PizzaNatCheckoutApp {
      */
     renderOrderItems() {
         const container = document.getElementById('order-items');
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ Order items container not found in DOM');
+            return;
+        }
 
         container.innerHTML = '';
+
+        if (!this.cart.items || this.cart.items.length === 0) {
+            container.innerHTML = '<div class="empty-cart">Корзина пуста</div>';
+            return;
+        }
 
         this.cart.items.forEach(item => {
             const itemElement = document.createElement('div');
             itemElement.className = 'order-item';
             itemElement.innerHTML = `
                 <img src="${item.imageUrl || '/static/images/products/pizza_4_chees.png'}" 
-                     alt="${item.name}" 
+                     alt="${item.name || 'Товар'}" 
                      class="order-item-image">
                 <div class="order-item-info">
-                    <div class="order-item-title">${item.name}</div>
-                    <div class="order-item-details">${item.quantity} шт. × ₽${item.price}</div>
+                    <div class="order-item-title">${item.name || 'Товар'}</div>
+                    <div class="order-item-details">${item.quantity || 1} шт. × ₽${item.price || 0}</div>
                 </div>
-                <div class="order-item-price">₽${item.subtotal}</div>
+                <div class="order-item-price">₽${item.subtotal || (item.price * item.quantity) || 0}</div>
             `;
             container.appendChild(itemElement);
         });
 
-        this.updateTotals();
+        // Обновляем только если DOM полностью готов
+        setTimeout(() => {
+            this.updateTotals();
+        }, 50);
     }
 
     /**
@@ -668,14 +683,29 @@ class PizzaNatCheckoutApp {
      * Обновление итоговых сумм
      */
     updateTotals() {
-        const itemsTotal = this.cart.totalAmount;
-        const totalAmount = itemsTotal + this.deliveryCost;
+        const itemsTotal = this.cart.totalAmount || 0;
+        const totalAmount = itemsTotal + (this.deliveryCost || 0);
 
-        // Обновляем отображение
-        document.getElementById('items-total').textContent = `₽${itemsTotal}`;
-        document.getElementById('delivery-cost').textContent = `₽${this.deliveryCost}`;
-        document.getElementById('total-amount').textContent = `₽${totalAmount}`;
-        document.getElementById('final-total').textContent = `₽${totalAmount}`;
+        // Обновляем отображение с проверкой существования элементов
+        const itemsTotalEl = document.getElementById('items-total');
+        if (itemsTotalEl) {
+            itemsTotalEl.textContent = `₽${itemsTotal}`;
+        }
+        
+        const deliveryCostEl = document.getElementById('delivery-cost');
+        if (deliveryCostEl) {
+            deliveryCostEl.textContent = `₽${this.deliveryCost || 0}`;
+        }
+        
+        const totalAmountEl = document.getElementById('total-amount');
+        if (totalAmountEl) {
+            totalAmountEl.textContent = `₽${totalAmount}`;
+        }
+        
+        const finalTotalEl = document.getElementById('final-total');
+        if (finalTotalEl) {
+            finalTotalEl.textContent = `₽${totalAmount}`;
+        }
         
         // Обновляем состояние кнопки заказа
         this.updateSubmitButtonState();
@@ -971,8 +1001,38 @@ class PizzaNatCheckoutApp {
      * Показать приложение
      */
     showApp() {
-        document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
+        const loadingScreen = document.getElementById('loading-screen');
+        const appContainer = document.getElementById('app');
+        
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+        
+        if (appContainer) {
+            appContainer.style.display = 'block';
+        }
+        
+        // Проверяем что все ключевые элементы присутствуют
+        const criticalElements = [
+            'order-items',
+            'submit-order',
+            'user-name',
+            'user-phone',
+            'items-total',
+            'delivery-cost',
+            'total-amount',
+            'final-total'
+        ];
+        
+        const missingElements = criticalElements.filter(id => !document.getElementById(id));
+        if (missingElements.length > 0) {
+            console.warn('⚠️ Missing DOM elements:', missingElements);
+        }
+        
+        // Обновляем интерфейс после показа приложения
+        setTimeout(() => {
+            this.updateTotals();
+        }, 100);
     }
 
     /**
