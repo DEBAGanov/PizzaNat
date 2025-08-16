@@ -102,7 +102,9 @@ class PizzaNatCheckoutApp {
             requestContact: typeof this.tg.requestContact,
             requestWriteAccess: typeof this.tg.requestWriteAccess,
             showAlert: typeof this.tg.showAlert,
-            showPopup: typeof this.tg.showPopup
+            showPopup: typeof this.tg.showPopup,
+            cloudStorage: typeof this.tg.CloudStorage,
+            biometricManager: typeof this.tg.BiometricManager
         });
 
         // Разворачиваем приложение
@@ -356,38 +358,21 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Показать поле для ручного ввода номера телефона
+     * Показать поле для ручного ввода номера телефона (API 7.7)
      */
     showManualPhoneInput() {
-        console.log('📝 Показываем варианты ввода номера...');
+        console.log('📝 Показываем варианты ввода номера (API 7.7)...');
         
         const userPhoneEl = document.getElementById('user-phone');
         if (userPhoneEl) {
-            // Проверяем версию API для отображения правильной кнопки
-            const apiVersion = parseFloat(this.tg?.version || '0.0');
-            const supportsRequestContact = apiVersion >= 6.9;
-            
-            let contactButtonHtml = '';
-            if (supportsRequestContact) {
-                contactButtonHtml = `
-                    <div style="margin-bottom: 10px;">
-                        <button onclick="window.checkoutApp.requestContactAgain()" 
-                                style="width: 100%; padding: 8px 16px; background: #007acc; color: white; border: none; border-radius: 4px; margin-bottom: 8px;">
-                            📱 Поделиться контактом еще раз
-                        </button>
-                    </div>
-                    <div style="text-align: center; margin: 10px 0; color: #666;">или</div>
-                `;
-            } else {
-                contactButtonHtml = `
-                    <div style="margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 14px; color: #666;">
-                        ℹ️ Telegram версии ${apiVersion} не поддерживает автоматический запрос контакта. Введите номер вручную:
-                    </div>
-                `;
-            }
-            
             userPhoneEl.innerHTML = `
-                ${contactButtonHtml}
+                <div style="margin-bottom: 10px;">
+                    <button onclick="window.checkoutApp.requestContactAgain()" 
+                            style="width: 100%; padding: 8px 16px; background: #007acc; color: white; border: none; border-radius: 4px; margin-bottom: 8px;">
+                        📱 Поделиться контактом еще раз
+                    </button>
+                </div>
+                <div style="text-align: center; margin: 10px 0; color: #666;">или</div>
                 <input type="tel" 
                        id="manual-phone-input" 
                        placeholder="+7 XXX XXX XX XX" 
@@ -402,45 +387,25 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Повторный запрос контакта согласно Telegram API
+     * Повторный запрос контакта (версия API 7.7 - полная поддержка)
      */
     requestContactAgain() {
-        console.log('📱 Повторный запрос контакта...');
+        console.log('📱 Повторный запрос контакта (API 7.7)...');
         
-        // Проверяем доступность API
         if (!this.tg) {
             console.error('❌ Telegram WebApp API недоступен');
             this.showManualPhoneInput();
             return;
         }
         
-        // Проверяем версию API
         console.log('🔍 Telegram WebApp version:', this.tg.version);
-        console.log('🔍 Available methods:', Object.keys(this.tg));
-        
-        // Проверяем версию API (requestContact требует версию 6.9+)
-        const apiVersion = parseFloat(this.tg.version || '0.0');
-        const requiredVersion = 6.9;
-        
-        if (apiVersion < requiredVersion) {
-            console.warn(`⚠️ requestContact требует версию ${requiredVersion}+, текущая: ${apiVersion}`);
-            
-            if (this.tg?.showAlert) {
-                this.tg.showAlert(`Ваша версия Telegram (${apiVersion}) не поддерживает автоматический запрос контакта. Пожалуйста, введите номер вручную или обновите Telegram.`);
-            }
-            
-            // Сразу показываем ручной ввод
-            setTimeout(() => {
-                this.showManualPhoneInput();
-            }, 1000);
-            return;
-        }
+        console.log('🔍 Available methods:', Object.keys(this.tg).filter(key => typeof this.tg[key] === 'function'));
         
         if (typeof this.tg.requestContact === 'function') {
-            console.log(`✅ requestContact доступен (версия ${apiVersion}), выполняем запрос...`);
+            console.log('✅ requestContact доступен (API 7.7), выполняем запрос...');
             
             try {
-                // Вызываем согласно официальной документации Bot API 6.9+
+                // Вызываем requestContact() - поддерживается в API 7.7
                 this.tg.requestContact();
                 console.log('📞 requestContact() вызван успешно');
                 
@@ -448,31 +413,15 @@ class PizzaNatCheckoutApp {
                 setTimeout(() => {
                     console.log('⏰ Таймаут ожидания контакта, показываем ручной ввод');
                     this.showManualPhoneInput();
-                }, 10000); // 10 секунд ожидания
+                }, 8000); // 8 секунд ожидания
                 
             } catch (error) {
                 console.error('❌ Ошибка при вызове requestContact:', error);
-                
-                if (error.message && error.message.includes('WebAppMethodUnsupported')) {
-                    console.log('🔧 Метод не поддерживается, показываем ручной ввод');
-                    if (this.tg?.showAlert) {
-                        this.tg.showAlert('Автоматический запрос контакта не поддерживается. Введите номер вручную.');
-                    }
-                }
-                
                 this.showManualPhoneInput();
             }
         } else {
-            console.warn('⚠️ requestContact недоступен. Доступные методы:', Object.keys(this.tg).filter(key => typeof this.tg[key] === 'function'));
-            
-            if (this.tg?.showAlert) {
-                this.tg.showAlert('Функция запроса контакта недоступна в данной версии Telegram. Пожалуйста, введите номер вручную.');
-            }
-            
-            // Показываем ручной ввод
-            setTimeout(() => {
-                this.showManualPhoneInput();
-            }, 1000);
+            console.warn('⚠️ requestContact недоступен, показываем ручной ввод');
+            this.showManualPhoneInput();
         }
     }
 
@@ -557,11 +506,10 @@ class PizzaNatCheckoutApp {
                         this.tryAlternativeContactMethod();
                     }, 500);
                     
-                    // Потом запрашиваем контакт если доступно и версия поддерживает
-                    const apiVersion = parseFloat(this.tg?.version || '0.0');
-                    if (this.tg && this.tg.requestContact && apiVersion >= 6.9) {
+                    // Потом запрашиваем контакт (API 7.7 - полная поддержка)
+                    if (this.tg && this.tg.requestContact) {
                         setTimeout(() => {
-                            console.log('📱 Запрашиваем контакт через requestContact...');
+                            console.log('📱 Запрашиваем контакт через requestContact (API 7.7)...');
                             try {
                                 this.tg.requestContact();
                             } catch (error) {
@@ -569,7 +517,7 @@ class PizzaNatCheckoutApp {
                             }
                         }, 1000);
                     } else {
-                        console.log(`ℹ️ requestContact недоступен (версия ${apiVersion}, требуется 6.9+)`);
+                        console.log('ℹ️ requestContact недоступен');
                     }
                 }
             } else {
@@ -653,10 +601,9 @@ class PizzaNatCheckoutApp {
             this.tryAlternativeContactMethod();
         }, 500);
         
-        // Запрашиваем номер телефона через requestContact если версия поддерживает
-        const apiVersion = parseFloat(this.tg?.version || '0.0');
-        if (this.tg && this.tg.requestContact && apiVersion >= 6.9) {
-            console.log('📱 Requesting phone contact from user...');
+        // Запрашиваем номер телефона через requestContact (API 7.7)
+        if (this.tg && this.tg.requestContact) {
+            console.log('📱 Requesting phone contact from user (API 7.7)...');
             setTimeout(() => {
                 try {
                     this.tg.requestContact();
@@ -665,7 +612,7 @@ class PizzaNatCheckoutApp {
                 }
             }, 1500); // Небольшая задержка
         } else {
-            console.log(`ℹ️ requestContact пропущен (версия ${apiVersion}, требуется 6.9+)`);
+            console.log('ℹ️ requestContact недоступен');
         }
     }
 
