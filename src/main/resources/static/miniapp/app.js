@@ -571,25 +571,23 @@ class PizzaNatMiniApp {
             this.tg.HapticFeedback.impactOccurred('heavy');
         }
 
-        // Запрашиваем контактную информацию если доступно
-        if (this.tg?.requestContact) {
-            try {
-                await this.requestUserContact();
-                return; // Продолжение в handleContactReceived
-            } catch (error) {
-                console.warn('Не удалось запросить контакт, используем стандартные данные');
-            }
-        }
+        // Сохраняем корзину в localStorage для передачи на страницу оформления заказа
+        this.saveCartToStorage();
 
-        // Создаем заказ со стандартными данными
-        await this.createOrderWithData({
-            deliveryAddress: 'г. Волжск, адрес будет уточнен',
-            deliveryType: 'Доставка курьером',
-            contactName: this.tg?.initDataUnsafe?.user?.first_name || 'Пользователь',
-            contactPhone: '+79999999999',
-            comment: 'Заказ через Telegram Mini App',
-            paymentMethod: 'SBP'
-        });
+        // Переходим на страницу оформления заказа
+        window.location.href = 'checkout.html';
+    }
+
+    /**
+     * Сохранение корзины в localStorage
+     */
+    saveCartToStorage() {
+        try {
+            localStorage.setItem('pizzanat_cart', JSON.stringify(this.cart));
+            console.log('✅ Cart saved to localStorage:', this.cart);
+        } catch (error) {
+            console.warn('Failed to save cart to localStorage:', error);
+        }
     }
 
     /**
