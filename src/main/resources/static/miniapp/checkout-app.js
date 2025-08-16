@@ -13,6 +13,7 @@ class PizzaNatCheckoutApp {
         this.deliveryCost = 200; // Default delivery cost
         this.address = '';
         this.authToken = null;
+        this.pendingOrderSubmission = false; // Флаг для отложенного оформления заказа
         
         // Load cart from localStorage
         this.loadCartFromStorage();
@@ -99,6 +100,7 @@ class PizzaNatCheckoutApp {
         
         // Подписываемся на события
         this.tg.onEvent('themeChanged', () => this.applyTelegramTheme());
+        this.tg.onEvent('contactRequested', (data) => this.handleContactReceived(data));
         
         console.log('✅ Telegram WebApp configured');
     }
@@ -162,6 +164,57 @@ class PizzaNatCheckoutApp {
             console.error('❌ Authentication failed:', error.message, error);
             console.log('🔧 Continuing without auth...');
             // Продолжаем без авторизации для демонстрации
+        }
+    }
+
+    /**
+     * Обработка полученной контактной информации
+     */
+    handleContactReceived(data) {
+        console.log('📞 Получена контактная информация:', data);
+
+        if (data.status === 'sent' && data.contact) {
+            // Обновляем данные пользователя
+            const contactName = data.contact.first_name || this.userData?.name || 'Пользователь';
+            const contactPhone = data.contact.phone_number || '';
+
+            this.userData = {
+                name: contactName,
+                phone: contactPhone
+            };
+
+            // Обновляем отображение
+            const userNameEl = document.getElementById('user-name');
+            const userPhoneEl = document.getElementById('user-phone');
+            
+            if (userNameEl) {
+                userNameEl.textContent = contactName;
+                userNameEl.style.color = '';
+            }
+            
+            if (userPhoneEl) {
+                userPhoneEl.textContent = contactPhone;
+                userPhoneEl.style.color = '';
+            }
+
+            // Включаем кнопку заказа
+            const submitButton = document.getElementById('submit-order');
+            if (submitButton) {
+                submitButton.disabled = false;
+                this.updateTotals(); // Обновляем текст кнопки
+            }
+
+            console.log('✅ Контактная информация обновлена');
+            
+            // Если у нас есть отложенный заказ, продолжаем его оформление
+            if (this.pendingOrderSubmission) {
+                console.log('🚀 Продолжаем оформление заказа с полученным контактом');
+                this.pendingOrderSubmission = false;
+                this.submitOrder();
+            }
+        } else {
+            console.warn('⚠️ Пользователь отменил предоставление контакта');
+            this.showError('Для оформления заказа необходимо предоставить контактную информацию');
         }
     }
 
@@ -653,8 +706,16 @@ class PizzaNatCheckoutApp {
             }
 
             if (!this.userData.phone) {
-                this.showError('Номер телефона не указан. Пожалуйста, обновите профиль');
-                return;
+                // Запрашиваем контакт вместо показа ошибки
+                if (this.tg && this.tg.requestContact) {
+                    console.log('📱 Запрашиваем номер телефона для оформления заказа...');
+                    this.pendingOrderSubmission = true; // Флаг для продолжения после получения контакта
+                    this.tg.requestContact();
+                    return;
+                } else {
+                    this.showError('Номер телефона не указан. Пожалуйста, обновите профиль');
+                    return;
+                }
             }
 
             if (this.deliveryMethod === 'DELIVERY' && !this.address) {
