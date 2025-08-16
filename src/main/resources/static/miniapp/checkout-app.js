@@ -115,6 +115,20 @@ class PizzaNatCheckoutApp {
         this.tg.onEvent('themeChanged', () => this.applyTelegramTheme());
         this.tg.onEvent('contactRequested', (data) => this.handleContactReceived(data));
         
+        // Альтернативные обработчики для контактов
+        this.tg.onEvent('contact_requested', (data) => this.handleContactReceived(data));
+        this.tg.onEvent('contact', (data) => this.handleContactReceived(data));
+        
+        // Обработчик для глобального события контакта
+        if (this.tg.onEvent) {
+            this.tg.onEvent('*', (eventType, data) => {
+                console.log('🔧 Telegram event received:', eventType, data);
+                if (eventType.includes('contact') || eventType.includes('Contact')) {
+                    this.handleContactReceived(data);
+                }
+            });
+        }
+        
         console.log('✅ Telegram WebApp configured');
     }
 
@@ -184,11 +198,38 @@ class PizzaNatCheckoutApp {
      */
     handleContactReceived(data) {
         console.log('📞 Получена контактная информация:', data);
+        console.log('📞 Тип события:', typeof data, data);
 
-        if (data.status === 'sent' && data.contact) {
+        // Проверяем разные форматы данных контакта
+        let contactData = null;
+        
+        if (data && data.status === 'sent' && data.contact) {
+            // Формат 1: {status: 'sent', contact: {...}}
+            contactData = data.contact;
+        } else if (data && data.contact) {
+            // Формат 2: {contact: {...}}
+            contactData = data.contact;
+        } else if (data && data.first_name && data.phone_number) {
+            // Формат 3: прямые данные контакта
+            contactData = data;
+        } else if (this.tg && this.tg.initDataUnsafe && this.tg.initDataUnsafe.user) {
+            // Формат 4: берем из initData
+            const user = this.tg.initDataUnsafe.user;
+            if (user.phone_number) {
+                contactData = {
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    phone_number: user.phone_number
+                };
+            }
+        }
+
+        if (contactData && contactData.phone_number) {
+            console.log('✅ Контактные данные найдены:', contactData);
+            
             // Обновляем данные пользователя
-            const contactName = data.contact.first_name || this.userData?.name || 'Пользователь';
-            const contactPhone = data.contact.phone_number || '';
+            const contactName = contactData.first_name || this.userData?.name || 'Пользователь';
+            const contactPhone = contactData.phone_number || '';
 
             // Сохраняем предыдущее имя если оно есть
             const currentName = this.userData?.name || contactName;
@@ -218,12 +259,8 @@ class PizzaNatCheckoutApp {
             console.log('✅ Контактная информация обновлена:', { name: currentName, phone: contactPhone });
             
             // Показываем уведомление об успешном получении контакта
-            if (this.tg?.showPopup) {
-                this.tg.showPopup({
-                    title: 'Контакт получен',
-                    message: 'Теперь вы можете оформить заказ',
-                    buttons: [{ type: 'ok' }]
-                });
+            if (this.tg?.showAlert) {
+                this.tg.showAlert('Контакт получен! Теперь вы можете оформить заказ.');
             }
             
             // Если у нас есть отложенный заказ, продолжаем его оформление
@@ -235,10 +272,112 @@ class PizzaNatCheckoutApp {
                 }, 500); // Небольшая задержка для лучшего UX
             }
         } else {
-            console.warn('⚠️ Пользователь отменил предоставление контакта');
-            // Не показываем ошибку, просто оставляем кнопку неактивной
+            console.warn('⚠️ Контактные данные не найдены или пользователь отменил:', data);
+            
+            // Пробуем альтернативный способ - проверить initData
+            setTimeout(() => {
+                this.tryAlternativeContactMethod();
+            }, 1000);
+            
             if (this.pendingOrderSubmission) {
                 this.pendingOrderSubmission = false;
+            }
+        }
+    }
+
+    /**
+     * Альтернативный способ получения контакта
+     */
+    tryAlternativeContactMethod() {
+        console.log('🔄 Пробуем альтернативный способ получения контакта...');
+        
+        if (this.tg && this.tg.initDataUnsafe && this.tg.initDataUnsafe.user) {
+            const user = this.tg.initDataUnsafe.user;
+            console.log('👤 Данные пользователя из initData:', user);
+            
+            // Проверяем есть ли номер телефона в initData
+            if (user.phone_number) {
+                console.log('📱 Найден номер телефона в initData:', user.phone_number);
+                this.handleContactReceived({
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    phone_number: user.phone_number
+                });
+                return;
+            }
+        }
+        
+        // Если ничего не найдено, создаем кнопку для ручного ввода
+        this.showManualPhoneInput();
+    }
+
+    /**
+     * Показать поле для ручного ввода номера телефона
+     */
+    showManualPhoneInput() {
+        console.log('📝 Показываем варианты ввода номера...');
+        
+        const userPhoneEl = document.getElementById('user-phone');
+        if (userPhoneEl) {
+            userPhoneEl.innerHTML = `
+                <div style="margin-bottom: 10px;">
+                    <button onclick="window.checkoutApp.requestContactAgain()" 
+                            style="width: 100%; padding: 8px 16px; background: #007acc; color: white; border: none; border-radius: 4px; margin-bottom: 8px;">
+                        📱 Поделиться контактом еще раз
+                    </button>
+                </div>
+                <div style="text-align: center; margin: 10px 0; color: #666;">или</div>
+                <input type="tel" 
+                       id="manual-phone-input" 
+                       placeholder="+7 XXX XXX XX XX" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"
+                       maxlength="18">
+                <button onclick="window.checkoutApp.submitManualPhone()" 
+                        style="width: 100%; margin-top: 8px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px;">
+                    ✅ Подтвердить номер
+                </button>
+            `;
+        }
+    }
+
+    /**
+     * Повторный запрос контакта
+     */
+    requestContactAgain() {
+        console.log('📱 Повторный запрос контакта...');
+        
+        if (this.tg && this.tg.requestContact) {
+            this.tg.requestContact();
+        } else {
+            console.warn('⚠️ requestContact недоступен');
+            if (this.tg?.showAlert) {
+                this.tg.showAlert('Запрос контакта недоступен. Пожалуйста, введите номер вручную.');
+            }
+        }
+    }
+
+    /**
+     * Обработка ручного ввода номера телефона
+     */
+    submitManualPhone() {
+        const phoneInput = document.getElementById('manual-phone-input');
+        if (phoneInput && phoneInput.value.trim()) {
+            const phone = phoneInput.value.trim();
+            console.log('📱 Ручной ввод номера:', phone);
+            
+            this.userData = this.userData || {};
+            this.userData.phone = phone;
+            
+            const userPhoneEl = document.getElementById('user-phone');
+            if (userPhoneEl) {
+                userPhoneEl.textContent = phone;
+                userPhoneEl.style.color = '';
+            }
+            
+            this.updateSubmitButtonState();
+            
+            if (this.tg?.showAlert) {
+                this.tg.showAlert('Номер телефона сохранен!');
             }
         }
     }
@@ -289,12 +428,22 @@ class PizzaNatCheckoutApp {
                 
                 console.log('✅ User data loaded successfully', { hasPhone: !!phoneNumber });
                 
-                // Если нет телефона, сразу предлагаем поделиться контактом
-                if (!phoneNumber && this.tg && this.tg.requestContact) {
-                    console.log('📱 Номер телефона отсутствует, запрашиваем контакт...');
+                // Если нет телефона, пробуем разные способы получения
+                if (!phoneNumber) {
+                    console.log('📱 Номер телефона отсутствует, пробуем разные способы получения...');
+                    
+                    // Сначала проверяем initData
                     setTimeout(() => {
-                        this.tg.requestContact();
-                    }, 1000); // Небольшая задержка для улучшения UX
+                        this.tryAlternativeContactMethod();
+                    }, 500);
+                    
+                    // Потом запрашиваем контакт если доступно
+                    if (this.tg && this.tg.requestContact) {
+                        setTimeout(() => {
+                            console.log('📱 Запрашиваем контакт через requestContact...');
+                            this.tg.requestContact();
+                        }, 1000);
+                    }
                 }
             } else {
                 console.warn('⚠️ No user profile found');
@@ -372,7 +521,12 @@ class PizzaNatCheckoutApp {
         // Обновляем состояние кнопки
         this.updateSubmitButtonState();
         
-        // Запрашиваем номер телефона
+        // Пробуем получить номер телефона разными способами
+        setTimeout(() => {
+            this.tryAlternativeContactMethod();
+        }, 500);
+        
+        // Запрашиваем номер телефона через requestContact
         if (this.tg && this.tg.requestContact) {
             console.log('📱 Requesting phone contact from user...');
             setTimeout(() => {
