@@ -14,6 +14,7 @@ class PizzaNatCheckoutApp {
         this.address = '';
         this.authToken = null;
         this.pendingOrderSubmission = false; // Флаг для отложенного оформления заказа
+        this.contactRequested = false; // Флаг для отслеживания запроса контакта
         
         // Load cart from localStorage
         this.loadCartFromStorage();
@@ -306,6 +307,10 @@ class PizzaNatCheckoutApp {
 
             // Обновляем состояние кнопки
             this.updateSubmitButtonState();
+            
+            // Сбрасываем флаг, так как контакт успешно получен
+            this.contactRequested = false;
+            console.log('🔄 Флаг contactRequested сброшен - контакт успешно получен');
 
             console.log('✅ Контактная информация обновлена:', { name: currentName, phone: contactPhone });
             
@@ -412,13 +417,20 @@ class PizzaNatCheckoutApp {
         console.log('  - this.tg.version:', this.tg?.version);
         console.log('  - this.tg.platform:', this.tg?.platform);
         console.log('  - typeof this.tg.requestContact:', typeof this.tg?.requestContact);
+        console.log('  - this.contactRequested:', this.contactRequested);
         console.log('  - window.Telegram доступен:', !!window.Telegram);
         console.log('  - window.Telegram.WebApp доступен:', !!window.Telegram?.WebApp);
         console.log('  - window.Telegram.WebApp.version:', window.Telegram?.WebApp?.version);
-        console.log('  - typeof window.Telegram.WebApp.requestContact:', typeof window.Telegram?.WebApp?.requestContact);
         
         if (!this.tg) {
             console.error('❌ Telegram WebApp API недоступен');
+            this.showManualPhoneInput();
+            return;
+        }
+        
+        // Проверяем, не был ли уже запрошен контакт
+        if (this.contactRequested) {
+            console.log('⚠️ requestContact уже был вызван ранее, показываем ручной ввод');
             this.showManualPhoneInput();
             return;
         }
@@ -431,7 +443,8 @@ class PizzaNatCheckoutApp {
             try {
                 console.log('🚀 Вызываем this.tg.requestContact()...');
                 this.tg.requestContact();
-                console.log('📞 requestContact() вызван БЕЗ ОШИБОК');
+                this.contactRequested = true; // Устанавливаем флаг
+                console.log('📞 requestContact() вызван БЕЗ ОШИБОК, флаг установлен');
                 
                 // Устанавливаем таймаут на случай если событие не придет
                 setTimeout(() => {
@@ -444,6 +457,13 @@ class PizzaNatCheckoutApp {
                 console.error('  - error.name:', error.name);
                 console.error('  - error.message:', error.message);
                 console.error('  - error.stack:', error.stack);
+                
+                // Если ошибка "WebAppContactRequested" - это означает что контакт уже был запрошен
+                if (error.message === 'WebAppContactRequested') {
+                    console.log('ℹ️ Контакт уже был запрошен ранее, устанавливаем флаг');
+                    this.contactRequested = true;
+                }
+                
                 this.showManualPhoneInput();
             }
         } else {
@@ -475,6 +495,10 @@ class PizzaNatCheckoutApp {
             }
             
             this.updateSubmitButtonState();
+            
+            // Сбрасываем флаг, так как контакт введен вручную
+            this.contactRequested = false;
+            console.log('🔄 Флаг contactRequested сброшен - номер введен вручную');
             
             if (this.tg?.showAlert) {
                 this.tg.showAlert('Номер телефона сохранен!');
@@ -542,9 +566,17 @@ class PizzaNatCheckoutApp {
                         setTimeout(() => {
                             console.log('📱 Запрашиваем контакт через requestContact (API 7.7)...');
                             try {
-                                this.tg.requestContact();
+                                if (!this.contactRequested) {
+                                    this.tg.requestContact();
+                                    this.contactRequested = true;
+                                } else {
+                                    console.log('⚠️ requestContact уже был вызван, пропускаем');
+                                }
                             } catch (error) {
                                 console.warn('⚠️ Ошибка при автозапросе контакта:', error);
+                                if (error.message === 'WebAppContactRequested') {
+                                    this.contactRequested = true;
+                                }
                             }
                         }, 1000);
                     } else {
@@ -637,9 +669,17 @@ class PizzaNatCheckoutApp {
             console.log('📱 Requesting phone contact from user (API 7.7)...');
             setTimeout(() => {
                 try {
-            this.tg.requestContact();
+                    if (!this.contactRequested) {
+                        this.tg.requestContact();
+                        this.contactRequested = true;
+                    } else {
+                        console.log('⚠️ requestContact уже был вызван, пропускаем');
+                    }
                 } catch (error) {
                     console.warn('⚠️ Ошибка при запросе контакта:', error);
+                    if (error.message === 'WebAppContactRequested') {
+                        this.contactRequested = true;
+                    }
                 }
             }, 1500); // Небольшая задержка
         } else {
@@ -1084,10 +1124,22 @@ class PizzaNatCheckoutApp {
                                 { type: 'ok', text: 'Поделиться номером' }
                             ]
                         }, () => {
-                    this.tg.requestContact();
+                            if (!this.contactRequested) {
+                                this.tg.requestContact();
+                                this.contactRequested = true;
+                            } else {
+                                console.log('⚠️ requestContact уже был вызван ранее');
+                                this.showManualPhoneInput();
+                            }
                         });
                     } else {
-                        this.tg.requestContact();
+                        if (!this.contactRequested) {
+                            this.tg.requestContact();
+                            this.contactRequested = true;
+                        } else {
+                            console.log('⚠️ requestContact уже был вызван ранее');
+                            this.showManualPhoneInput();
+                        }
                     }
                     return;
                 } else {
