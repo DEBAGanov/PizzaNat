@@ -218,10 +218,11 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
      */
     private void sendWelcomeMessage(Long chatId, TelegramUserData userData) {
         String message = String.format(
-                "🍕 *Добро пожаловать в PizzaNat!*\n\n" +
+                "🍕 *Добро пожаловать в DIMBO PIZZA!*\n\n" +
                         "Привет, %s!\n\n" +
-                        "Это официальный бот пиццерии PizzaNat.\n\n" +
+                        "Это официальный бот пиццерии DIMBO PIZZA.\n\n" +
                         "Для заказа пиццы используйте наше мобильное приложение или веб-сайт.\n\n" +
+                        "https://dimbopizza.ru\n\n" +
                         "Команды:\n" +
                         "• /help - помощь\n" +
                         "• /menu - меню (скоро)",
