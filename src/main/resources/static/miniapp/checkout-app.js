@@ -191,11 +191,11 @@ class PizzaNatCheckoutApp {
             return;
         }
 
-        if (!this.api) {
+            if (!this.api) {
             console.error('❌ API not initialized for authentication');
             return;
-        }
-
+            }
+            
         console.log('🔐 Authenticating user with initData...');
 
         try {
@@ -306,7 +306,7 @@ class PizzaNatCheckoutApp {
                 console.log('🚀 Продолжаем оформление заказа с полученным контактом');
                 this.pendingOrderSubmission = false;
                 setTimeout(() => {
-                    this.submitOrder();
+                this.submitOrder();
                 }, 500); // Небольшая задержка для лучшего UX
             }
         } else {
@@ -606,7 +606,7 @@ class PizzaNatCheckoutApp {
             console.log('📱 Requesting phone contact from user (API 7.7)...');
             setTimeout(() => {
                 try {
-                    this.tg.requestContact();
+            this.tg.requestContact();
                 } catch (error) {
                     console.warn('⚠️ Ошибка при запросе контакта:', error);
                 }
@@ -614,7 +614,7 @@ class PizzaNatCheckoutApp {
         } else {
             console.log('ℹ️ requestContact недоступен');
         }
-    }
+        }
 
     /**
      * Загрузка последнего адреса доставки
@@ -741,7 +741,7 @@ class PizzaNatCheckoutApp {
 
         // Обновляем только если DOM полностью готов
         setTimeout(() => {
-            this.updateTotals();
+        this.updateTotals();
         }, 50);
     }
 
@@ -1053,7 +1053,7 @@ class PizzaNatCheckoutApp {
                                 { type: 'ok', text: 'Поделиться номером' }
                             ]
                         }, () => {
-                            this.tg.requestContact();
+                    this.tg.requestContact();
                         });
                     } else {
                         this.tg.requestContact();
