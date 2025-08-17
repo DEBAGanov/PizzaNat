@@ -144,6 +144,10 @@
         // Debug logging
         console.log('🔧 DEBUG: Script loaded, checking dependencies...');
         console.log('🔧 DEBUG: Telegram WebApp available:', !!window.Telegram?.WebApp);
+        if (window.Telegram?.WebApp) {
+            console.log('🔧 DEBUG: Telegram WebApp VERSION:', window.Telegram.WebApp.version);
+            console.log('🔧 DEBUG: Telegram WebApp PLATFORM:', window.Telegram.WebApp.platform);
+        }
         console.log('🔧 DEBUG: PizzaAPI class available:', !!window.PizzaAPI);
         console.log('🔧 DEBUG: PizzaNatCheckoutApp class available:', !!window.PizzaNatCheckoutApp);
         

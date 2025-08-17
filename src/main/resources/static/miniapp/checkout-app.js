@@ -28,6 +28,16 @@ class PizzaNatCheckoutApp {
     async init() {
         console.log('🚀 Initializing PizzaNat Checkout...');
         
+        // ДИАГНОСТИКА TELEGRAM API
+        console.log('🔍 ДИАГНОСТИКА TELEGRAM API:');
+        console.log('  - window.Telegram доступен:', !!window.Telegram);
+        console.log('  - window.Telegram.WebApp доступен:', !!window.Telegram?.WebApp);
+        if (window.Telegram?.WebApp) {
+            console.log('  - Telegram WebApp version:', window.Telegram.WebApp.version);
+            console.log('  - Telegram WebApp platform:', window.Telegram.WebApp.platform);
+            console.log('  - Telegram WebApp methods:', Object.keys(window.Telegram.WebApp).filter(key => typeof window.Telegram.WebApp[key] === 'function'));
+        }
+        
         try {
             // Инициализация API
             if (!this.api) {
@@ -126,7 +136,10 @@ class PizzaNatCheckoutApp {
         
         // Основное событие запроса контакта (Bot API 6.9+)
         this.tg.onEvent('contactRequested', (data) => {
-            console.log('📞 contactRequested event received:', data);
+            console.log('📞 === СОБЫТИЕ contactRequested ПОЛУЧЕНО ===');
+            console.log('📞 Данные события:', data);
+            console.log('📞 Тип данных:', typeof data);
+            console.log('📞 JSON данных:', JSON.stringify(data, null, 2));
             this.handleContactReceived(data);
         });
         
@@ -390,7 +403,19 @@ class PizzaNatCheckoutApp {
      * Повторный запрос контакта (версия API 7.7 - полная поддержка)
      */
     requestContactAgain() {
-        console.log('📱 Повторный запрос контакта (API 7.7)...');
+        console.log('📱 === НАЧАЛО ДИАГНОСТИКИ ЗАПРОСА КОНТАКТА ===');
+        console.log('📱 Повторный запрос контакта...');
+        
+        // Подробная диагностика
+        console.log('🔍 ДИАГНОСТИКА СОСТОЯНИЯ:');
+        console.log('  - this.tg доступен:', !!this.tg);
+        console.log('  - this.tg.version:', this.tg?.version);
+        console.log('  - this.tg.platform:', this.tg?.platform);
+        console.log('  - typeof this.tg.requestContact:', typeof this.tg?.requestContact);
+        console.log('  - window.Telegram доступен:', !!window.Telegram);
+        console.log('  - window.Telegram.WebApp доступен:', !!window.Telegram?.WebApp);
+        console.log('  - window.Telegram.WebApp.version:', window.Telegram?.WebApp?.version);
+        console.log('  - typeof window.Telegram.WebApp.requestContact:', typeof window.Telegram?.WebApp?.requestContact);
         
         if (!this.tg) {
             console.error('❌ Telegram WebApp API недоступен');
@@ -398,31 +423,37 @@ class PizzaNatCheckoutApp {
             return;
         }
         
-        console.log('🔍 Telegram WebApp version:', this.tg.version);
-        console.log('🔍 Available methods:', Object.keys(this.tg).filter(key => typeof this.tg[key] === 'function'));
+        console.log('🔍 Доступные методы Telegram WebApp:', Object.keys(this.tg).filter(key => typeof this.tg[key] === 'function'));
         
         if (typeof this.tg.requestContact === 'function') {
-            console.log('✅ requestContact доступен (API 7.7), выполняем запрос...');
+            console.log('✅ requestContact НАЙДЕН! Выполняем запрос...');
             
             try {
-                // Вызываем requestContact() - поддерживается в API 7.7
+                console.log('🚀 Вызываем this.tg.requestContact()...');
                 this.tg.requestContact();
-                console.log('📞 requestContact() вызван успешно');
+                console.log('📞 requestContact() вызван БЕЗ ОШИБОК');
                 
                 // Устанавливаем таймаут на случай если событие не придет
                 setTimeout(() => {
-                    console.log('⏰ Таймаут ожидания контакта, показываем ручной ввод');
+                    console.log('⏰ ТАЙМАУТ: событие contactRequested не получено за 8 секунд');
                     this.showManualPhoneInput();
-                }, 8000); // 8 секунд ожидания
+                }, 8000);
                 
             } catch (error) {
-                console.error('❌ Ошибка при вызове requestContact:', error);
+                console.error('❌ ОШИБКА при вызове requestContact:');
+                console.error('  - error.name:', error.name);
+                console.error('  - error.message:', error.message);
+                console.error('  - error.stack:', error.stack);
                 this.showManualPhoneInput();
             }
         } else {
-            console.warn('⚠️ requestContact недоступен, показываем ручной ввод');
+            console.warn('⚠️ requestContact НЕ НАЙДЕН или НЕ ФУНКЦИЯ');
+            console.warn('  - typeof this.tg.requestContact:', typeof this.tg.requestContact);
+            console.warn('  - this.tg.requestContact value:', this.tg.requestContact);
             this.showManualPhoneInput();
         }
+        
+        console.log('📱 === КОНЕЦ ДИАГНОСТИКИ ЗАПРОСА КОНТАКТА ===');
     }
 
     /**
