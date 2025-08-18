@@ -421,14 +421,25 @@ public class PizzaNatTelegramBot extends TelegramLongPollingBot {
                 "_Для лучшего опыта используйте мобильную версию Telegram_");
         message.setParseMode("Markdown");
 
-        // Создаем обычную кнопку с URL (временное решение)
+        // Создаем кнопки для меню и заказа
         InlineKeyboardMarkup keyboard = new InlineKeyboardMarkup();
+        
+        // Кнопка меню
         InlineKeyboardButton menuButton = InlineKeyboardButton.builder()
                 .text("🍕 Открыть меню")
                 .url("https://api.dimbopizza.ru/miniapp/menu")
                 .build();
+                
+        // Кнопка заказа (главная для кросс-платформенной авторизации)
+        InlineKeyboardButton orderButton = InlineKeyboardButton.builder()
+                .text("🛒 Заказать")
+                .url("https://api.dimbopizza.ru/miniapp/checkout.html")
+                .build();
 
-        keyboard.setKeyboard(List.of(List.of(menuButton)));
+        keyboard.setKeyboard(List.of(
+            List.of(orderButton),  // Первая строка - главная кнопка "Заказать"
+            List.of(menuButton)    // Вторая строка - кнопка "Открыть меню"
+        ));
         message.setReplyMarkup(keyboard);
 
         try {
