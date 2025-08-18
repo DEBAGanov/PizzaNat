@@ -165,6 +165,7 @@
             }
         });
         
+
         // Unhandled promise rejection handler
         window.addEventListener('unhandledrejection', (e) => {
             console.error('🚨 Unhandled promise rejection:', e.reason);
@@ -213,6 +214,7 @@
                 throw error;
             }
         }
+        
         
         // Инициализация приложения
         if (document.readyState === 'loading') {
