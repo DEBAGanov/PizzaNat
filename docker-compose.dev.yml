@@ -98,8 +98,8 @@ services:
       S3_BUCKET: pizzanat
       S3_PUBLIC_URL: http://localhost:9000
 
-      # Кэширование (отключено для dev)
-      SPRING_CACHE_TYPE: none
+      # Кэширование (простое для dev)
+      SPRING_CACHE_TYPE: simple
       SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
 
       # JWT настройки
@@ -128,16 +128,16 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_JDBC_TIME_ZONE: Europe/Moscow
 
       # === TELEGRAM НАСТРОЙКИ (РАЗРАБОТКА) ===
-      # Основной пользовательский бот (для авторизации и команд)
-      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-false}
-      TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-false}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # Основной пользовательский бот (для авторизации и команд) - ВКЛЮЧЕН для тестирования Mini App
+      TELEGRAM_BOT_ENABLED: ${TELEGRAM_BOT_ENABLED:-true}
+      TELEGRAM_LONGPOLLING_ENABLED: ${TELEGRAM_LONGPOLLING_ENABLED:-true}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-DIMBOpizzaBot}
 
-      # Telegram Auth настройки (для веб-авторизации)
-      TELEGRAM_AUTH_ENABLED: ${TELEGRAM_AUTH_ENABLED:-false}
-      TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN}}
-      TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-${TELEGRAM_BOT_USERNAME}}
+      # Telegram Auth настройки (для веб-авторизации и Mini App)
+      TELEGRAM_AUTH_ENABLED: ${TELEGRAM_AUTH_ENABLED:-true}
+      TELEGRAM_AUTH_BOT_TOKEN: ${TELEGRAM_AUTH_BOT_TOKEN:-7819187384:AAGJNn0cwfJ7Nsv_N25h75eggEmqmD5WZG4}
+      TELEGRAM_AUTH_BOT_USERNAME: ${TELEGRAM_AUTH_BOT_USERNAME:-DIMBOpizzaBot}
       TELEGRAM_AUTH_WEBHOOK_URL: ${TELEGRAM_AUTH_WEBHOOK_URL:-http://localhost:8080/api/v1/telegram/webhook}
       TELEGRAM_AUTH_WEBHOOK_ENABLED: ${TELEGRAM_AUTH_WEBHOOK_ENABLED:-false}
       TELEGRAM_AUTH_TOKEN_TTL_MINUTES: ${TELEGRAM_AUTH_TOKEN_TTL_MINUTES:-10}
@@ -204,8 +204,8 @@ services:
       # === ЛОГИРОВАНИЕ YOOKASSA ===
       LOGGING_LEVEL_YOOKASSA: ${LOGGING_LEVEL_YOOKASSA:-DEBUG}
 
-      # Основные Telegram настройки (для уведомлений)
-      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-false}
+      # Основные Telegram настройки (для уведомлений) - ВКЛЮЧЕНЫ для тестирования
+      TELEGRAM_ENABLED: ${TELEGRAM_ENABLED:-true}  
       TELEGRAM_API_URL: ${TELEGRAM_API_URL:-https://api.telegram.org/bot}
 
       # Админский Telegram Bot настройки
@@ -215,8 +215,8 @@ services:
       TELEGRAM_ADMIN_BOT_MAX_RETRIES: ${TELEGRAM_ADMIN_BOT_MAX_RETRIES:-3}
       TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS: ${TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS:-30}
 
-      # CORS настройки для локальной разработки
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:3000}
+      # CORS настройки для локальной разработки (включая Telegram Mini App)
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:3000,https://t.me,https://web.telegram.org}
       CORS_ALLOWED_METHODS: ${CORS_ALLOWED_METHODS:-GET,POST,PUT,DELETE,OPTIONS,PATCH}
       CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS:-Authorization,Content-Type,X-Requested-With,Accept,Origin,X-Auth-Token,Cache-Control,X-Client-Type,X-Client-Version}
       CORS_EXPOSED_HEADERS: ${CORS_EXPOSED_HEADERS:-Authorization,Content-Type,X-Total-Count,X-Pagination-Page,X-Pagination-Size}

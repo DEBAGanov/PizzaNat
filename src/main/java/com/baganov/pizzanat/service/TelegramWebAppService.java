@@ -7,12 +7,15 @@
 package com.baganov.pizzanat.service;
 
 import com.baganov.pizzanat.config.TelegramConfig;
+import com.baganov.pizzanat.entity.TelegramAuthToken;
 import com.baganov.pizzanat.entity.User;
 import com.baganov.pizzanat.model.dto.auth.AuthResponse;
 import com.baganov.pizzanat.model.dto.telegram.TelegramWebAppInitData;
 import com.baganov.pizzanat.model.dto.telegram.TelegramWebAppUser;
+import com.baganov.pizzanat.repository.TelegramAuthTokenRepository;
 import com.baganov.pizzanat.repository.UserRepository;
 import com.baganov.pizzanat.security.JwtService;
+import com.baganov.pizzanat.util.TokenGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -33,8 +35,10 @@ import java.util.*;
 public class TelegramWebAppService {
 
     private final UserRepository userRepository;
+    private final TelegramAuthTokenRepository telegramAuthTokenRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final TokenGenerator tokenGenerator;
     private final TelegramConfig.TelegramBotProperties telegramBotProperties;
 
     /**
@@ -72,6 +76,62 @@ public class TelegramWebAppService {
 
         return AuthResponse.builder()
                 .token(token)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .build();
+    }
+
+    /**
+     * Расширенная авторизация пользователя через Telegram WebApp с номером телефона
+     * Создает токен в telegram_auth_tokens для кросс-платформенного доступа
+     */
+    @Transactional
+    public AuthResponse enhancedAuthenticateUser(String initDataRaw, String phoneNumber, String deviceId) {
+        log.info("Начало расширенной авторизации пользователя Telegram WebApp с номером телефона");
+
+        // 1. Стандартная валидация и парсинг
+        if (!validateInitDataRaw(initDataRaw)) {
+            throw new IllegalArgumentException("Некорректные данные от Telegram WebApp");
+        }
+
+        TelegramWebAppInitData initData = parseInitData(initDataRaw);
+        
+        // 2. Проверка времени авторизации (не старше 24 часов)
+        if (initData.getAuthDate() != null) {
+            long currentTime = Instant.now().getEpochSecond();
+            long authTime = initData.getAuthDate();
+            if (currentTime - authTime > 86400) {
+                throw new IllegalArgumentException("Данные авторизации устарели");
+            }
+        }
+
+        // 3. Поиск или создание пользователя
+        TelegramWebAppUser telegramUser = initData.getUser();
+        User user = findOrCreateUser(telegramUser);
+
+        // 4. Обновляем номер телефона если предоставлен
+        if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+            String formattedPhone = formatPhoneNumber(phoneNumber.trim());
+            user.setPhone(formattedPhone);
+            user.setIsTelegramVerified(true);
+            userRepository.save(user);
+            log.info("Обновлен номер телефона для пользователя {}: {}", user.getId(), formattedPhone);
+        }
+
+        // 5. Создаем токен в telegram_auth_tokens для кросс-платформенного доступа
+        String authToken = generateCrossplatformToken();
+        saveTelegramAuthToken(authToken, telegramUser, deviceId);
+
+        // 6. Генерация JWT токена
+        String jwtToken = jwtService.generateToken(user);
+
+        log.info("Пользователь {} успешно авторизован через расширенную Telegram WebApp авторизацию", user.getId());
+
+        return AuthResponse.builder()
+                .token(jwtToken)
                 .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
@@ -378,5 +438,73 @@ public class TelegramWebAppService {
             user.setUpdatedAt(LocalDateTime.now());
             log.debug("Обновлены данные пользователя {} из Telegram", user.getId());
         }
+    }
+
+    /**
+     * Генерирует токен для кросс-платформенного доступа
+     */
+    private String generateCrossplatformToken() {
+        return tokenGenerator.generateAuthToken();
+    }
+
+    /**
+     * Сохраняет токен в telegram_auth_tokens для кросс-платформенного доступа
+     */
+    private void saveTelegramAuthToken(String authToken, TelegramWebAppUser telegramUser, String deviceId) {
+        try {
+            TelegramAuthToken token = TelegramAuthToken.builder()
+                    .authToken(authToken)
+                    .telegramId(telegramUser.getId())
+                    .telegramUsername(telegramUser.getUsername())
+                    .telegramFirstName(telegramUser.getFirstName())
+                    .telegramLastName(telegramUser.getLastName())
+                    .deviceId(deviceId)
+                    .status(TelegramAuthToken.TokenStatus.CONFIRMED)
+                    .expiresAt(LocalDateTime.now().plusDays(30)) // Долгосрочный токен для кросс-платформенного доступа
+                    .confirmedAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            telegramAuthTokenRepository.save(token);
+            log.info("Сохранен кросс-платформенный токен для пользователя {} (Telegram ID: {})", 
+                    authToken, telegramUser.getId());
+
+        } catch (Exception e) {
+            log.error("Ошибка при сохранении кросс-платформенного токена: {}", e.getMessage(), e);
+            // Не прерываем авторизацию из-за ошибки сохранения токена
+        }
+    }
+
+    /**
+     * Форматирование номера телефона в +7 формат
+     */
+    private String formatPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            return phoneNumber;
+        }
+
+        // Убираем все символы кроме цифр
+        String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
+
+        log.debug("Форматирование номера: '{}' -> '{}'", phoneNumber, cleanPhone);
+
+        // Обработка различных форматов
+        if (cleanPhone.startsWith("7") && cleanPhone.length() == 11) {
+            // Формат: 79161234567 -> +79161234567
+            return "+" + cleanPhone;
+        } else if (cleanPhone.startsWith("8") && cleanPhone.length() == 11) {
+            // Формат: 89161234567 -> +79161234567
+            return "+7" + cleanPhone.substring(1);
+        } else if (cleanPhone.length() == 10) {
+            // Формат: 9161234567 -> +79161234567
+            return "+7" + cleanPhone;
+        } else if (cleanPhone.startsWith("37") && cleanPhone.length() == 12) {
+            // Формат: 379161234567 -> +79161234567 (убираем 3)
+            return "+" + cleanPhone.substring(1);
+        }
+
+        // Если формат не распознан - возвращаем как есть с префиксом +7
+        log.warn("Неизвестный формат номера телефона: '{}', применяем +7", phoneNumber);
+        return "+7" + cleanPhone;
     }
 }

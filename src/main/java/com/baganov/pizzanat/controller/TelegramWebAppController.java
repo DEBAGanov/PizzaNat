@@ -8,6 +8,7 @@ package com.baganov.pizzanat.controller;
 
 import com.baganov.pizzanat.model.dto.auth.AuthResponse;
 import com.baganov.pizzanat.model.dto.telegram.TelegramWebAppAuthRequest;
+import com.baganov.pizzanat.model.dto.telegram.TelegramWebAppEnhancedAuthRequest;
 import com.baganov.pizzanat.service.TelegramWebAppService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -43,6 +44,29 @@ public class TelegramWebAppController {
             
         } catch (Exception e) {
             log.error("Ошибка авторизации Telegram WebApp: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/enhanced-auth")
+    @Operation(summary = "Расширенная авторизация через Telegram WebApp с номером телефона")
+    public ResponseEntity<AuthResponse> enhancedAuthenticateWebApp(
+            @Valid @RequestBody TelegramWebAppEnhancedAuthRequest request) {
+        
+        log.info("Получен запрос расширенной авторизации Telegram WebApp с номером телефона");
+        
+        try {
+            AuthResponse response = telegramWebAppService.enhancedAuthenticateUser(
+                request.getInitDataRaw(), 
+                request.getPhoneNumber(),
+                request.getDeviceId()
+            );
+            log.info("Пользователь {} успешно авторизован через расширенную Telegram WebApp авторизацию", 
+                    response.getUserId());
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Ошибка расширенной авторизации Telegram WebApp: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }

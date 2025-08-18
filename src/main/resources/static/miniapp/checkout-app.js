@@ -193,10 +193,10 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Авторизация пользователя
+     * Авторизация пользователя с автоматическим запросом номера телефона
      */
     async authenticate() {
-        console.log('🔐 Starting authentication...');
+        console.log('🔐 Starting enhanced authentication with automatic phone request...');
         console.log('📱 Telegram WebApp available:', !!this.tg);
         console.log('📋 Telegram initData available:', !!this.tg?.initData);
         
@@ -205,27 +205,133 @@ class PizzaNatCheckoutApp {
             return;
         }
 
-            if (!this.api) {
+        if (!this.api) {
             console.error('❌ API not initialized for authentication');
             return;
-            }
-            
-        console.log('🔐 Authenticating user with initData...');
+        }
 
+        // Сначала пробуем стандартную авторизацию без номера телефона
         try {
+            console.log('🔐 Trying standard authentication first...');
             const response = await this.api.authenticateWebApp(this.tg.initData);
-            console.log('🔐 Auth response:', response);
+            console.log('🔐 Standard auth response:', response);
             
             this.authToken = response.token;
-            
-            // Устанавливаем токен в API
             this.api.setAuthToken(this.authToken);
             
-            console.log('✅ User authenticated successfully');
+            console.log('✅ Standard authentication successful');
+            
+            // Все равно запрашиваем номер телефона для полной регистрации
+            this.requestPhoneForEnhancedAuth();
+            return;
+            
         } catch (error) {
-            console.error('❌ Authentication failed:', error.message, error);
-            console.log('🔧 Continuing without auth...');
-            // Продолжаем без авторизации для демонстрации
+            console.log('⚠️ Standard authentication failed, will request phone for enhanced auth:', error.message);
+        }
+
+        // Если стандартная авторизация не удалась, запрашиваем номер телефона
+        this.requestPhoneForEnhancedAuth();
+    }
+
+    /**
+     * Запрос номера телефона для расширенной авторизации
+     */
+    async requestPhoneForEnhancedAuth() {
+        console.log('📱 Requesting phone number for enhanced authentication...');
+        
+        if (!this.tg?.requestContact) {
+            console.warn('⚠️ requestContact not available, using fallback auth');
+            return;
+        }
+
+        // Подписываемся на событие получения контакта для авторизации
+        this.tg.onEvent('contactRequested', async (data) => {
+            console.log('📞 Contact received for authentication:', data);
+            
+            let phoneNumber = null;
+            
+            // Извлекаем номер телефона из события
+            if (data?.contact?.phone_number) {
+                phoneNumber = data.contact.phone_number;
+            } else if (data?.phone_number) {
+                phoneNumber = data.phone_number;
+            } else if (this.tg.initDataUnsafe?.user?.phone_number) {
+                phoneNumber = this.tg.initDataUnsafe.user.phone_number;
+            }
+
+            if (phoneNumber) {
+                await this.performEnhancedAuth(phoneNumber);
+            } else {
+                console.error('❌ Phone number not found in contact data');
+                // Fallback to standard auth
+                console.log('🔧 Falling back to standard auth without phone...');
+            }
+        });
+
+        // Автоматически запрашиваем контакт если еще не запрашивали
+        if (!this.contactRequested) {
+            try {
+                console.log('🚀 Requesting contact automatically for authentication...');
+                this.tg.requestContact();
+                this.contactRequested = true;
+                console.log('✅ Contact request sent for authentication');
+            } catch (error) {
+                console.error('❌ Failed to request contact for authentication:', error);
+                console.log('🔧 Continuing with standard auth...');
+            }
+        }
+    }
+
+    /**
+     * Выполнение расширенной авторизации с номером телефона
+     */
+    async performEnhancedAuth(phoneNumber) {
+        console.log('🔐 Performing enhanced authentication with phone:', phoneNumber);
+        
+        try {
+            const response = await this.api.enhancedAuthenticateWebApp(this.tg.initData, phoneNumber);
+            console.log('🔐 Enhanced auth response:', response);
+            
+            this.authToken = response.token;
+            this.api.setAuthToken(this.authToken);
+            
+            // Обновляем данные пользователя
+            this.userData = {
+                name: response.firstName || response.username || 'Пользователь',
+                phone: phoneNumber
+            };
+
+            // Обновляем UI
+            this.updateUserDataDisplay();
+            this.updateSubmitButtonState();
+            
+            if (this.tg?.showAlert) {
+                this.tg.showAlert('✅ Вы успешно авторизованы с номером телефона!');
+            }
+            
+            console.log('✅ Enhanced authentication successful with phone');
+            
+        } catch (error) {
+            console.error('❌ Enhanced authentication failed:', error);
+            console.log('🔧 Continuing without enhanced auth...');
+        }
+    }
+
+    /**
+     * Обновление отображения данных пользователя в UI
+     */
+    updateUserDataDisplay() {
+        const userNameEl = document.getElementById('user-name');
+        const userPhoneEl = document.getElementById('user-phone');
+        
+        if (userNameEl && this.userData?.name) {
+            userNameEl.textContent = this.userData.name;
+            userNameEl.style.color = '';
+        }
+        
+        if (userPhoneEl && this.userData?.phone) {
+            userPhoneEl.textContent = this.userData.phone;
+            userPhoneEl.style.color = '';
         }
     }
 
