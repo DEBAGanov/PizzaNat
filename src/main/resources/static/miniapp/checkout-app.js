@@ -389,12 +389,26 @@ class PizzaNatCheckoutApp {
             const contactName = contactData.first_name || this.userData?.name || 'Пользователь';
             const contactPhone = contactData.phone_number || '';
 
+            // Валидация полученного номера телефона
+            const validationResult = this.validatePhoneNumber(contactPhone);
+            if (!validationResult.isValid) {
+                console.warn('⚠️ Номер телефона от Telegram не прошел валидацию:', contactPhone, validationResult.error);
+                if (this.tg?.showAlert) {
+                    this.tg.showAlert(`⚠️ Получен некорректный номер телефона: ${validationResult.error}. Введите номер вручную.`);
+                }
+                this.showManualPhoneInput();
+                return;
+            }
+
+            const formattedPhone = validationResult.formatted;
+            console.log('✅ Номер телефона от Telegram прошел валидацию:', formattedPhone);
+
             // Сохраняем предыдущее имя если оно есть
             const currentName = this.userData?.name || contactName;
 
             this.userData = {
                 name: currentName,
-                phone: contactPhone
+                phone: formattedPhone
             };
 
             // Обновляем отображение
@@ -407,8 +421,8 @@ class PizzaNatCheckoutApp {
             }
             
             if (userPhoneEl) {
-                userPhoneEl.textContent = contactPhone;
-                userPhoneEl.style.color = '';
+                userPhoneEl.textContent = formattedPhone;
+                userPhoneEl.style.color = 'green';
             }
 
             // Обновляем состояние кнопки
@@ -418,11 +432,14 @@ class PizzaNatCheckoutApp {
             this.contactRequested = false;
             console.log('🔄 Флаг contactRequested сброшен - контакт успешно получен');
 
-            console.log('✅ Контактная информация обновлена:', { name: currentName, phone: contactPhone });
+            console.log('✅ Контактная информация обновлена:', { name: currentName, phone: formattedPhone });
+            
+            // Отправляем данные на сервер для enhanced-auth (сохранение в БД)
+            this.performEnhancedAuth(formattedPhone);
             
             // Показываем уведомление об успешном получении контакта
             if (this.tg?.showAlert) {
-                this.tg.showAlert('Контакт получен! Теперь вы можете оформить заказ.');
+                this.tg.showAlert(`✅ Контакт получен! Номер: ${formattedPhone}`);
             }
             
             // Если у нас есть отложенный заказ, продолжаем его оформление
@@ -591,13 +608,27 @@ class PizzaNatCheckoutApp {
             const phone = phoneInput.value.trim();
             console.log('📱 Ручной ввод номера:', phone);
             
+            // Валидация номера телефона
+            const validationResult = this.validatePhoneNumber(phone);
+            if (!validationResult.isValid) {
+                if (this.tg?.showAlert) {
+                    this.tg.showAlert(`❌ ${validationResult.error}`);
+                } else {
+                    alert(`❌ ${validationResult.error}`);
+                }
+                return;
+            }
+            
+            const formattedPhone = validationResult.formatted;
+            console.log('✅ Номер прошел валидацию:', formattedPhone);
+            
             this.userData = this.userData || {};
-            this.userData.phone = phone;
+            this.userData.phone = formattedPhone;
             
             const userPhoneEl = document.getElementById('user-phone');
             if (userPhoneEl) {
-                userPhoneEl.textContent = phone;
-                userPhoneEl.style.color = '';
+                userPhoneEl.textContent = formattedPhone;
+                userPhoneEl.style.color = 'green';
             }
             
             this.updateSubmitButtonState();
@@ -606,10 +637,67 @@ class PizzaNatCheckoutApp {
             this.contactRequested = false;
             console.log('🔄 Флаг contactRequested сброшен - номер введен вручную');
             
+            // Отправляем данные на сервер для enhanced-auth (сохранение в БД)
+            this.performEnhancedAuth(formattedPhone);
+            
             if (this.tg?.showAlert) {
-                this.tg.showAlert('Номер телефона сохранен!');
+                this.tg.showAlert(`✅ Номер телефона сохранен: ${formattedPhone}`);
             }
         }
+    }
+
+    /**
+     * Валидация номера телефона (российский формат)
+     */
+    validatePhoneNumber(phone) {
+        if (!phone || !phone.trim()) {
+            return {
+                isValid: false,
+                error: 'Номер телефона не может быть пустым'
+            };
+        }
+
+        // Убираем все символы кроме цифр и +
+        const cleaned = phone.replace(/[^0-9+]/g, '');
+        const digitsOnly = cleaned.replace(/[^0-9]/g, '');
+
+        console.log('📱 Валидация номера:', phone, '-> цифры:', digitsOnly);
+
+        let formatted = null;
+
+        // Проверяем различные форматы российских номеров
+        if (digitsOnly.startsWith('7') && digitsOnly.length === 11) {
+            // Формат: 79161234567 -> +79161234567
+            formatted = '+' + digitsOnly;
+        } else if (digitsOnly.startsWith('8') && digitsOnly.length === 11) {
+            // Формат: 89161234567 -> +79161234567
+            formatted = '+7' + digitsOnly.substring(1);
+        } else if (digitsOnly.length === 10) {
+            // Формат: 9161234567 -> +79161234567
+            formatted = '+7' + digitsOnly;
+        } else if (cleaned.startsWith('+7') && digitsOnly.length === 11) {
+            // Формат: +79161234567 (уже правильный)
+            formatted = '+' + digitsOnly;
+        } else {
+            return {
+                isValid: false,
+                error: `Неправильный формат номера. Используйте российский номер (+7, 8 или 10 цифр). Введено цифр: ${digitsOnly.length}`
+            };
+        }
+
+        // Финальная проверка
+        if (!formatted || formatted.length !== 12 || !formatted.startsWith('+7')) {
+            return {
+                isValid: false,
+                error: 'Ошибка форматирования номера телефона'
+            };
+        }
+
+        console.log('✅ Номер валиден:', formatted);
+        return {
+            isValid: true,
+            formatted: formatted
+        };
     }
 
     /**

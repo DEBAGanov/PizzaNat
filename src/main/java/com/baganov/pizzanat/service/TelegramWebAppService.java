@@ -114,11 +114,21 @@ public class TelegramWebAppService {
 
         // 4. Обновляем номер телефона если предоставлен
         if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
-            String formattedPhone = formatPhoneNumber(phoneNumber.trim());
-            user.setPhone(formattedPhone);
-            user.setIsTelegramVerified(true);
-            userRepository.save(user);
-            log.info("Обновлен номер телефона для пользователя {}: {}", user.getId(), formattedPhone);
+            String cleanPhone = phoneNumber.trim();
+            log.info("Получен номер телефона для пользователя {}: {}", telegramUser.getId(), cleanPhone);
+            
+            // Валидация и форматирование номера телефона
+            String formattedPhone = formatPhoneNumber(cleanPhone);
+            if (formattedPhone != null) {
+                user.setPhone(formattedPhone);
+                user.setIsTelegramVerified(true);
+                user.setIsPhoneVerified(true); // Добавляем флаг верификации телефона
+                userRepository.save(user);
+                log.info("✅ Номер телефона успешно сохранен для пользователя {}: {}", user.getId(), formattedPhone);
+            } else {
+                log.warn("⚠️ Некорректный номер телефона для пользователя {}: {}", user.getId(), cleanPhone);
+                // Не прерываем авторизацию, но номер не сохраняем
+            }
         }
 
         // 5. Создаем токен в telegram_auth_tokens для кросс-платформенного доступа
@@ -486,25 +496,35 @@ public class TelegramWebAppService {
         // Убираем все символы кроме цифр
         String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
 
-        log.debug("Форматирование номера: '{}' -> '{}'", phoneNumber, cleanPhone);
+        log.info("📱 Форматирование номера: '{}' -> цифры: '{}'", phoneNumber, cleanPhone);
 
         // Обработка различных форматов
+        String result = null;
+        
         if (cleanPhone.startsWith("7") && cleanPhone.length() == 11) {
             // Формат: 79161234567 -> +79161234567
-            return "+" + cleanPhone;
+            result = "+" + cleanPhone;
+            log.info("✅ Формат 7XXXXXXXXXX распознан: {}", result);
         } else if (cleanPhone.startsWith("8") && cleanPhone.length() == 11) {
             // Формат: 89161234567 -> +79161234567
-            return "+7" + cleanPhone.substring(1);
+            result = "+7" + cleanPhone.substring(1);
+            log.info("✅ Формат 8XXXXXXXXXX распознан: {}", result);
         } else if (cleanPhone.length() == 10) {
             // Формат: 9161234567 -> +79161234567
-            return "+7" + cleanPhone;
+            result = "+7" + cleanPhone;
+            log.info("✅ Формат 10 цифр распознан: {}", result);
         } else if (cleanPhone.startsWith("37") && cleanPhone.length() == 12) {
             // Формат: 379161234567 -> +79161234567 (убираем 3)
-            return "+" + cleanPhone.substring(1);
+            result = "+" + cleanPhone.substring(1);
+            log.info("✅ Формат 37XXXXXXXXXX распознан: {}", result);
+        }
+        
+        if (result != null) {
+            return result;
         }
 
-        // Если формат не распознан - возвращаем как есть с префиксом +7
-        log.warn("Неизвестный формат номера телефона: '{}', применяем +7", phoneNumber);
-        return "+7" + cleanPhone;
+        // Если формат не распознан - возвращаем null для валидации
+        log.error("❌ Неизвестный формат номера телефона: '{}' (цифр: {})", phoneNumber, cleanPhone.length());
+        return null;
     }
 }
