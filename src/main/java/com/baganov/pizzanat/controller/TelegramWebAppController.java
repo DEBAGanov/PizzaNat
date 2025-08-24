@@ -49,20 +49,30 @@ public class TelegramWebAppController {
     }
 
     @PostMapping("/enhanced-auth")
-    @Operation(summary = "Расширенная авторизация через Telegram WebApp с номером телефона")
+    @Operation(summary = "Расширенная авторизация через Telegram WebApp с номером телефона (опциональным)")
     public ResponseEntity<AuthResponse> enhancedAuthenticateWebApp(
             @Valid @RequestBody TelegramWebAppEnhancedAuthRequest request) {
         
-        log.info("Получен запрос расширенной авторизации Telegram WebApp с номером телефона");
+        String phoneNumber = request.getPhoneNumber();
+        boolean hasPhone = phoneNumber != null && !phoneNumber.trim().isEmpty();
+        
+        log.info("Получен запрос расширенной авторизации Telegram WebApp {} номером телефона", 
+                hasPhone ? "с" : "без");
+        
+        // Валидируем номер телефона только если он предоставлен
+        if (hasPhone && !phoneNumber.matches("^\\+7\\d{10}$")) {
+            log.warn("Получен некорректный номер телефона: {}", phoneNumber);
+            return ResponseEntity.badRequest().build();
+        }
         
         try {
             AuthResponse response = telegramWebAppService.enhancedAuthenticateUser(
                 request.getInitDataRaw(), 
-                request.getPhoneNumber(),
+                hasPhone ? phoneNumber : null,
                 request.getDeviceId()
             );
-            log.info("Пользователь {} успешно авторизован через расширенную Telegram WebApp авторизацию", 
-                    response.getUserId());
+            log.info("Пользователь {} успешно авторизован через расширенную Telegram WebApp авторизацию {}", 
+                    response.getUserId(), hasPhone ? "с номером телефона" : "без номера телефона");
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {

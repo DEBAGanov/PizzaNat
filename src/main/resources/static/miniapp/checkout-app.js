@@ -210,26 +210,46 @@ class PizzaNatCheckoutApp {
             return;
         }
 
-        // Сначала пробуем стандартную авторизацию без номера телефона
+        // Сразу пробуем расширенную авторизацию без номера телефона для создания токена в telegram_auth_tokens
         try {
-            console.log('🔐 Trying standard authentication first...');
-            const response = await this.api.authenticateWebApp(this.tg.initData);
-            console.log('🔐 Standard auth response:', response);
+            console.log('🔐 Trying enhanced authentication without phone first to create cross-platform token...');
+            const response = await this.api.enhancedAuthenticateWebApp(this.tg.initData, null);
+            console.log('🔐 Enhanced auth response (without phone):', response);
             
             this.authToken = response.token;
             this.api.setAuthToken(this.authToken);
             
-            console.log('✅ Standard authentication successful');
+            console.log('✅ Enhanced authentication successful (without phone)');
             
-            // Все равно запрашиваем номер телефона для полной регистрации
+            // Запрашиваем номер телефона для дополнения данных пользователя
             this.requestPhoneForEnhancedAuth();
             return;
             
         } catch (error) {
-            console.log('⚠️ Standard authentication failed, will request phone for enhanced auth:', error.message);
+            console.log('⚠️ Enhanced authentication without phone failed, trying standard auth:', error.message);
+            
+            // Fallback на стандартную авторизацию
+            try {
+                console.log('🔐 Trying standard authentication as fallback...');
+                const response = await this.api.authenticateWebApp(this.tg.initData);
+                console.log('🔐 Standard auth response:', response);
+                
+                this.authToken = response.token;
+                this.api.setAuthToken(this.authToken);
+                
+                console.log('✅ Standard authentication successful as fallback');
+                
+                // Запрашиваем номер телефона для полной регистрации
+                this.requestPhoneForEnhancedAuth();
+                return;
+                
+            } catch (standardError) {
+                console.log('⚠️ Standard authentication also failed:', standardError.message);
+            }
         }
 
-        // Если стандартная авторизация не удалась, запрашиваем номер телефона
+        // Если ничего не сработало, все равно запрашиваем номер телефона
+        console.log('🔧 Both auth methods failed, requesting phone for full enhanced auth...');
         this.requestPhoneForEnhancedAuth();
     }
 
@@ -517,6 +537,7 @@ class PizzaNatCheckoutApp {
                 <input type="tel" 
                        id="manual-phone-input" 
                        placeholder="+7 XXX XXX XX XX" 
+                       value="+7 "
                        style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"
                        maxlength="18">
                 <button onclick="window.checkoutApp.submitManualPhone()" 
@@ -524,7 +545,95 @@ class PizzaNatCheckoutApp {
                     ✅ Подтвердить номер
                 </button>
             `;
+            
+            // Добавляем обработчики для автоматического форматирования
+            const phoneInput = document.getElementById('manual-phone-input');
+            if (phoneInput) {
+                this.setupPhoneInputFormatting(phoneInput);
+            }
         }
+    }
+    
+    /**
+     * Настройка автоматического форматирования номера телефона
+     */
+    setupPhoneInputFormatting(phoneInput) {
+        // Обработчик ввода для автоматического форматирования
+        phoneInput.addEventListener('input', (e) => {
+            let value = e.target.value;
+            
+            // Убираем все символы кроме цифр и +
+            const digits = value.replace(/[^\d+]/g, '');
+            
+            // Если пользователь удалил +7, восстанавливаем
+            if (!digits.startsWith('+7')) {
+                if (digits.length === 0) {
+                    e.target.value = '+7 ';
+                    return;
+                }
+                // Если начинается с 7, добавляем +
+                if (digits.startsWith('7')) {
+                    value = '+' + digits;
+                } else if (digits.startsWith('8')) {
+                    // Заменяем 8 на +7
+                    value = '+7' + digits.substring(1);
+                } else {
+                    // Для любых других цифр добавляем +7 в начало
+                    value = '+7' + digits;
+                }
+            } else {
+                value = digits;
+            }
+            
+            // Ограничиваем количество цифр после +7 до 10
+            const withoutPrefix = value.substring(2); // Убираем +7
+            if (withoutPrefix.length > 10) {
+                value = '+7' + withoutPrefix.substring(0, 10);
+            }
+            
+            // Форматируем номер: +7 XXX XXX XX XX
+            if (value.length > 2) {
+                let formatted = '+7';
+                const phoneDigits = value.substring(2);
+                
+                if (phoneDigits.length > 0) {
+                    formatted += ' ' + phoneDigits.substring(0, 3);
+                }
+                if (phoneDigits.length > 3) {
+                    formatted += ' ' + phoneDigits.substring(3, 6);
+                }
+                if (phoneDigits.length > 6) {
+                    formatted += ' ' + phoneDigits.substring(6, 8);
+                }
+                if (phoneDigits.length > 8) {
+                    formatted += ' ' + phoneDigits.substring(8, 10);
+                }
+                
+                e.target.value = formatted;
+            }
+            
+            // Устанавливаем курсор в конец
+            setTimeout(() => {
+                e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+            }, 0);
+        });
+        
+        // Предотвращаем удаление +7
+        phoneInput.addEventListener('keydown', (e) => {
+            const cursorPosition = e.target.selectionStart;
+            const value = e.target.value;
+            
+            // Запрещаем удаление +7
+            if ((e.key === 'Backspace' || e.key === 'Delete') && cursorPosition <= 3 && value.startsWith('+7 ')) {
+                e.preventDefault();
+            }
+        });
+        
+        // Фокус на поле после создания
+        setTimeout(() => {
+            phoneInput.focus();
+            phoneInput.setSelectionRange(phoneInput.value.length, phoneInput.value.length);
+        }, 100);
     }
 
     /**
@@ -553,9 +662,8 @@ class PizzaNatCheckoutApp {
         
         // Проверяем, не был ли уже запрошен контакт
         if (this.contactRequested) {
-            console.log('⚠️ requestContact уже был вызван ранее, показываем ручной ввод');
-            this.showManualPhoneInput();
-            return;
+            console.log('⚠️ requestContact уже был вызван ранее, но пользователь просит повторно - сбрасываем флаг и пробуем снова');
+            this.contactRequested = false; // Сбрасываем флаг для повторного запроса
         }
         
         console.log('🔍 Доступные методы Telegram WebApp:', Object.keys(this.tg).filter(key => typeof this.tg[key] === 'function'));

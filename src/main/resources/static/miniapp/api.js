@@ -58,26 +58,33 @@ class PizzaAPI {
     }
 
     /**
-     * Расширенная авторизация через Telegram WebApp с номером телефона
+     * Расширенная авторизация через Telegram WebApp с номером телефона (опционально)
      */
     async enhancedAuthenticateWebApp(initDataRaw, phoneNumber) {
-        console.log('🔐 Enhanced authenticating via Telegram WebApp with phone...');
+        const hasPhone = phoneNumber && phoneNumber.trim();
+        console.log(`🔐 Enhanced authenticating via Telegram WebApp ${hasPhone ? 'with' : 'without'} phone...`);
         
         try {
+            const requestBody = {
+                initDataRaw: initDataRaw,
+                deviceId: this.getDeviceId(),
+                platform: 'telegram-miniapp'
+            };
+            
+            // Добавляем номер телефона только если он предоставлен
+            if (hasPhone) {
+                requestBody.phoneNumber = phoneNumber.trim();
+            }
+            
             const response = await this.makeRequest('/telegram-webapp/enhanced-auth', {
                 method: 'POST',
-                body: JSON.stringify({
-                    initDataRaw: initDataRaw,
-                    phoneNumber: phoneNumber,
-                    deviceId: this.getDeviceId(),
-                    platform: 'telegram-miniapp'
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (response.token) {
                 this.authToken = response.token;
                 localStorage.setItem('pizzanat_token', response.token);
-                console.log('✅ Enhanced authentication successful with phone, user ID:', response.userId);
+                console.log(`✅ Enhanced authentication successful ${hasPhone ? 'with phone' : 'without phone'}, user ID:`, response.userId);
                 return response;
             } else {
                 throw new Error('No token received');

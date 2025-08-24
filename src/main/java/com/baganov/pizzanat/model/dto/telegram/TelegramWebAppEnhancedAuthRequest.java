@@ -20,10 +20,14 @@ public class TelegramWebAppEnhancedAuthRequest {
             example = "auth_date=1234567890&hash=abcdef&user=%7B%22id%22%3A123456%7D")
     private String initDataRaw;
 
-    @Pattern(regexp = "^\\+7\\d{10}$", message = "Номер телефона должен быть в формате +7XXXXXXXXXX")
-    @Schema(description = "Номер телефона пользователя", 
+    @Pattern(regexp = "^\\+7\\d{10}$", message = "Номер телефона должен быть в формате +7XXXXXXXXXX", 
+             groups = {PhoneValidation.class})
+    @Schema(description = "Номер телефона пользователя (опциональный)", 
             example = "+79161234567")
     private String phoneNumber;
+    
+    // Группа валидации для номера телефона (используется только когда номер предоставлен)
+    public interface PhoneValidation {}
 
     @Schema(description = "Идентификатор устройства для кросс-платформенной авторизации", 
             example = "device_12345")
