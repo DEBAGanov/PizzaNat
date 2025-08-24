@@ -126,15 +126,15 @@ BEGIN
         ('Пицца Маргарита', 'Классическая итальянская пицца с томатным соусом и сыром "Моцарелла" и помидорами. Вес 580 гр.', 380.00, 450, pizza_category_id, 'products/pizza_margarita.png', true, false, null),
         ('Грибная пицца', 'Пицца с шампиньонами и томатным соусом, с сыром "Моцарелла" и ветчиной. Вес 600 гр.', 469.00, 470, pizza_category_id, 'products/pizza_gribnaya.png', true, false, null),
         ('Сырная пицца', 'Пицца с четырьмя видами сыра (соус томатный, "Моцарелла", "Голландский", "Пармезан", "Масдам". Вес 450 гр.)', 470.00, 460, pizza_category_id, 'products/pizza_4_chees.png', true, false, null),
-        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)', 490.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
-        ('Пицца Пепперони', 'Пицца с пепперони и сыром (соус томатный, сыр "Моцарелла", пеперони. Вес 600 гр.)', 470.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, true, 15),
-        ('Пицца Цезарь', 'Фирменная пицца с соусом Цезарь (соус Цезарь, сыр, курица, помидоры, салат. Вес 690 гр.)', 480.00, 500, pizza_category_id, 'products/pizza_mario.png', true, true, 15),
+        ('Пицца Салями', 'Пицца с салями и сыром (соус томатный, сыр "Моцарелла", колбаса, помидоры. Вес 580 гр.)', 490.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, false, null),
+        ('Пицца Пепперони', 'Пицца с пепперони и сыром (соус томатный, сыр "Моцарелла", пеперони. Вес 600 гр.)', 470.00, 480, pizza_category_id, 'products/pizza_peperoni.png', true, false, null),
+        ('Пицца Цезарь', 'Фирменная пицца с соусом Цезарь (соус Цезарь, сыр, курица, помидоры, салат. Вес 690 гр.)', 480.00, 500, pizza_category_id, 'products/pizza_mario.png', true, false, null),
         ('Гавайская пицца', 'Пицца с курицей и ананасами (соус сливочный, сыр "Моцарелла", курица, ананасы. Вес 600 гр.)', 480.00, 470, pizza_category_id, 'products/pizza_gavaiyaskay.png', true, false, null),
         ('Мясная пицца', 'Пицца с ассорти из мясных ингредиентов (соус томатный, сыр "Моцарелла", курица, колбаски, салями, ветчина. Вес 650 гр.)', 500.00, 520, pizza_category_id, 'products/pizza_mzysnay.png', true, false, null),
-        ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 480.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, true, 10),
+        ('Домашняя пицца', 'Пицца домашняя (соус томатный, сыр "Моцарелла", колбсалями, ветчина, помидоры, огурец маринованный, лук. Вес 610 гр. )', 480.00, 490, pizza_category_id, 'products/pizza_5_chees.png', true, false, null),
         ('Пицца Морская', 'Пицца Морская (соус томатный, сыр "Моцарелла", морской коктель, маслины. Вес 650 гр.)', 510.00, 490, pizza_category_id, 'products/pizza_karbonara.png', true, false, null),
-        ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 440.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12),
-        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.', 1.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, true, 12)
+        ('Груша с горогонзолой', 'Пицца груша с Горогонзолой (соус сливочный, сыр "Моцарелла", груша, сыр Горгонзола. Вес 570 гр.)', 440.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, false, null),
+        ('Пицца конструктор', 'Пицца из двух видов пицц на выбор. Вес 570 гр.', 1.00, 490, pizza_category_id, 'products/pizza_tom_yam.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -155,11 +155,11 @@ BEGIN
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
         ('Бургер "Димбургер"', 'Бургер с жареным луком и сыром (куриная котлета, лук, помидоры, салат, двойной сыр, маринованные орурцы, соус)', 220.00, 450, burgers_category_id, 'products/burger_classic.png', true, false, null),
-        ('Бургер "Чизбургер"', 'Бургер с сыром и салатом (куриная котлета, лук, помидоры, салат, сыр, соус)', 200.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, true, 15),
+        ('Бургер "Чизбургер"', 'Бургер с сыром и салатом (куриная котлета, лук, помидоры, салат, сыр, соус)', 200.00, 480, burgers_category_id, 'products/burger_cheeseburger.png', true, false, null),
         ('Бургер "Чикенбургер"', 'Чикенбургер (куриная котлета, лук, помидоры, салат, соус)', 180.00, 470, burgers_category_id, 'products/burger_hawaiian.png', true, false, null),
-        ('Бургер "Джуниор"', 'Джуниор (куриная котлета, лук, помидоры, соус)', 160.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
-        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12),
-        ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, true, 12)
+        ('Бургер "Джуниор"', 'Джуниор (куриная котлета, лук, помидоры, соус)', 160.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, false, null),
+        ('Комбо 1', 'Фри 100 гр. + Нагецы 5 штук + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, false, null),
+        ('Комбо 2', 'Фри 100 гр. + Чикенбургер + соус + напиток 300 мл. ', 679.00, 490, burgers_category_id, 'products/burger_tom_yam.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -228,17 +228,17 @@ BEGIN
     VALUES
         ('Картофель Фри 100 гр.', 'Картофель Фри 100 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
         ('Картофель Фри 150 гр.', 'Картофель Фри 150 гр.', 499.00, 450, snacks_category_id, 'products/free.png', true, false, null),
-        ('Нагецы 6 штук', 'Нагецы 6 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
-        ('Нагецы 9 штук', 'Нагецы 9 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
-        ('Нагецы 12 штук', 'Нагецы 12 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, true, 15),
+        ('Нагецы 6 штук', 'Нагецы 6 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, false, null),
+        ('Нагецы 9 штук', 'Нагецы 9 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, false, null),
+        ('Нагецы 12 штук', 'Нагецы 12 штук', 599.00, 480, snacks_category_id, 'products/nagets.png', true, false, null),
         ('Стрипсы 6 штук', 'Стрипсы 6 штук', 549.00, 470, snacks_category_id, 'products/strips.png', true, false, null),
         ('Стрипсы 9 штук', 'Стрипсы 9 штук', 549.00, 470, snacks_category_id, 'products/strips.png', true, false, null),
-        ('Крылья 6 штук', 'Крылья 6 штук', 679.00, 490, snacks_category_id, 'products/chiken.png', true, true, 12),
-        ('Крылья 9 штук', 'Крылья 9 штук', 679.00, 490, snacks_category_id, 'products/chiken.png', true, true, 12),
-        ('Соус Кисло-сладкий', 'Соус Кисло-сладкий', 40.00, 490, snacks_category_id, 'products/soyse_kislo.png', true, true, 12),
-        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/soyse_chees.png', true, true, 12),
-        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/soyse_barbeq.png', true, true, 12),
-        ('Кетчуп', 'Кетчуп', 40.00, 490, snacks_category_id, 'products/soyse_ketchyp.png', true, true, 12)
+        ('Крылья 6 штук', 'Крылья 6 штук', 679.00, 490, snacks_category_id, 'products/chiken.png', true, false, null),
+        ('Крылья 9 штук', 'Крылья 9 штук', 679.00, 490, snacks_category_id, 'products/chiken.png', true, false, null),
+        ('Соус Кисло-сладкий', 'Соус Кисло-сладкий', 40.00, 490, snacks_category_id, 'products/soyse_kislo.png', true, false, null),
+        ('Соус Сырный', 'Соус Сырный', 40.00, 490, snacks_category_id, 'products/soyse_chees.png', true, false, null),
+        ('Соус барбекю', 'Соус барбекю', 40.00, 490, snacks_category_id, 'products/soyse_barbeq.png', true, false, null),
+        ('Кетчуп', 'Кетчуп', 40.00, 490, snacks_category_id, 'products/soyse_ketchyp.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров
@@ -260,14 +260,14 @@ BEGIN
     INSERT INTO products (name, description, price, weight, category_id, image_url, is_available, is_special_offer, discount_percent)
     VALUES
         ('Закрытая пицца "Классическая"', 'курица, огурцы, помидоры, капуста', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, false, null),
-        ('Закрытая пицца "Куриная"', 'курица, сыр, помидоры', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, true, 15),
+        ('Закрытая пицца "Куриная"', 'курица, сыр, помидоры', 170.00, 170, salads_category_id, 'products/closed_pizza.png', true, false, null),
         ('Закрытая пицца "Охотничья"', 'колбаски, маринованные огурцы, сыр', 170.00, 470, salads_category_id, 'products/closed_pizza.png', true, false, null),
-        ('Закрытая пицца "Сырная"', 'сыр, помидоры', 170.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
-        ('Закрытая пицца "Гавайская"', 'курица, сыр, ананасы', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
-        ('Закрытая пицца "Грибы/курица"', 'курица, сыр, грибы, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
-        ('Закрытая пицца "Грибы/ветчина"', 'грибы, ветчина, сыр, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
-        ('Закрытая пицца "Курица/фри"', 'курица, сыр, помидоры, фри, лук, морковь', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12),
-        ('Закрытая пицца "Цезарь"', 'курица, сыр, помидоры, салат', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, true, 12)
+        ('Закрытая пицца "Сырная"', 'сыр, помидоры', 170.00, 490, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Гавайская"', 'курица, сыр, ананасы', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Грибы/курица"', 'курица, сыр, грибы, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Грибы/ветчина"', 'грибы, ветчина, сыр, помидоры', 180.00, 490, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Курица/фри"', 'курица, сыр, помидоры, фри, лук, морковь', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, false, null),
+        ('Закрытая пицца "Цезарь"', 'курица, сыр, помидоры, салат', 190.00, 490, salads_category_id, 'products/closed_pizza.png', true, false, null)
     ON CONFLICT (name) DO NOTHING;
 
     -- Обновляем скидочные цены для акционных товаров

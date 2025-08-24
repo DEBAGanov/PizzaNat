@@ -19,7 +19,7 @@
 .header-title {
     font-size: 18px;
     font-weight: 600;
-    color: var(--tg-theme-text-color, #ffffff);
+    color: var(--tg-theme-text-color, #000000);
 }
 
 /* Main Content */

@@ -110,8 +110,8 @@ body {
 .app-header {
     position: sticky;
     top: 0;
-    background: var(--card-bg);
-    border-bottom: 1px solid var(--border-color);
+    background: var(--tg-theme-bg-color, #ffffff);
+    border-bottom: 1px solid var(--tg-theme-hint-color, #e5e5e7);
     z-index: 100;
     backdrop-filter: blur(10px);
 }
