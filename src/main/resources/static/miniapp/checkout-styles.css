@@ -167,6 +167,30 @@
     color: var(--tg-theme-hint-color, #999);
 }
 
+/* СБП логотип в опциях оплаты */
+.option-title img[src*="sbp-logo"] {
+    display: block;
+    height: 32px;
+    width: auto;
+    margin: 0 auto;
+    filter: brightness(1.1);
+    transition: all 0.2s ease;
+}
+
+/* Центрирование для option-title с изображением */
+.option-title:has(img) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+/* Hover эффект для логотипа СБП */
+.option-card:hover .option-title img[src*="sbp-logo"] {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
 .option-price {
     font-size: 16px;
     font-weight: 600;
