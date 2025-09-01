@@ -167,7 +167,7 @@
     color: var(--tg-theme-hint-color, #999);
 }
 
-/* СБП логотип в опциях оплаты */
+/* СБП логотип в опциях оплаты (PNG) */
 .option-title img[src*="sbp-logo"] {
     display: block;
     height: 40px;
@@ -177,9 +177,13 @@
     filter: brightness(1.1);
     transition: all 0.2s ease;
     object-fit: contain;
+    /* Дополнительные настройки для PNG */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    backface-visibility: hidden;
 }
 
-/* Альтернативный селектор для СБП логотипа */
+/* Альтернативный селектор для СБП логотипа (PNG) */
 .option-title img[alt*="СБП"] {
     display: block;
     height: 40px;
@@ -189,6 +193,10 @@
     filter: brightness(1.1);
     transition: all 0.2s ease;
     object-fit: contain;
+    /* Дополнительные настройки для PNG */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    backface-visibility: hidden;
 }
 
 /* Центрирование для option-title с изображением */
