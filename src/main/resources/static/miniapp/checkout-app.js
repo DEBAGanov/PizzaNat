@@ -82,8 +82,8 @@ class PizzaNatCheckoutApp {
             // Загрузка данных
             await this.loadUserData();
             
-            // Загрузка последнего адреса доставки
-            await this.loadLastDeliveryAddress();
+            // Загрузка последнего адреса доставки - ОТКЛЮЧЕНО
+            // await this.loadLastDeliveryAddress();
             
             // Показываем приложение
             this.showApp();
@@ -342,16 +342,15 @@ class PizzaNatCheckoutApp {
      */
     updateUserDataDisplay() {
         const userNameEl = document.getElementById('user-name');
-        const userPhoneEl = document.getElementById('user-phone');
         
         if (userNameEl && this.userData?.name) {
             userNameEl.textContent = this.userData.name;
             userNameEl.style.color = '';
         }
         
-        if (userPhoneEl && this.userData?.phone) {
-            userPhoneEl.textContent = this.userData.phone;
-            userPhoneEl.style.color = '';
+        // Для номера телефона используем новый метод
+        if (this.userData?.phone && this.userData.phone.length > 0) {
+            this.displayExistingPhoneNumber(this.userData.phone);
         }
     }
 
@@ -433,17 +432,14 @@ class PizzaNatCheckoutApp {
 
             // Обновляем отображение
             const userNameEl = document.getElementById('user-name');
-            const userPhoneEl = document.getElementById('user-phone');
             
             if (userNameEl && !userNameEl.textContent.includes('Данные не загружены')) {
                 userNameEl.textContent = currentName;
                 userNameEl.style.color = '';
             }
             
-            if (userPhoneEl) {
-                userPhoneEl.textContent = formattedPhone;
-                userPhoneEl.style.color = 'green';
-            }
+            // Для номера телефона используем новый метод отображения
+            this.displayExistingPhoneNumber(formattedPhone);
 
             // Обновляем состояние кнопки
             this.updateSubmitButtonState();
@@ -520,9 +516,17 @@ class PizzaNatCheckoutApp {
 
     /**
      * Показать поле для ручного ввода номера телефона (API 7.7)
+     * ТОЛЬКО если у нас нет номера телефона от Telegram
      */
     showManualPhoneInput() {
         console.log('📝 Показываем варианты ввода номера (API 7.7)...');
+        
+        // Проверяем, есть ли у нас уже номер телефона
+        if (this.userData && this.userData.phone && this.userData.phone.length > 0) {
+            console.log('✅ У нас уже есть номер телефона, не показываем блоки для ввода:', this.userData.phone);
+            this.displayExistingPhoneNumber(this.userData.phone);
+            return;
+        }
         
         const userPhoneEl = document.getElementById('user-phone');
         if (userPhoneEl) {
@@ -551,6 +555,21 @@ class PizzaNatCheckoutApp {
             if (phoneInput) {
                 this.setupPhoneInputFormatting(phoneInput);
             }
+        }
+    }
+
+    /**
+     * Отображение существующего номера телефона (без кнопок для ввода)
+     */
+    displayExistingPhoneNumber(phoneNumber) {
+        console.log('📞 Отображаем существующий номер телефона:', phoneNumber);
+        
+        const userPhoneEl = document.getElementById('user-phone');
+        if (userPhoneEl) {
+            userPhoneEl.innerHTML = '';
+            userPhoneEl.textContent = phoneNumber;
+            userPhoneEl.style.color = 'var(--tg-theme-text-color, #000000)';
+            userPhoneEl.style.fontWeight = 'normal';
         }
     }
     
@@ -733,11 +752,8 @@ class PizzaNatCheckoutApp {
             this.userData = this.userData || {};
             this.userData.phone = formattedPhone;
             
-            const userPhoneEl = document.getElementById('user-phone');
-            if (userPhoneEl) {
-                userPhoneEl.textContent = formattedPhone;
-                userPhoneEl.style.color = 'green';
-            }
+            // Используем новый метод отображения номера телефона
+            this.displayExistingPhoneNumber(formattedPhone);
             
             this.updateSubmitButtonState();
             
@@ -835,10 +851,14 @@ class PizzaNatCheckoutApp {
                 }
                 
                 // Обновляем отображение телефона
-                const userPhoneEl = document.getElementById('user-phone');
-                if (userPhoneEl) {
-                    userPhoneEl.textContent = phoneNumber || 'Требуется номер телефона';
-                    if (!phoneNumber) {
+                if (phoneNumber && phoneNumber.length > 0) {
+                    // Если есть номер телефона - показываем его как обычный текст
+                    this.displayExistingPhoneNumber(phoneNumber);
+                } else {
+                    // Если номера нет - показываем сообщение
+                    const userPhoneEl = document.getElementById('user-phone');
+                    if (userPhoneEl) {
+                        userPhoneEl.textContent = 'Требуется номер телефона';
                         userPhoneEl.style.color = 'var(--tg-theme-destructive-text-color, #ff6b6b)';
                     }
                 }
@@ -1049,12 +1069,20 @@ class PizzaNatCheckoutApp {
             });
         });
 
-        // Address input
+        // Address input с динамическим обновлением стоимости доставки
         const addressInput = document.getElementById('address-input');
         if (addressInput) {
+            // Используем более короткую задержку для более отзывчивого обновления
             addressInput.addEventListener('input', this.debounce((e) => {
                 this.handleAddressInput(e.target.value);
-            }, 300));
+            }, 500)); // 500ms задержка для баланса между отзывчивостью и нагрузкой на API
+            
+            // Также обрабатываем событие потери фокуса для финального расчета
+            addressInput.addEventListener('blur', (e) => {
+                if (e.target.value.length >= 3) {
+                    this.handleAddressInput(e.target.value);
+                }
+            });
         }
 
         // Submit order
@@ -1119,7 +1147,7 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Обработка изменения способа доставки
+     * Обработка изменения способа доставки с поддержкой зональной системы
      */
     async handleDeliveryMethodChange(method) {
         this.deliveryMethod = method;
@@ -1128,19 +1156,28 @@ class PizzaNatCheckoutApp {
         if (method === 'DELIVERY') {
             // Показываем поле адреса
             addressSection.style.display = 'block';
-            this.deliveryCost = 200; // Default delivery cost
             
-            // Если адрес уже введен, пересчитываем стоимость
-            const address = document.getElementById('address-input')?.value;
-            if (address) {
-                await this.calculateDeliveryCost(address);
+            // Если адрес уже введен, пересчитываем стоимость через зональную систему
+            const addressInput = document.getElementById('address-input');
+            const currentAddress = addressInput?.value?.trim();
+            
+            if (currentAddress && currentAddress.length >= 3) {
+                console.log('🔄 Delivery method changed to DELIVERY, recalculating cost for existing address...');
+                await this.calculateDeliveryCost(currentAddress);
+            } else {
+                // Если адреса нет, сбрасываем стоимость
+                this.deliveryCost = 0;
+                console.log('🔄 Delivery method changed to DELIVERY, waiting for address input...');
             }
         } else {
-            // Скрываем поле адреса
+            // Самовывоз - скрываем поле адреса и сбрасываем стоимость
             addressSection.style.display = 'none';
             this.deliveryCost = 0;
+            this.address = '';
+            console.log('🔄 Delivery method changed to PICKUP, delivery cost reset to 0');
         }
 
+        // Обновляем отображение
         this.updateDeliveryPrice();
         this.updateTotals();
     }
@@ -1154,125 +1191,104 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Обработка ввода адреса
+     * Обработка ввода адреса с динамическим обновлением стоимости доставки
      */
     async handleAddressInput(address) {
         this.address = address;
 
-        if (address.length < 3) return;
+        // Очищаем предыдущую стоимость если адрес слишком короткий
+        if (address.length < 3) {
+            if (this.deliveryMethod === 'DELIVERY') {
+                this.deliveryCost = 0;
+                this.updateDeliveryPrice();
+                this.updateTotals();
+            }
+            return;
+        }
 
         try {
-            // Получаем подсказки адресов
-            await this.loadAddressSuggestions(address);
-            
-            // Рассчитываем стоимость доставки
+            // Динамически рассчитываем стоимость доставки при каждом изменении адреса
             if (this.deliveryMethod === 'DELIVERY') {
+                console.log('🔄 Address changed, recalculating delivery cost...');
                 await this.calculateDeliveryCost(address);
             }
         } catch (error) {
             console.warn('Ошибка при обработке адреса:', error);
+            // При ошибке сбрасываем стоимость доставки
+            this.deliveryCost = 0;
+            this.updateDeliveryPrice();
+            this.updateTotals();
         }
     }
 
     /**
-     * Загрузка подсказок адресов
+     * Загрузка подсказок адресов - ОТКЛЮЧЕНО
+     * Подсказки адресов убраны согласно требованиям
      */
     async loadAddressSuggestions(query) {
-        try {
-            // Получаем подсказки адресов через API
-            const suggestions = await this.api.getAddressSuggestions(query);
-            console.log('📍 Address suggestions received:', suggestions);
-            
-            // Обрабатываем ответ API - извлекаем только краткий адрес
-            let formattedSuggestions;
-            if (Array.isArray(suggestions)) {
-                formattedSuggestions = suggestions.map(suggestion => {
-                    if (typeof suggestion === 'string') {
-                        return suggestion;
-                    } else if (suggestion.shortAddress) {
-                        // Используем краткий адрес (только улица и дом)
-                        return suggestion.shortAddress;
-                    } else if (suggestion.address) {
-                        // Извлекаем часть после "Волжск, "
-                        const fullAddress = suggestion.address;
-                        const volzhskIndex = fullAddress.indexOf('Волжск, ');
-                        if (volzhskIndex !== -1) {
-                            return fullAddress.substring(volzhskIndex + 8).trim();
-                        }
-                        return fullAddress;
-                    } else if (suggestion.value) {
-                        return suggestion.value;
-                    } else {
-                        return 'Неизвестный адрес';
-                    }
-                });
-            } else {
-                formattedSuggestions = [];
-            }
-            
-            this.displayAddressSuggestions(formattedSuggestions);
-        } catch (error) {
-            console.warn('Ошибка при загрузке подсказок адресов:', error);
-            // Fallback to local suggestions
-            const fallbackSuggestions = [
-                `г. Волжск, ул. ${query}`,
-                `г. Волжск, пр. ${query}`,
-                `г. Волжск, ${query}`
-            ];
-            this.displayAddressSuggestions(fallbackSuggestions);
-        }
+        // Функция отключена - подсказки адресов убраны
+        console.log('📍 Address suggestions disabled by design');
+        return;
     }
 
     /**
-     * Отображение подсказок адресов
+     * Отображение подсказок адресов - ОТКЛЮЧЕНО
+     * Подсказки адресов убраны согласно требованиям
      */
     displayAddressSuggestions(suggestions) {
+        // Функция отключена - подсказки адресов убраны
         const container = document.getElementById('address-suggestions');
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (suggestions.length === 0) {
+        if (container) {
+            container.innerHTML = '';
             container.style.display = 'none';
-            return;
         }
-
-        suggestions.forEach(suggestion => {
-            const item = document.createElement('div');
-            item.className = 'address-suggestion-item';
-            item.textContent = suggestion;
-            container.appendChild(item);
-        });
-
-        container.style.display = 'block';
     }
 
     /**
-     * Расчет стоимости доставки
+     * Расчет стоимости доставки через зональную систему
      */
     async calculateDeliveryCost(address) {
         try {
-            console.log('Calculating delivery cost for:', address);
+            console.log('🚗 Calculating delivery cost for:', address, 'Order amount:', this.cart.totalAmount);
             
-            // Используем API для расчета стоимости доставки
+            // Используем зональную систему API для расчета стоимости доставки
             const data = await this.api.calculateDeliveryCost(address, this.cart.totalAmount);
-            console.log('📊 Delivery cost response:', data);
+            console.log('📊 Delivery zone response:', data);
             
-            if (data && typeof data.deliveryCost === 'number') {
-                this.deliveryCost = data.deliveryCost;
-                console.log('✅ Delivery cost calculated:', this.deliveryCost, 'rubles');
+            if (data && data.deliveryAvailable === true) {
+                // Зональная система успешно определила зону и стоимость
+                this.deliveryCost = data.deliveryCost || 0;
+                console.log(`✅ Delivery cost calculated: ${this.deliveryCost}₽ (Zone: ${data.zoneName || 'Unknown'})`);
+                
+                // Показываем дополнительную информацию о зоне
+                if (data.zoneName) {
+                    console.log(`📍 Delivery zone: ${data.zoneName}, Time: ${data.estimatedTime || 'N/A'}`);
+                }
+                
+                // Если доставка бесплатная, показываем это
+                if (data.isDeliveryFree) {
+                    console.log(`🎉 Free delivery! (Order amount ${this.cart.totalAmount}₽ >= ${data.freeDeliveryThreshold}₽)`);
+                }
             } else if (data && data.deliveryAvailable === false) {
-                this.deliveryCost = 0; // Доставка недоступна
-                console.warn('⚠️ Delivery not available for this address');
+                // Доставка недоступна для данного адреса
+                this.deliveryCost = 0;
+                console.warn('⚠️ Delivery not available for this address:', data.message || 'Outside delivery zone');
+                
+                // Показываем сообщение пользователю
+                this.showDeliveryMessage('Доставка недоступна для данного адреса', 'error');
             } else {
-                this.deliveryCost = 200; // Default cost
-                console.warn('⚠️ Using default delivery cost');
+                // Неожиданный ответ от API
+                console.warn('⚠️ Unexpected delivery API response:', data);
+                this.deliveryCost = 250; // Стандартная стоимость как fallback
+                this.showDeliveryMessage('Используется стандартная стоимость доставки: 250₽', 'warning');
             }
         } catch (error) {
-            console.warn('Error calculating delivery cost:', error);
-            this.deliveryCost = 200; // Default cost
+            console.error('❌ Error calculating delivery cost:', error);
+            this.deliveryCost = 250; // Стандартная стоимость как fallback
+            this.showDeliveryMessage('Ошибка расчета доставки. Используется стандартная стоимость: 250₽', 'error');
         }
 
+        // Обновляем отображение
         this.updateDeliveryPrice();
         this.updateTotals();
     }
@@ -1281,9 +1297,41 @@ class PizzaNatCheckoutApp {
      * Обновление отображения стоимости доставки
      */
     updateDeliveryPrice() {
-        const priceElement = document.getElementById('delivery-price');
+        const priceElement = document.getElementById('delivery-cost');
         if (priceElement) {
-            priceElement.textContent = this.deliveryCost > 0 ? `₽${this.deliveryCost}` : 'Бесплатно';
+            if (this.deliveryCost > 0) {
+                priceElement.textContent = `₽${this.deliveryCost}`;
+                priceElement.style.color = '';
+            } else {
+                priceElement.textContent = 'Бесплатно';
+                priceElement.style.color = 'var(--tg-theme-link-color, #007aff)';
+            }
+        }
+    }
+
+    /**
+     * Показать сообщение о доставке пользователю
+     */
+    showDeliveryMessage(message, type = 'info') {
+        console.log(`📋 Delivery message (${type}):`, message);
+        
+        // Можно показать уведомление через Telegram API
+        if (this.tg?.showAlert && type === 'error') {
+            this.tg.showAlert(message);
+        }
+        
+        // Или обновить текст в интерфейсе
+        const noteElement = document.querySelector('.address-note small');
+        if (noteElement && type !== 'info') {
+            const originalText = noteElement.textContent;
+            noteElement.textContent = message;
+            noteElement.style.color = type === 'error' ? '#ff6b6b' : '#ffa500';
+            
+            // Восстанавливаем оригинальный текст через 5 секунд
+            setTimeout(() => {
+                noteElement.textContent = originalText;
+                noteElement.style.color = '';
+            }, 5000);
         }
     }
 
@@ -1320,18 +1368,16 @@ class PizzaNatCheckoutApp {
     }
 
     /**
-     * Настройка обработки ввода адреса и подсказок
+     * Настройка обработки ввода адреса (подсказки убраны)
      */
     setupAddressInput() {
         const addressInput = document.getElementById('address-input');
-        const addressSuggestions = document.getElementById('address-suggestions');
         
-        if (!addressInput || !addressSuggestions) return;
+        if (!addressInput) return;
         
-        // Обработка фокуса на поле ввода
+        // Обработка фокуса на поле ввода (упрощенная версия без подсказок)
         addressInput.addEventListener('focus', () => {
             document.body.classList.add('keyboard-visible');
-            addressSuggestions.classList.add('keyboard-visible');
             
             // Прокручиваем к полю ввода
             setTimeout(() => {
@@ -1346,24 +1392,7 @@ class PizzaNatCheckoutApp {
         addressInput.addEventListener('blur', () => {
             setTimeout(() => {
                 document.body.classList.remove('keyboard-visible');
-                addressSuggestions.classList.remove('keyboard-visible');
-            }, 150); // Небольшая задержка для обработки кликов по подсказкам
-        });
-        
-        // Обработка кликов по подсказкам
-        addressSuggestions.addEventListener('click', async (e) => {
-            const suggestionItem = e.target.closest('.address-suggestion-item');
-            if (suggestionItem) {
-                const selectedAddress = suggestionItem.textContent.trim();
-                addressInput.value = selectedAddress;
-                this.address = selectedAddress;
-                addressSuggestions.innerHTML = '';
-                addressInput.blur();
-                
-                // Обновляем стоимость доставки
-                console.log('🚗 Calculating delivery cost for selected address:', selectedAddress);
-                await this.calculateDeliveryCost(selectedAddress);
-            }
+            }, 150);
         });
     }
     
