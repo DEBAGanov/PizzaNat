@@ -170,11 +170,25 @@
 /* СБП логотип в опциях оплаты */
 .option-title img[src*="sbp-logo"] {
     display: block;
-    height: 32px;
+    height: 40px;
     width: auto;
+    max-width: 120px;
     margin: 0 auto;
     filter: brightness(1.1);
     transition: all 0.2s ease;
+    object-fit: contain;
+}
+
+/* Альтернативный селектор для СБП логотипа */
+.option-title img[alt*="СБП"] {
+    display: block;
+    height: 40px;
+    width: auto;
+    max-width: 120px;
+    margin: 0 auto;
+    filter: brightness(1.1);
+    transition: all 0.2s ease;
+    object-fit: contain;
 }
 
 /* Центрирование для option-title с изображением */
