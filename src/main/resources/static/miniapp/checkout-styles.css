@@ -167,7 +167,7 @@
     color: var(--tg-theme-hint-color, #999);
 }
 
-/* СБП логотип в опциях оплаты (PNG) */
+/* СБП логотип в опциях оплаты (PNG via /miniapp/) */
 .option-title img[src*="sbp-logo"] {
     display: block;
     height: 40px;
@@ -207,7 +207,7 @@
     margin-bottom: 8px;
 }
 
-/* Hover эффект для логотипа СБП */
+/* Hover эффект для логотипа СБП (miniapp path) */
 .option-card:hover .option-title img[src*="sbp-logo"] {
     transform: scale(1.05);
     filter: brightness(1.2);
