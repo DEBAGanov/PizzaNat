@@ -3,6 +3,62 @@
  * Full product catalog like @DurgerKingBot
  */
 
+// Функции для отслеживания электронной коммерции в Яндекс.Метрике
+function trackEcommerce(eventType, data) {
+    try {
+        if (typeof ym !== 'undefined') {
+            console.log('📊 YM E-commerce tracking:', eventType, data);
+            ym(103585127, 'reachGoal', eventType, data);
+            
+            // Отправляем данные в dataLayer для электронной коммерции
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: eventType,
+                ecommerce: data
+            });
+        }
+    } catch (error) {
+        console.error('❌ YM E-commerce tracking error:', error);
+    }
+}
+
+function trackPurchase(orderData, items) {
+    const ecommerceData = {
+        purchase: {
+            transaction_id: orderData.id || orderData.orderId,
+            value: orderData.totalAmount,
+            currency: 'RUB',
+            items: items.map(item => ({
+                item_id: item.productId?.toString(),
+                item_name: item.name,
+                category: item.category || 'Еда',
+                quantity: item.quantity,
+                price: item.price
+            }))
+        }
+    };
+    
+    trackEcommerce('purchase', ecommerceData);
+}
+
+function trackAddToCart(item) {
+    const ecommerceData = {
+        add_to_cart: {
+            currency: 'RUB',
+            value: item.price * item.quantity,
+            items: [{
+                item_id: item.productId?.toString(),
+                item_name: item.name,
+                category: item.category || 'Еда',
+                quantity: item.quantity,
+                price: item.price
+            }]
+        }
+    };
+    
+    trackEcommerce('add_to_cart', ecommerceData);
+}
+
 class PizzaNatMenuApp {
     constructor() {
         this.tg = window.Telegram?.WebApp;
@@ -379,6 +435,16 @@ class PizzaNatMenuApp {
             });
         }
 
+        // Отслеживание добавления в корзину в Яндекс.Метрике
+        const itemForTracking = existingItem || this.cart.items[this.cart.items.length - 1];
+        trackAddToCart({
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: quantity,
+            category: 'Еда'
+        });
+        
         this.updateCartTotals();
         this.saveCartToStorage();
         this.renderProducts(); // Обновляем отображение с правильными количествами
@@ -636,6 +702,9 @@ class PizzaNatMenuApp {
             const payment = await this.api.createPayment(order.id, 'SBP');
             
             if (payment.success && payment.confirmationUrl) {
+                // Отслеживание покупки в Яндекс.Метрике
+                trackPurchase(order, this.cart.items);
+                
                 // Открываем страницу оплаты
                 this.tg?.openLink(payment.confirmationUrl);
                 

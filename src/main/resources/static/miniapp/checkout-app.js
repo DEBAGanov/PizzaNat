@@ -3,6 +3,62 @@
  * Order processing with delivery and payment selection
  */
 
+// Функции для отслеживания электронной коммерции в Яндекс.Метрике
+function trackEcommerce(eventType, data) {
+    try {
+        if (typeof ym !== 'undefined') {
+            console.log('📊 YM E-commerce tracking:', eventType, data);
+            ym(103585127, 'reachGoal', eventType, data);
+            
+            // Отправляем данные в dataLayer для электронной коммерции
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: eventType,
+                ecommerce: data
+            });
+        }
+    } catch (error) {
+        console.error('❌ YM E-commerce tracking error:', error);
+    }
+}
+
+function trackPurchase(orderData, items) {
+    const ecommerceData = {
+        purchase: {
+            transaction_id: orderData.id || orderData.orderId,
+            value: orderData.totalAmount,
+            currency: 'RUB',
+            items: items.map(item => ({
+                item_id: item.productId?.toString(),
+                item_name: item.name,
+                category: item.category || 'Еда',
+                quantity: item.quantity,
+                price: item.price
+            }))
+        }
+    };
+    
+    trackEcommerce('purchase', ecommerceData);
+}
+
+function trackBeginCheckout(items, totalAmount) {
+    const ecommerceData = {
+        begin_checkout: {
+            value: totalAmount,
+            currency: 'RUB',
+            items: items.map(item => ({
+                item_id: item.productId?.toString(),
+                item_name: item.name,
+                category: item.category || 'Еда',
+                quantity: item.quantity,
+                price: item.price
+            }))
+        }
+    };
+    
+    trackEcommerce('begin_checkout', ecommerceData);
+}
+
 class PizzaNatCheckoutApp {
     constructor() {
         this.tg = window.Telegram?.WebApp;
@@ -84,6 +140,11 @@ class PizzaNatCheckoutApp {
             
             // Загрузка последнего адреса доставки - ОТКЛЮЧЕНО
             // await this.loadLastDeliveryAddress();
+            
+            // Отслеживание начала оформления заказа
+            if (this.cart.items && this.cart.items.length > 0) {
+                trackBeginCheckout(this.cart.items, this.cart.totalAmount);
+            }
             
             // Показываем приложение
             this.showApp();
@@ -1563,6 +1624,9 @@ class PizzaNatCheckoutApp {
                 if (payment && (payment.confirmation?.confirmation_url || payment.confirmationUrl)) {
                     const paymentUrl = payment.confirmation?.confirmation_url || payment.confirmationUrl;
                     
+                    // Отслеживание покупки в Яндекс.Метрике
+                    trackPurchase(order, this.cart.items);
+                    
                     // Очищаем корзину
                     this.clearCart();
                     
@@ -1578,6 +1642,9 @@ class PizzaNatCheckoutApp {
                 }
             } else {
                 // Для наличной оплаты показываем успех
+                // Отслеживание покупки в Яндекс.Метрике
+                trackPurchase(order, this.cart.items);
+                
                 this.clearCart();
                 this.tg?.showAlert('Заказ успешно оформлен! Мы свяжемся с вами для подтверждения.');
                 
