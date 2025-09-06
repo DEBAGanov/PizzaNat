@@ -313,6 +313,7 @@ public class PizzaNatAdminBot extends TelegramLongPollingBot {
         // Четвертая строка - дополнительные действия
         List<InlineKeyboardButton> row4 = new ArrayList<>();
         row4.add(createButton("📋 Детали", "order_details_" + orderId));
+        row4.add(createButton("📝 Отзыв", "order_review_" + orderId));
         rows.add(row4);
 
         keyboard.setKeyboard(rows);

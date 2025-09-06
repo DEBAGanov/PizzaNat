@@ -27,6 +27,8 @@ public class AdminBotCallbackHandler {
                 adminBotService.handleOrderStatusChange(chatId, messageId, callbackData);
             } else if (callbackData.startsWith("order_details_")) {
                 adminBotService.handleOrderDetailsRequest(chatId, callbackData);
+            } else if (callbackData.startsWith("order_review_")) {
+                adminBotService.handleOrderReviewRequest(chatId, callbackData);
             } else {
                 log.warn("Неизвестный callback data: {}", callbackData);
             }

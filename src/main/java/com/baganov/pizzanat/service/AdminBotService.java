@@ -220,6 +220,76 @@ public class AdminBotService {
     }
 
     /**
+     * Обработка запроса на отправку отзыва пользователю
+     */
+    public void handleOrderReviewRequest(Long chatId, String callbackData) {
+        try {
+            // Парсим callback data: order_review_{orderId}
+            String[] parts = callbackData.split("_");
+            if (parts.length != 3) {
+                log.error("Некорректный формат callback data: {}", callbackData);
+                return;
+            }
+
+            Long orderId = Long.parseLong(parts[2]);
+            Optional<Order> orderOpt = orderService.findById(orderId);
+
+            if (orderOpt.isPresent()) {
+                Order order = orderOpt.get();
+                
+                // Проверяем, есть ли у пользователя Telegram ID
+                if (order.getUser() == null || order.getUser().getTelegramId() == null) {
+                    telegramAdminNotificationService.sendMessage(chatId, 
+                        "❌ У пользователя заказа #" + orderId + " нет Telegram ID. Отзыв не может быть отправлен.", false);
+                    return;
+                }
+
+                // Отправляем запрос на отзыв пользователю
+                sendReviewRequestToUser(order);
+                
+                // Подтверждаем администратору
+                String confirmationMessage = String.format(
+                    "✅ Запрос на отзыв отправлен пользователю\n\n" +
+                    "📋 Заказ #%d\n" +
+                    "👤 Пользователь: %s\n" +
+                    "📱 Telegram ID: %d",
+                    orderId,
+                    order.getUser().getUsername() != null ? order.getUser().getUsername() : 
+                        (order.getUser().getFirstName() + " " + (order.getUser().getLastName() != null ? order.getUser().getLastName() : "")),
+                    order.getUser().getTelegramId()
+                );
+                
+                telegramAdminNotificationService.sendMessage(chatId, confirmationMessage, true);
+                
+            } else {
+                telegramAdminNotificationService.sendMessage(chatId, "❌ Заказ не найден", false);
+            }
+
+        } catch (Exception e) {
+            log.error("Ошибка при отправке запроса на отзыв: {}", e.getMessage(), e);
+            telegramAdminNotificationService.sendMessage(chatId, "❌ Произошла ошибка при отправке запроса на отзыв", false);
+        }
+    }
+    
+    /**
+     * Отправка запроса на отзыв пользователю
+     */
+    private void sendReviewRequestToUser(Order order) {
+        try {
+            if (telegramUserNotificationService != null) {
+                telegramUserNotificationService.sendReviewRequestNotification(order);
+                log.info("Запрос на отзыв отправлен пользователю {} для заказа #{}", 
+                    order.getUser().getTelegramId(), order.getId());
+            } else {
+                log.error("TelegramUserNotificationService недоступен для отправки запроса на отзыв");
+            }
+        } catch (Exception e) {
+            log.error("Ошибка отправки запроса на отзыв пользователю для заказа #{}: {}", 
+                order.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
      * Получение статистики заказов
      */
     public String getOrdersStats() {

@@ -36,7 +36,7 @@ public class ScheduledNotificationService {
     private final ScheduledNotificationRepository scheduledNotificationRepository;
     private final TelegramUserNotificationService telegramUserNotificationService;
 
-    @Value("${app.url:https://pizzanat.ru}")
+    @Value("${app.url:https://t.me/DIMBOpizzaBot/menu}")
     private String appUrl;
 
     @Value("${app.referral.delay.hours:1}")
@@ -95,12 +95,12 @@ public class ScheduledNotificationService {
      */
     private String createReferralMessage(Order order) {
         return String.format(
-                "🍕 <b>Спасибо за заказ в PizzaNat!</b>\n\n" +
+                "🍕 <b>Спасибо за заказ в ДИМБО ПИЦЦА!</b>\n\n" +
                         "Надеемся, вам понравилась наша пицца! 😊\n\n" +
                         "Если вам понравилось, отправьте пожалуйста друзьям ссылку на наше приложение:\n" +
                         "👉 <a href=\"%s\">%s</a>\n\n" +
                         "Спасибо большое! ❤️\n\n" +
-                        "<i>Команда PizzaNat</i>",
+                        "<i>Команда DIMBO PIZZA</i>",
                 appUrl, appUrl);
     }
 

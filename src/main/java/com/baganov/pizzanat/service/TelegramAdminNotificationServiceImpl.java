@@ -96,10 +96,11 @@ public class TelegramAdminNotificationServiceImpl implements TelegramAdminNotifi
         statusRow3.add(createButton("❌ Отменить", "order_status_" + orderId + "_CANCELLED"));
         rows.add(statusRow3);
 
-        // Кнопка деталей
-        List<InlineKeyboardButton> detailsRow = new ArrayList<>();
-        detailsRow.add(createButton("📋 Детали заказа", "order_details_" + orderId));
-        rows.add(detailsRow);
+        // Кнопки деталей и отзыва
+        List<InlineKeyboardButton> actionsRow = new ArrayList<>();
+        actionsRow.add(createButton("📋 Детали заказа", "order_details_" + orderId));
+        actionsRow.add(createButton("📝 Отзыв", "order_review_" + orderId));
+        rows.add(actionsRow);
 
         keyboard.setKeyboard(rows);
         return keyboard;

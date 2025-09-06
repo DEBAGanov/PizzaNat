@@ -91,6 +91,29 @@ public class TelegramUserNotificationService {
     }
 
     /**
+     * Отправка персонального уведомления пользователю с запросом на отзыв
+     *
+     * @param order заказ
+     */
+    public void sendReviewRequestNotification(Order order) {
+        if (!isNotificationEnabled() || !hasUserTelegramId(order)) {
+            return;
+        }
+
+        try {
+            String message = formatReviewRequestMessage(order);
+            sendPersonalMessage(order.getUser().getTelegramId(), message);
+
+            log.info("Запрос на отзыв для заказа #{} отправлен пользователю {} (Telegram ID: {})",
+                    order.getId(), order.getUser().getUsername(), order.getUser().getTelegramId());
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки запроса на отзыв для заказа #{} пользователю {}: {}",
+                    order.getId(), order.getUser().getUsername(), e.getMessage(), e);
+        }
+    }
+
+    /**
      * Проверяет, включены ли уведомления и настроен ли Telegram
      */
     private boolean isNotificationEnabled() {
@@ -233,6 +256,47 @@ public class TelegramUserNotificationService {
             case "CANCELLED" -> "😔 К сожалению, заказ был отменен. Если у вас есть вопросы, обратитесь в поддержку.";
             default -> null;
         };
+    }
+
+    /**
+     * Форматирование сообщения с запросом на отзыв
+     */
+    private String formatReviewRequestMessage(Order order) {
+        StringBuilder message = new StringBuilder();
+
+        message.append("⭐ <b>Поделитесь впечатлениями о заказе!</b>\n\n");
+
+        message.append("📋 <b>Заказ #").append(order.getId()).append("</b>\n");
+        message.append("📅 <b>Дата:</b> ").append(order.getCreatedAt().format(DATE_FORMATTER)).append("\n\n");
+
+        // Состав заказа (краткий)
+        if (order.getItems() != null && !order.getItems().isEmpty()) {
+            message.append("🛒 <b>Состав заказа:</b>\n");
+            int itemCount = 0;
+            for (OrderItem item : order.getItems()) {
+                if (itemCount >= 3) {
+                    message.append("   • и еще ").append(order.getItems().size() - 3).append(" позиции\n");
+                    break;
+                }
+                message.append("   • ").append(item.getProduct().getName());
+                if (item.getQuantity() > 1) {
+                    message.append(" x").append(item.getQuantity());
+                }
+                message.append("\n");
+                itemCount++;
+            }
+            message.append("\n");
+        }
+
+        message.append("🍕 <b>Нам очень важно ваше мнение!</b>\n");
+        message.append("Расскажите, понравился ли вам заказ, и помогите нам стать еще лучше.\n\n");
+        
+        message.append("👆 <b>Оставить отзыв:</b>\n");
+        message.append("<a href=\"https://ya.cc/t/ldDY0YvB7VsBa8\">🔗 Перейти к форме отзыва</a>\n\n");
+        
+        message.append("💙 <b>Спасибо, что выбираете ДИМБО ПИЦЦА!</b>");
+
+        return message.toString();
     }
 
     /**
