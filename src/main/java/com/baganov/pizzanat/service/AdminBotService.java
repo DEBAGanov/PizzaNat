@@ -749,16 +749,24 @@ public class AdminBotService {
                         List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
             
             if (payments.isEmpty()) {
-                message.append("💳 *СТАТУС ОПЛАТЫ:* 💵 Наличными\n");
-                message.append("💰 *СПОСОБ ОПЛАТЫ:* 💵 Наличными при доставке\n\n");
+                // Для заказов наличными используем правильную логику
+                String paymentStatus = getPaymentStatusDisplay(order);
+                String paymentMethodName = order.getPaymentMethod() != null ? order.getPaymentMethod().getDisplayName() : "💵 Наличными при доставке";
+                
+                message.append("💳 *СТАТУС ОПЛАТЫ:* ").append(paymentStatus).append("\n");
+                message.append("💰 *СПОСОБ ОПЛАТЫ:* ").append(paymentMethodName).append("\n\n");
                 return;
             }
 
             // Берем последний платеж (самый новый)
             Payment latestPayment = payments.get(0);
 
-            message.append("💳 *СТАТУС ОПЛАТЫ:* ").append(getPaymentStatusDisplayName(latestPayment.getStatus())).append("\n");
-            message.append("💰 *СПОСОБ ОПЛАТЫ:* ").append(getPaymentMethodDisplayName(latestPayment.getMethod())).append("\n");
+            // Используем нашу новую логику для всех типов статусов
+            String paymentStatus = getPaymentStatusDisplay(order);
+            String paymentMethodName = getPaymentMethodDisplayName(latestPayment.getMethod());
+
+            message.append("💳 *СТАТУС ОПЛАТЫ:* ").append(paymentStatus).append("\n");
+            message.append("💰 *СПОСОБ ОПЛАТЫ:* ").append(paymentMethodName).append("\n");
 
             if (latestPayment.getCreatedAt() != null) {
                 message.append("🕐 *Время создания платежа:* ")
@@ -945,15 +953,21 @@ public class AdminBotService {
                         List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
             
             if (payments.isEmpty()) {
-                message.append("💳 *Оплата:* 💵 Наличными\n");
+                // Для заказов наличными используем правильную логику
+                String paymentStatus = getPaymentStatusDisplay(order);
+                message.append("💳 *Оплата:* ").append(paymentStatus).append("\n");
                 return;
             }
 
             // Берем последний платеж (самый новый)
             Payment latestPayment = payments.get(0);
 
-            message.append("💳 *Оплата:* ").append(getPaymentStatusDisplayName(latestPayment.getStatus()));
-            message.append(" (").append(getPaymentMethodDisplayName(latestPayment.getMethod())).append(")\n");
+            // Используем нашу новую логику для статуса
+            String paymentStatus = getPaymentStatusDisplay(order);
+            String paymentMethodName = getPaymentMethodDisplayName(latestPayment.getMethod());
+            
+            message.append("💳 *Оплата:* ").append(paymentStatus);
+            message.append(" (").append(paymentMethodName).append(")\n");
 
             // Добавляем ссылку на проверку платежа для онлайн оплаты (только если не оплачено)
             if (isOnlinePayment(latestPayment.getMethod()) &&
