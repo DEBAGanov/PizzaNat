@@ -11,6 +11,7 @@ import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.event.PaymentAlertEvent;
 import com.baganov.pizzanat.event.PaymentStatusChangedEvent;
+import com.baganov.pizzanat.event.PaymentSuccessNotificationEvent;
 import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
 import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.model.dto.payment.SbpBankInfo;
@@ -28,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
@@ -64,8 +66,6 @@ public class YooKassaPaymentService {
     private final PaymentMetricsService paymentMetricsService;
     private final PaymentAlertService paymentAlertService;
     private final ApplicationEventPublisher eventPublisher;
-    private final AdminBotService adminBotService;
-    private final TelegramUserNotificationService telegramUserNotificationService;
 
     /**
      * Создание платежа через ЮKassa API
@@ -683,24 +683,12 @@ public class YooKassaPaymentService {
                     updatedOrder.getId(), e.getMessage(), e);
             }
 
-            // Отправляем простое уведомление админам об оплаченном заказе
+            // Публикуем событие о простом уведомлении для админов и пользователя
             try {
-                if (adminBotService != null) {
-                    adminBotService.sendSimplePaymentNotification(updatedOrder);
-                    log.info("✅ Простое уведомление об оплате заказа #{} отправлено администраторам", updatedOrder.getId());
-                }
+                eventPublisher.publishEvent(new PaymentSuccessNotificationEvent(this, updatedOrder));
+                log.info("✅ Событие простого уведомления об оплате заказа #{} опубликовано", updatedOrder.getId());
             } catch (Exception e) {
-                log.error("❌ Ошибка отправки простого уведомления об оплате заказа #{}: {}", updatedOrder.getId(), e.getMessage());
-            }
-
-            // Отправляем простое уведомление пользователю об успешной оплате
-            try {
-                if (telegramUserNotificationService != null) {
-                    telegramUserNotificationService.sendSimplePaymentSuccessNotification(updatedOrder);
-                    log.info("✅ Простое уведомление об оплате отправлено пользователю заказа #{}", updatedOrder.getId());
-                }
-            } catch (Exception e) {
-                log.error("❌ Ошибка отправки простого уведомления пользователю об оплате заказа #{}: {}", updatedOrder.getId(), e.getMessage());
+                log.error("❌ Ошибка публикации события простого уведомления об оплате заказа #{}: {}", updatedOrder.getId(), e.getMessage());
             }
 
             // Публикуем событие о новом заказе для админского бота
