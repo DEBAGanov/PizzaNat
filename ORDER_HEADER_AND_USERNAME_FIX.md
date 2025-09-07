@@ -85,7 +85,7 @@ Username: @tg_baganovs
 
 **✅ Стало:**
 ```
-Username: t.me/tg_baganovs    (кликабельная ссылка)
+Username: t.me/baganovs    (кликабельная ссылка, префикс tg_ убран!)
 ```
 
 #### **Код изменений (применен ко всем методам):**
@@ -94,8 +94,23 @@ Username: t.me/tg_baganovs    (кликабельная ссылка)
 message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
 
 // ✅ СТАЛО:
-message.append("Username: [t.me/").append(order.getUser().getUsername())
-       .append("](https://t.me/").append(order.getUser().getUsername()).append(")\n");
+String cleanUsername = cleanUsernameForTelegramLink(order.getUser().getUsername());
+message.append("Username: [t.me/").append(cleanUsername)
+       .append("](https://t.me/").append(cleanUsername).append(")\n");
+```
+
+#### **Новый метод `cleanUsernameForTelegramLink`:**
+```java
+private String cleanUsernameForTelegramLink(String username) {
+    if (username == null) {
+        return "";
+    }
+    // Убираем префикс tg_ если он есть
+    if (username.startsWith("tg_")) {
+        return username.substring(3); // убираем "tg_"
+    }
+    return username;
+}
 ```
 
 ---
@@ -116,7 +131,8 @@ message.append("Username: [t.me/").append(order.getUser().getUsername())
 | 🏛️ Сбербанк | `🟢 НОВЫЙ ЗАКАЗ #49 🟢 СБЕРБАНК` |
 
 ### **Username теперь кликабельная ссылка:**
-- **Клик по ссылке** `t.me/username` → **открывает чат с пользователем**
+- **Клик по ссылке** `t.me/baganovs` → **открывает чат с пользователем** 
+- **Префикс `tg_` автоматически убирается** - правильная ссылка!
 - **Удобно для администраторов** - можно сразу написать клиенту
 
 ---

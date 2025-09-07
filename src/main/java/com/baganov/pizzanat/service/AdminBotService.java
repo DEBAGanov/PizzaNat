@@ -448,8 +448,9 @@ public class AdminBotService {
             message.append("\n");
 
             if (order.getUser().getUsername() != null) {
-                message.append("Username: [t.me/").append(order.getUser().getUsername())
-                       .append("](https://t.me/").append(order.getUser().getUsername()).append(")\n");
+                String cleanUsername = cleanUsernameForTelegramLink(order.getUser().getUsername());
+                message.append("Username: [t.me/").append(cleanUsername)
+                       .append("](https://t.me/").append(cleanUsername).append(")\n");
             }
 
             if (order.getUser().getPhone() != null) {
@@ -542,8 +543,9 @@ public class AdminBotService {
             message.append("\n");
 
             if (order.getUser().getUsername() != null) {
-                message.append("Username: [t.me/").append(order.getUser().getUsername())
-                       .append("](https://t.me/").append(order.getUser().getUsername()).append(")\n");
+                String cleanUsername = cleanUsernameForTelegramLink(order.getUser().getUsername());
+                message.append("Username: [t.me/").append(cleanUsername)
+                       .append("](https://t.me/").append(cleanUsername).append(")\n");
             }
 
             if (order.getUser().getPhone() != null) {
@@ -1272,6 +1274,20 @@ public class AdminBotService {
             log.error("❌ Ошибка отправки уведомления о заказе #{} с подтвержденной оплатой: {}", 
                     order.getId(), e.getMessage(), e);
         }
+    }
+
+    /**
+     * Очистка username для создания корректной Telegram ссылки
+     */
+    private String cleanUsernameForTelegramLink(String username) {
+        if (username == null) {
+            return "";
+        }
+        // Убираем префикс tg_ если он есть
+        if (username.startsWith("tg_")) {
+            return username.substring(3); // убираем "tg_"
+        }
+        return username;
     }
 
     /**
