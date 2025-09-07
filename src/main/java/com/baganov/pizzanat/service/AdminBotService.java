@@ -278,11 +278,13 @@ public class AdminBotService {
             Long userTelegramId = order.getUser().getTelegramId();
 
             // Простое сообщение с отзывом (без сложного форматирования)
-            String reviewMessage = "⭐ <b>Поделитесь впечатлениями о заказе!</b>\n\n" +
-                "📋 <b>Заказ #" + order.getId() + "</b>\n\n" +
+            String reviewMessage = 
+                // "⭐ <b>Поделитесь впечатлениями о заказе!</b>\n\n" +
+                // "📋 <b>Заказ #" + order.getId() + "</b>\n\n" +
                 "🍕 <b>Нам очень важно ваше мнение!</b>\n" +
                 "Расскажите, понравился ли вам заказ, и помогите нам стать еще лучше.\n\n" +
-                "👆 <b>Оставить отзыв:</b>\n" +
+                // "👆 <b>Оставить отзыв:</b>\n" +
+                "Оставьте нам отзыв или оценку ⭐⭐⭐⭐⭐\n\n" +
                 "<a href=\"https://ya.cc/t/ldDY0YvB7VsBa8\">🔗 Перейти к форме отзыва</a>\n\n" +
                 "💙 <b>Спасибо, что выбираете ДИМБО ПИЦЦА!</b>";
 
@@ -602,9 +604,12 @@ public class AdminBotService {
         
         message.append("└ *ИТОГО: ").append(order.getTotalAmount()).append(" ₽*\n\n");
 
-        // Информация о платеже - добавляем специальную пометку
-        message.append("💳 *СТАТУС ОПЛАТЫ:* ✅ ").append(paymentLabel).append("\n");
-        message.append("💳 *СПОСОБ ОПЛАТЫ:* ").append(order.getPaymentMethod().getDisplayName()).append("\n\n");
+        // Информация о платеже - отображаем правильный статус и способ оплаты
+        String paymentStatus = getPaymentStatusDisplay(order);
+        String paymentMethodName = order.getPaymentMethod() != null ? order.getPaymentMethod().getDisplayName() : "Не указан";
+        
+        message.append("💳 *СТАТУС ОПЛАТЫ:* ").append(paymentStatus).append("\n");
+        message.append("💰 *СПОСОБ ОПЛАТЫ:* ").append(paymentMethodName).append("\n\n");
 
         return message.toString();
     }
@@ -1247,6 +1252,57 @@ public class AdminBotService {
             log.error("❌ Ошибка отправки уведомления о заказе #{} с подтвержденной оплатой: {}", 
                     order.getId(), e.getMessage(), e);
         }
+    }
+
+    /**
+     * Получение корректного отображения статуса оплаты
+     */
+    private String getPaymentStatusDisplay(Order order) {
+        if (order.getPaymentStatus() != null) {
+            switch (order.getPaymentStatus()) {
+                case PAID:
+                    return "✅ Оплачено";
+                case UNPAID:
+                    return "❌ Не оплачено";
+                case FAILED:
+                    return "❌ Ошибка оплаты";
+                case CANCELLED:
+                    return "❌ Платеж отменен";
+                default:
+                    break;
+            }
+        }
+        
+        // Для заказов наличными проверяем статус заказа
+        if (order.getPaymentMethod() == PaymentMethod.CASH) {
+            // Заказ наличными оплачивается при доставке
+            if (order.getStatus() != null && 
+                ("DELIVERED".equals(order.getStatus().getName()) || "COMPLETED".equals(order.getStatus().getName()))) {
+                return "✅ Оплачено наличными";
+            } else {
+                return "💵 Оплата при доставке";
+            }
+        }
+        
+        // Для онлайн платежей проверяем последний платеж
+        Payment latestPayment = getLatestPayment(order);
+        if (latestPayment != null) {
+            switch (latestPayment.getStatus()) {
+                case SUCCEEDED:
+                    return "✅ Оплачено";
+                case PENDING:
+                case WAITING_FOR_CAPTURE:
+                    return "🔄 Ожидает оплаты";
+                case CANCELLED:
+                    return "❌ Платеж отменен";
+                case FAILED:
+                    return "❌ Ошибка оплаты";
+                default:
+                    return "❓ Статус неизвестен";
+            }
+        }
+        
+        return "❌ Не оплачено";
     }
 
     /**
