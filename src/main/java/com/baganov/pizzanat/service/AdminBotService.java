@@ -427,8 +427,12 @@ public class AdminBotService {
         OrderDisplayStatus displayStatus = determineOrderDisplayStatusFixed(order, latestPayment);
         
         StringBuilder message = new StringBuilder();
+        
+        // Определяем способ оплаты для заголовка
+        String paymentMethodLabel = getPaymentMethodLabelForHeader(order);
+        
         message.append(displayStatus.getEmoji()).append(" *НОВЫЙ ЗАКАЗ #").append(order.getId())
-               .append(" ").append(displayStatus.getFormattedStatusWithInfo(latestPayment))
+               .append(" ").append(paymentMethodLabel)
                .append("*\n\n");
 
         message.append("🕐 *Время заказа:* ")
@@ -444,7 +448,8 @@ public class AdminBotService {
             message.append("\n");
 
             if (order.getUser().getUsername() != null) {
-                message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+                message.append("Username: [t.me/").append(order.getUser().getUsername())
+                       .append("](https://t.me/").append(order.getUser().getUsername()).append(")\n");
             }
 
             if (order.getUser().getPhone() != null) {
@@ -537,7 +542,8 @@ public class AdminBotService {
             message.append("\n");
 
             if (order.getUser().getUsername() != null) {
-                message.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+                message.append("Username: [t.me/").append(order.getUser().getUsername())
+                       .append("](https://t.me/").append(order.getUser().getUsername()).append(")\n");
             }
 
             if (order.getUser().getPhone() != null) {
@@ -1266,6 +1272,41 @@ public class AdminBotService {
             log.error("❌ Ошибка отправки уведомления о заказе #{} с подтвержденной оплатой: {}", 
                     order.getId(), e.getMessage(), e);
         }
+    }
+
+    /**
+     * Получение способа оплаты для заголовка заказа
+     */
+    private String getPaymentMethodLabelForHeader(Order order) {
+        // Для заказов наличными
+        if (order.getPaymentMethod() == PaymentMethod.CASH) {
+            return "🟢 НАЛИЧНЫМИ";
+        }
+        
+        // Для онлайн платежей - получаем способ оплаты
+        if (order.getPaymentMethod() != null) {
+            switch (order.getPaymentMethod()) {
+                case SBP:
+                    return "🟢 СБП";
+                case BANK_CARD:
+                    return "🟢 КАРТОЙ";
+                case YOOMONEY:
+                    return "🟢 YOOMONEY";
+                case QIWI:
+                    return "🟢 QIWI";
+                case WEBMONEY:
+                    return "🟢 WEBMONEY";
+                case ALFABANK:
+                    return "🟢 АЛЬФА-БАНК";
+                case SBERBANK:
+                    return "🟢 СБЕРБАНК";
+                default:
+                    return "🟢 ОНЛАЙН";
+            }
+        }
+        
+        // По умолчанию (если не определен способ оплаты)
+        return "🟢 НАЛИЧНЫМИ";
     }
 
     /**
