@@ -91,6 +91,34 @@ public class TelegramUserNotificationService {
     }
 
     /**
+     * Отправка простого уведомления пользователю об успешной оплате заказа
+     *
+     * @param order заказ
+     */
+    public void sendSimplePaymentSuccessNotification(Order order) {
+        if (!isNotificationEnabled() || !hasUserTelegramId(order)) {
+            return;
+        }
+
+        try {
+            // Простое сообщение: "Заказ номер ХХ успешно оплачен сумма (дата)"
+            String message = String.format("Заказ номер %d успешно оплачен %s ₽ (%s)", 
+                order.getId(), 
+                order.getTotalAmount(), 
+                java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+            
+            sendPersonalMessage(order.getUser().getTelegramId(), message);
+
+            log.info("Простое уведомление об оплате заказа #{} отправлено пользователю {} (Telegram ID: {})",
+                    order.getId(), order.getUser().getUsername(), order.getUser().getTelegramId());
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки простого уведомления об оплате заказа #{} пользователю {}: {}",
+                    order.getId(), order.getUser().getUsername(), e.getMessage(), e);
+        }
+    }
+
+    /**
      * Проверяет, включены ли уведомления и настроен ли Telegram
      */
     private boolean isNotificationEnabled() {

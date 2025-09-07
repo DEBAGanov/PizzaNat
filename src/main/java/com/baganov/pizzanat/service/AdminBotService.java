@@ -1250,6 +1250,41 @@ public class AdminBotService {
     }
 
     /**
+     * Отправка простого уведомления админам об оплаченном заказе
+     */
+    public void sendSimplePaymentNotification(Order order) {
+        try {
+            // Простое сообщение: "Заказ номер ХХ успешно оплачен сумма (дата)"
+            String message = String.format("Заказ номер %d успешно оплачен %s ₽ (%s)", 
+                order.getId(), 
+                order.getTotalAmount(), 
+                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+            
+            List<TelegramAdminUser> activeAdmins = adminUserRepository.findByIsActiveTrue();
+
+            if (activeAdmins.isEmpty()) {
+                log.warn("Нет активных администраторов для отправки уведомления об оплате заказа #{}", order.getId());
+                return;
+            }
+
+            for (TelegramAdminUser admin : activeAdmins) {
+                try {
+                    telegramAdminNotificationService.sendMessage(admin.getTelegramChatId(), message, false);
+                    log.debug("Простое уведомление об оплате заказа #{} отправлено администратору: {}", 
+                            order.getId(), admin.getUsername());
+                } catch (Exception e) {
+                    log.error("Ошибка отправки уведомления об оплате администратору {}: {}", admin.getUsername(), e.getMessage());
+                }
+            }
+
+            log.info("✅ Простое уведомление об оплате заказа #{} отправлено {} администраторам", order.getId(), activeAdmins.size());
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки простого уведомления об оплате заказа #{}: {}", order.getId(), e.getMessage());
+        }
+    }
+
+    /**
      * Проверяет есть ли для заказа активные платежи в ожидании оплаты
      * Активными считаются платежи со статусами PENDING или WAITING_FOR_CAPTURE
      * 

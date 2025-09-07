@@ -64,6 +64,8 @@ public class YooKassaPaymentService {
     private final PaymentMetricsService paymentMetricsService;
     private final PaymentAlertService paymentAlertService;
     private final ApplicationEventPublisher eventPublisher;
+    private final AdminBotService adminBotService;
+    private final TelegramUserNotificationService telegramUserNotificationService;
 
     /**
      * Создание платежа через ЮKassa API
@@ -679,6 +681,26 @@ public class YooKassaPaymentService {
             } catch (Exception e) {
                 log.error("❌ Ошибка публикации события изменения статуса платежа для заказа #{}: {}", 
                     updatedOrder.getId(), e.getMessage(), e);
+            }
+
+            // Отправляем простое уведомление админам об оплаченном заказе
+            try {
+                if (adminBotService != null) {
+                    adminBotService.sendSimplePaymentNotification(updatedOrder);
+                    log.info("✅ Простое уведомление об оплате заказа #{} отправлено администраторам", updatedOrder.getId());
+                }
+            } catch (Exception e) {
+                log.error("❌ Ошибка отправки простого уведомления об оплате заказа #{}: {}", updatedOrder.getId(), e.getMessage());
+            }
+
+            // Отправляем простое уведомление пользователю об успешной оплате
+            try {
+                if (telegramUserNotificationService != null) {
+                    telegramUserNotificationService.sendSimplePaymentSuccessNotification(updatedOrder);
+                    log.info("✅ Простое уведомление об оплате отправлено пользователю заказа #{}", updatedOrder.getId());
+                }
+            } catch (Exception e) {
+                log.error("❌ Ошибка отправки простого уведомления пользователю об оплате заказа #{}: {}", updatedOrder.getId(), e.getMessage());
             }
 
             // Публикуем событие о новом заказе для админского бота
