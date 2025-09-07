@@ -10,6 +10,7 @@ import com.baganov.pizzanat.config.YooKassaConfig;
 import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.event.PaymentAlertEvent;
+import com.baganov.pizzanat.event.PaymentStatusChangedEvent;
 import com.baganov.pizzanat.model.dto.payment.CreatePaymentRequest;
 import com.baganov.pizzanat.model.dto.payment.PaymentResponse;
 import com.baganov.pizzanat.model.dto.payment.SbpBankInfo;
@@ -669,6 +670,16 @@ public class YooKassaPaymentService {
             Order updatedOrder = orderRepository.save(order);
             log.info("✅ Статус заказа {} обновлен на CONFIRMED, способ оплаты: {}", 
                     order.getId(), updatedOrder.getPaymentMethod());
+
+            // Публикуем событие об изменении статуса платежа для Google Sheets
+            try {
+                eventPublisher.publishEvent(new PaymentStatusChangedEvent(this, updatedOrder.getId(), 
+                    PaymentStatus.PENDING, PaymentStatus.SUCCEEDED));
+                log.info("✅ Событие изменения статуса платежа для заказа #{} опубликовано", updatedOrder.getId());
+            } catch (Exception e) {
+                log.error("❌ Ошибка публикации события изменения статуса платежа для заказа #{}: {}", 
+                    updatedOrder.getId(), e.getMessage(), e);
+            }
 
             // Публикуем событие о новом заказе для админского бота
             // Поскольку платеж завершен, AdminBotService.hasActivePendingPayments() вернет false
