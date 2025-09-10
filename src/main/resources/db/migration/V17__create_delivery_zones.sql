@@ -136,8 +136,8 @@ VALUES
 (
     'Мамасево',
     'Район Мамасево',
-    250.00,
-    2000.00,
+    300.00,
+    2500.00,
     35,
     45,
     9,
@@ -148,8 +148,8 @@ VALUES
 (
     'Прибрежный',
     'Прибрежная промышленная зона',
-    150.00,
-    1000.00,
+    3000.00,
+    2500.00,
     40,
     55,
     10,
@@ -158,8 +158,8 @@ VALUES
 (
     'Промузел',
     'Промышленный узел',
-    150.00,
-    1000.00,
+    300.00,
+    2500.00,
     40,
     55,
     11,
@@ -223,33 +223,6 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Мира'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Кирова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Свободы'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
         'Калинина'
     ),
     (
@@ -304,15 +277,6 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Фрунзе'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
         'Дзержинского'
     ),
     (
@@ -332,6 +296,15 @@ VALUES (
                 name = 'Центральный'
         ),
         'Люксембург'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Фрунзе'
     ),
     (
         (
@@ -385,15 +358,6 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Степана Разина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
         'Парижской Коммуны'
     ),
     (
@@ -414,7 +378,6 @@ VALUES (
         ),
         'Щорса'
     ),
-    -- Писатели и поэты
     (
         (
             SELECT id
@@ -485,43 +448,7 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Маяковского'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Грибоедова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
         'Островского'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Жуковского'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Герцена'
     ),
     (
         (
@@ -566,35 +493,7 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Пугачева'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
         'Шевченко'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Шкетана'
-    ),
-    -- Именные улицы
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'имени Виктора Григорьевича Васильева'
     ),
     (
         (
@@ -612,88 +511,6 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Иванова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Елисеева'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Гаврилова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Серова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Володарского'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Свердлова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Щербакова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        'Мухина'
-    ),
-    -- Праздничные улицы
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
-        '8 Марта'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Центральный'
-        ),
         '9 Января'
     ),
     (
@@ -703,7 +520,7 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Красный Дол'
+        'Зеленая'
     ),
     (
         (
@@ -712,7 +529,214 @@ VALUES (
             WHERE
                 name = 'Центральный'
         ),
-        'Краснофлотская'
+        'Строительная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Техникумовская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Транспортная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Матюшенко'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Баумана'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Крайняя'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Пионерская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Счастливая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Гагарина'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Чапаева'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Чкалова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Папанина'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Леваневского'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Авиации'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Полевая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Пограничная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Колхозная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Ломоносова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Палантая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Садовая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Волга'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Волжская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Вокзальная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Центральный'
+        ),
+        'Железнодорожная'
     );
 
 -- 2. ЗАРЯ РАЙОН (250₽)
@@ -726,6 +750,15 @@ VALUES (
                 name = 'Заря'
         ),
         'Заря'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Заря'
+        ),
+        'Свободы'
     ),
     (
         (
@@ -824,7 +857,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Зеленая'
+        'Стахановская'
     ),
     (
         (
@@ -833,7 +866,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Зеленый Бор'
+        'Майская'
     ),
     (
         (
@@ -842,7 +875,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Западная'
+        'Горная'
     ),
     (
         (
@@ -851,7 +884,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Западная Луговая'
+        'Мичурина'
     ),
     (
         (
@@ -860,7 +893,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Заводская'
+        'Парники'
     ),
     (
         (
@@ -869,7 +902,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Залесная'
+        'Дубовая'
     ),
     (
         (
@@ -878,7 +911,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Залесная 1-я'
+        'Дубовая 1-я'
     ),
     (
         (
@@ -887,7 +920,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Залесная 2-я'
+        '2-я Дубовая'
     ),
     (
         (
@@ -896,7 +929,7 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Залесная 3-я'
+        'Кошкина'
     ),
     (
         (
@@ -905,7 +938,34 @@ VALUES (
             WHERE
                 name = 'Заря'
         ),
-        'Заячья'
+        'Озерки'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Заря'
+        ),
+        'Набережная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Заря'
+        ),
+        'Воложка'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Заря'
+        ),
+        'Лесозаводская'
     );
 
 -- 3. МАШИНОСТРОИТЕЛЬ РАЙОН (200₽)
@@ -945,7 +1005,7 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Металлургов'
+        'имени Виктора Григорьевича Васильева'
     ),
     (
         (
@@ -954,7 +1014,7 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Энтузиастов'
+        'Гаврилова'
     ),
     (
         (
@@ -963,43 +1023,7 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Стахановская'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Машиностроитель'
-        ),
-        'Строительная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Машиностроитель'
-        ),
-        'Техникумовская'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Машиностроитель'
-        ),
-        'Транспортная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Машиностроитель'
-        ),
-        'Бумажников'
+        'Зеленый Бор'
     ),
     (
         (
@@ -1026,7 +1050,7 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Матросова'
+        'Юбилейная'
     ),
     (
         (
@@ -1035,7 +1059,7 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Матюшенко'
+        'Нагорная'
     ),
     (
         (
@@ -1044,7 +1068,7 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Баумана'
+        'Тихая'
     ),
     (
         (
@@ -1053,13 +1077,185 @@ VALUES (
             WHERE
                 name = 'Машиностроитель'
         ),
-        'Крайняя'
+        'Ямулова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Машиностроитель'
+        ),
+        'Йошкар-Олинское шоссе'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Машиностроитель'
+        ),
+        'Кабанова'
     );
+
 
 -- 4. ДРУЖБА РАЙОН (100₽) - самый доступный
 INSERT INTO
     delivery_zone_streets (zone_id, street_name)
 VALUES (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Мира'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Кирова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Фрунзе'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Степана Разина'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Маяковского'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Грибоедова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Жуковского'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Пугачева'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Шкетана'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Володарского'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Свердлова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Щербакова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        '8 Марта'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Красный Дол'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Краснофлотская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Заводская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Бумажников'
+    ),
+    (
         (
             SELECT id
             FROM delivery_zones
@@ -1084,24 +1280,6 @@ VALUES (
             WHERE
                 name = 'Дружба'
         ),
-        'Пионерская'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Дружба'
-        ),
-        'Спортивная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Дружба'
-        ),
         'Фестивальная'
     ),
     (
@@ -1111,7 +1289,7 @@ VALUES (
             WHERE
                 name = 'Дружба'
         ),
-        'Юбилейная'
+        'Комарова'
     ),
     (
         (
@@ -1120,7 +1298,7 @@ VALUES (
             WHERE
                 name = 'Дружба'
         ),
-        'Майская'
+        'Кузьмина'
     ),
     (
         (
@@ -1129,7 +1307,7 @@ VALUES (
             WHERE
                 name = 'Дружба'
         ),
-        'Весенняя'
+        'Шестакова'
     ),
     (
         (
@@ -1138,107 +1316,115 @@ VALUES (
             WHERE
                 name = 'Дружба'
         ),
-        'Солнечная'
+        'Степная'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Светлая'
+        'Новая'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Счастливая'
+        'Новая 2-я'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Цветочная'
+        'Лесная'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Букетная'
+        'Лесная 1-я'
     ),
-    -- Цветочные улицы
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Маковая'
+        'Лесная 2-я'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Изумрудная'
+        'Сосновая'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Янтарная'
+        'Сосновый Бор'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        'Ясная'
+        'Учительская'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        '1-я Ясная'
+        'Вавилова'
     ),
-    (
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        '2-я Ясная'
-    ),
-    (
+        'Парковая'
+    ), 
+   (
         (
             SELECT id
             FROM delivery_zones
             WHERE
                 name = 'Дружба'
         ),
-        '3-я Ясная'
+        'Парковская'
+    ),
+   (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Дружба'
+        ),
+        'Федина'
     );
 
 -- 5. ВДК РАЙОН (200₽)
@@ -1251,124 +1437,7 @@ VALUES (
             WHERE
                 name = 'ВДК'
         ),
-        'Гагарина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Чапаева'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Чкалова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Громова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Папанина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Байдукова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Леваневского'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Комарова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Авиации'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Осипенко'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Андрея Баранова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Федина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Кузьмина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'ВДК'
-        ),
-        'Шестакова'
+        'Гагаринавая'
     );
 
 -- 6. СЕВЕРНЫЙ РАЙОН (200₽)
@@ -1381,7 +1450,7 @@ VALUES (
             WHERE
                 name = 'Северный'
         ),
-        'Северная'
+        'Маркина'
     ),
     (
         (
@@ -1390,7 +1459,7 @@ VALUES (
             WHERE
                 name = 'Северный'
         ),
-        'Нагорная'
+        'Орлова'
     ),
     (
         (
@@ -1399,7 +1468,7 @@ VALUES (
             WHERE
                 name = 'Северный'
         ),
-        'Горная'
+        'Прохорова'
     ),
     (
         (
@@ -1408,179 +1477,7 @@ VALUES (
             WHERE
                 name = 'Северный'
         ),
-        'Верхне-Луговая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Нижне-Луговая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Полевая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Степная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Придорожная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Пограничная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Крылова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Новая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Новая 2-я'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Тихая'
-    ),
-    -- Лесные улицы
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Лесная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Лесная 1-я'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Лесная 2-я'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Хвойная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Сосновая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Сосновый Бор'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Еловая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Кедровая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Пихтовая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Северный'
-        ),
-        'Дубравная'
+        'Мосолова'
     );
 
 -- 7. ГОРГАЗ РАЙОН (200₽)
@@ -1593,7 +1490,142 @@ VALUES (
             WHERE
                 name = 'Горгаз'
         ),
-        'Волжская подстанция'
+        'Иванова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Елисеева'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Серова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Мухина'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Западная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Энтузиастов'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Матросова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Спортивная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Изумрудная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Янтарная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Громова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Байдукова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Осипенко'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Северная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Придорожная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Еловая'
     ),
     (
         (
@@ -1620,42 +1652,6 @@ VALUES (
             WHERE
                 name = 'Горгаз'
         ),
-        'Колхозная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Горгаз'
-        ),
-        'Промбаза'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Горгаз'
-        ),
-        'Учительская'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Горгаз'
-        ),
-        'Вавилова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Горгаз'
-        ),
         'Тимирязева'
     ),
     (
@@ -1665,7 +1661,7 @@ VALUES (
             WHERE
                 name = 'Горгаз'
         ),
-        'Мичурина'
+        'Овражная'
     ),
     (
         (
@@ -1674,13 +1670,193 @@ VALUES (
             WHERE
                 name = 'Горгаз'
         ),
-        'Ломоносова'
+        'Липовая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Горгаз'
+        ),
+        'Лиственная'
     );
 
 -- 8. ЛУГОВАЯ РАЙОН (250₽)
 INSERT INTO
     delivery_zone_streets (zone_id, street_name)
 VALUES (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Западная Луговая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Заячья'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Весенняя'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Солнечная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Светлая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Цветочная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Букетная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Маковая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Ясная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        '1-я Ясная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        '2-я Ясная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        '3-я Ясная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Андрея Баранова'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Верхне-Луговая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Нижне-Луговая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Хвойная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Кедровая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Пихтовая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Луговая'
+        ),
+        'Дубравная'
+    ),
+    (
         (
             SELECT id
             FROM delivery_zones
@@ -1741,98 +1917,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Овражная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Палантая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Парковая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Парковская'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Парники'
-    ),
-    -- Садово-парковые улицы
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Садовая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
         'Березовая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Дубовая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Дубовая 1-я'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        '2-я Дубовая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Липовая'
     ),
     (
         (
@@ -1877,7 +1962,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Кленовая'
+        'Озерная'
     ),
     (
         (
@@ -1886,7 +1971,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Кленовая 1-я'
+        'Вишнёвая'
     ),
     (
         (
@@ -1895,7 +1980,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Кленовая 2-я'
+        'Черёмуховая'
     ),
     (
         (
@@ -1904,7 +1989,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Кленовая 3-я'
+        'Брусничная'
     ),
     (
         (
@@ -1913,7 +1998,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Кленовая 4-я'
+        'Малиновая'
     ),
     (
         (
@@ -1922,25 +2007,7 @@ VALUES (
             WHERE
                 name = 'Луговая'
         ),
-        'Кленовая 5-я'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        '6-я Кленовая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Луговая'
-        ),
-        'Лиственная'
+        'Береговая'
     );
 
 -- 9. МАМАСЕВО РАЙОН (250₽)
@@ -1953,7 +2020,7 @@ VALUES (
             WHERE
                 name = 'Мамасево'
         ),
-        'Мамасево'
+        'Залесная'
     ),
     (
         (
@@ -1962,7 +2029,125 @@ VALUES (
             WHERE
                 name = 'Мамасево'
         ),
-        'Ямулова'
+        'Залесная 1-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Залесная 2-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Залесная 3-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Металлургов'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Волжская подстанция'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Промбаза'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая 1-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая 2-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая 3-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая 4-я'
+    ),
+    -- Ягодные улицы
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая 5-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Кленовая 6-я'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Мамасево'
+        ),
+        'Мамасево'
     ),
     (
         (
@@ -1980,125 +2165,7 @@ VALUES (
             WHERE
                 name = 'Мамасево'
         ),
-        'Йошкар-Олинское шоссе'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Кабанова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Кошкина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Маркина'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Орлова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Прохорова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Мосолова'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Озерки'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Озерная'
-    ),
-    -- Ягодные улицы
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Вишнёвая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Черёмуховая'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Брусничная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
         'Ежевичная'
-    ),
-    (
-        (
-            SELECT id
-            FROM delivery_zones
-            WHERE
-                name = 'Мамасево'
-        ),
-        'Малиновая'
     ),
     (
         (
@@ -2120,7 +2187,16 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Береговая'
+        'Береговаяская'
+    )
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Плодовая'
     ),
     (
         (
@@ -2129,7 +2205,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Набережная'
+        'Ароматная'
     ),
     (
         (
@@ -2138,7 +2214,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Волга'
+        'Бобровая'
     ),
     (
         (
@@ -2147,7 +2223,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Волжская'
+        'Виноградная'
     ),
     (
         (
@@ -2156,7 +2232,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Воложка'
+        'Огуречная'
     ),
     (
         (
@@ -2165,7 +2241,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Вокзальная'
+        'Тыквенная'
     ),
     (
         (
@@ -2174,7 +2250,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Железнодорожная'
+        'Медовая'
     ),
     (
         (
@@ -2183,7 +2259,7 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        '11 км ж/д'
+        'Толстяков'
     ),
     (
         (
@@ -2192,7 +2268,97 @@ VALUES (
             WHERE
                 name = 'Прибрежный'
         ),
-        'Лесозаводская'
+        'Ромашковая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Роз'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Энергетическая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Журавлевская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Вишневая'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Удачная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Антоновская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Райская'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Фестивальнная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Пляжная'
+    ),
+    (
+        (
+            SELECT id
+            FROM delivery_zones
+            WHERE
+                name = 'Прибрежный'
+        ),
+        'Докторская'
     );
 
 -- 11. ПРОМУЗЕЛ ПРОМЫШЛЕННЫЙ РАЙОН (300₽)
@@ -2299,7 +2465,7 @@ VALUES
     'contains'
 ),
 
--- Машиностроитель - ключевые слова
+-- Машиносятроитель - ключевые слова
 (
     (
         SELECT id
