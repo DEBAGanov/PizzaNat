@@ -22,6 +22,24 @@ function trackEcommerce(eventType, data) {
     }
 }
 
+// Функции для отслеживания событий VK пикселя (Top.Mail.Ru)
+function trackVKEcommerce(goal, data) {
+    try {
+        if (typeof _tmr !== 'undefined' && Array.isArray(_tmr)) {
+            console.log('📊 VK E-commerce tracking:', goal, data);
+            _tmr.push({
+                type: "reachGoal",
+                id: "3695469",
+                goal: goal,
+                value: data.value || undefined,
+                params: data.params || {}
+            });
+        }
+    } catch (error) {
+        console.error('❌ VK E-commerce tracking error:', error);
+    }
+}
+
 function trackPurchase(orderData, items) {
     const ecommerceData = {
         purchase: {
@@ -38,7 +56,17 @@ function trackPurchase(orderData, items) {
         }
     };
     
+    // Яндекс Метрика
     trackEcommerce('purchase', ecommerceData);
+    
+    // VK пиксель
+    const productIds = items.map(item => item.productId?.toString());
+    trackVKEcommerce('purchase', {
+        value: orderData.totalAmount,
+        params: {
+            product_id: productIds.length === 1 ? productIds[0] : productIds
+        }
+    });
 }
 
 function trackAddToCart(item) {
@@ -56,7 +84,41 @@ function trackAddToCart(item) {
         }
     };
     
+    // Яндекс Метрика
     trackEcommerce('add_to_cart', ecommerceData);
+    
+    // VK пиксель
+    trackVKEcommerce('add_to_cart', {
+        params: {
+            product_id: item.productId?.toString()
+        }
+    });
+}
+
+function trackViewItem(item) {
+    const ecommerceData = {
+        view_item: {
+            currency: 'RUB',
+            value: item.price,
+            items: [{
+                item_id: item.productId?.toString(),
+                item_name: item.name,
+                category: item.category || 'Еда',
+                quantity: 1,
+                price: item.price
+            }]
+        }
+    };
+    
+    // Яндекс Метрика
+    trackEcommerce('view_item', ecommerceData);
+    
+    // VK пиксель
+    trackVKEcommerce('view_item', {
+        params: {
+            product_id: item.productId?.toString()
+        }
+    });
 }
 
 class PizzaNatMenuApp {
