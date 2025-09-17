@@ -45,7 +45,7 @@ public class ProductService {
     }
 
     public Page<ProductDto> getAllProducts(Pageable pageable) {
-        return productRepository.findAll(pageable)
+        return productRepository.findAllByIsAvailableTrue(pageable)
                 .map(productMapper::toDto);
     }
 

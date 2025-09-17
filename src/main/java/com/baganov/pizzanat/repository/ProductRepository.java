@@ -14,7 +14,7 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
 
-        @Query("SELECT p FROM Product p WHERE p.isAvailable = true")
+        @Query("SELECT p FROM Product p WHERE p.isAvailable = true ORDER BY p.category.displayOrder ASC, p.id ASC")
         Page<Product> findAllByIsAvailableTrue(Pageable pageable);
 
         @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.isAvailable = true")
@@ -28,7 +28,8 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
                         "AND p.isAvailable = true " +
                         "AND (:query IS NULL OR :query = '' OR " +
                         "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
-                        "OR LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%')))")
+                        "OR LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+                        "ORDER BY p.category.displayOrder ASC, p.id ASC")
         Page<Product> searchProducts(@Param("categoryId") Integer categoryId, @Param("query") String query,
                         Pageable pageable);
 
