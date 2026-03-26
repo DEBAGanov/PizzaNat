@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DIMBO Pizza - MAX Mini App</title>
+
+    <!-- MAX WebApp SDK -->
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../miniapp/styles.css">
+
+    <!-- Meta -->
+    <meta name="theme-color" content="#1a1a1a">
+</head>
+<body class="max-theme">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Загрузка...</div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="brand-logo">
+                    <span class="brand-name">🍕 DIMBO Pizza</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <h1>Добро пожаловать!</h1>
+                <p>Закажите вкусную пиццу в DIMBO Pizza через MAX</p>
+            </section>
+
+            <!-- Categories -->
+            <section class="categories-section" id="categories-section">
+                <h2 class="section-title">Меню</h2>
+                <div class="categories-grid" id="categories-grid">
+                    <!-- Categories will be loaded here -->
+                </div>
+                <!-- Link to full menu -->
+                <div class="menu-link-section">
+                    <a href="menu.html" class="menu-link-button" id="menu-link-button">
+                        📋 Посмотреть все товары
+                    </a>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar" id="bottom-bar" style="display: none;">
+            <div class="bottom-bar-content">
+                <div class="total-info">
+                    <span id="bottom-total">0 ₽</span>
+                </div>
+                <button class="view-cart-button" id="view-cart-button">
+                    Корзина (<span id="bottom-count">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="error-screen" class="error-screen" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message" id="error-message">Произошла ошибка</div>
+        <button class="retry-button" id="retry-button">Повторить</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="max-api.js"></script>
+    <script>
+        /**
+         * PizzaNat MAX Mini App - Main Entry Point
+         * Redirects to menu page
+         */
+
+        class PizzaNatMaxApp {
+            constructor() {
+                this.max = window.WebApp;
+                this.api = window.MaxPizzaAPI;
+                this.init();
+            }
+
+            async init() {
+                console.log('🚀 PizzaNat MAX Mini App starting...');
+
+                // Setup MAX WebApp
+                if (this.max) {
+                    console.log('📱 MAX WebApp available');
+                    if (this.max.expand) {
+                        try {
+                            this.max.expand();
+                        } catch (e) {}
+                    }
+                }
+
+                // Try to authenticate
+                if (this.max?.initData) {
+                    try {
+                        await this.api.authenticateWebApp(this.max.initData);
+                        console.log('✅ Authenticated');
+                    } catch (e) {
+                        console.warn('Auth failed, continuing anyway');
+                    }
+                }
+
+                // Redirect to menu
+                window.location.href = 'menu.html';
+            }
+        }
+
+        // Initialize
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => new PizzaNatMaxApp());
+        } else {
+            new PizzaNatMaxApp();
+        }
+    </script>
+</body>
+</html>

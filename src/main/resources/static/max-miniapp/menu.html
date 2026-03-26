@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DIMBO Pizza - Меню</title>
+
+    <!-- MAX WebApp SDK -->
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../miniapp/styles.css">
+    <link rel="stylesheet" href="../miniapp/menu-styles.css">
+
+    <!-- Meta for MAX -->
+    <meta name="theme-color" content="#1a1a1a">
+
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=103585127', 'ym');
+
+        ym(103585127, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/103585127" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
+
+    <!-- VK Pixel (Top.Mail.Ru counter) -->
+    <script type="text/javascript">
+        var _tmr = window._tmr || (window._tmr = []);
+        _tmr.push({id: "3695469", type: "pageView", start: (new Date()).getTime()});
+        (function (d, w, id) {
+          if (d.getElementById(id)) return;
+          var ts = d.createElement("script"); ts.type = "text/javascript"; ts.async = true; ts.id = id;
+          ts.src = "https://top-fwz1.mail.ru/js/code.js";
+          var f = function () {var s = d.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ts, s);};
+          if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); }
+        })(document, window, "tmr-code");
+    </script>
+    <noscript><div><img src="https://top-fwz1.mail.ru/counter?id=3695469;js=na" style="position:absolute;left:-9999px;" alt="Top.Mail.Ru" /></div></noscript>
+    <!-- /VK Pixel (Top.Mail.Ru counter) -->
+</head>
+<body class="max-theme menu-page">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Загрузка меню...</div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app-container" style="display: none;">
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Menu Grid -->
+            <section class="menu-section">
+                <div class="menu-grid" id="menu-grid">
+                    <!-- Products will be loaded here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Cart Overlay -->
+        <div class="cart-overlay" id="cart-overlay" style="display: none;">
+            <div class="cart-container">
+                <div class="cart-header">
+                    <h3>ВАШ ЗАКАЗ</h3>
+                    <div class="cart-header-actions">
+                        <button class="clear-cart-button" id="clear-cart-button">🗑️</button>
+                        <button class="cart-close" id="cart-close">✕</button>
+                    </div>
+                </div>
+                <div class="cart-content" id="cart-content">
+                    <!-- Cart items will be loaded here -->
+                </div>
+                <div class="cart-footer">
+                    <button class="pay-button" id="pay-button">
+                        ОФОРМИТЬ ЗАКАЗ <span id="cart-total">₽0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar" id="bottom-bar" style="display: none;">
+            <button class="view-order-button" id="view-order-button">
+                <span id="bottom-count">0</span> ТОВАР НА <span id="bottom-total">₽0</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="error-screen" class="error-screen" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message" id="error-message">Произошла ошибка</div>
+        <button class="retry-button" id="retry-button">Повторить</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="max-api.js"></script>
+    <script src="max-menu-app.js"></script>
+</body>
+</html>

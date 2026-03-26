@@ -112,3 +112,24 @@ telegram:
     username: ${TELEGRAM_ADMIN_BOT_USERNAME:PizzaNatOrders_bot}
     max-retries: ${TELEGRAM_ADMIN_BOT_MAX_RETRIES:3}
     timeout-seconds: ${TELEGRAM_ADMIN_BOT_TIMEOUT_SECONDS:30}
+
+# MAX Bot API настройки (мессенджер MAX - российский аналог Telegram)
+# Документация: https://dev.max.ru/docs/webapps/introduction
+max:
+  bot:
+    enabled: ${MAX_BOT_ENABLED:true}
+    # Пользовательский бот ДИМБО: https://max.ru/id121603899498_bot
+    user-bot-token: ${MAX_USER_BOT_TOKEN:}
+    user-bot-username: ${MAX_USER_BOT_USERNAME:id121603899498_bot}
+    # Административный бот ДИМБО Админ: https://max.ru/id121603899498_1_bot
+    admin-bot-token: ${MAX_ADMIN_BOT_TOKEN:}
+    admin-bot-username: ${MAX_ADMIN_BOT_USERNAME:id121603899498_1_bot}
+    # Настройки API
+    api-url: ${MAX_API_URL:https://api.max.ru}
+    # Chat ID для административных уведомлений
+    admin-chat-id: ${MAX_ADMIN_CHAT_ID:}
+    # Таймауты и повторные попытки
+    timeout: ${MAX_BOT_TIMEOUT:30000}
+    max-retries: ${MAX_BOT_MAX_RETRIES:3}
+    # Включить административные уведомления
+    admin-enabled: ${MAX_ADMIN_ENABLED:true}

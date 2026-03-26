@@ -1,5 +1,50 @@
 # PizzaNat - Дневник наблюдений
 
+## 2026-03-26 - Интеграция MAX Mini App
+
+### Наблюдения
+- MAX - российский мессенджер, аналог Telegram
+- MAX WebApp SDK использует `window.WebApp` вместо `window.Telegram.WebApp`
+- Валидация MAX отличается от Telegram: `HMAC_SHA256("WebAppData", botToken)` без конкатенации
+- MAX не имеет API `requestContact` - номер телефона нужно запрашивать вручную
+- MAX использует Promise-based API вместо callback-based как в Telegram
+
+### Созданные компоненты
+
+**Backend (Java):**
+- `MaxBotConfig.java` - Конфигурация токенов ботов
+- `MaxWebAppUser.java`, `MaxWebAppInitData.java` - DTO для пользователя
+- `MaxWebAppAuthRequest.java`, `MaxWebAppValidateRequest.java` - Request DTO
+- `MaxWebAppService.java` - Сервис валидации и авторизации
+- `MaxWebAppController.java` - REST API `/api/v1/max-webapp/`
+- `MaxAdminNotificationService.java` - Уведомления о заказах
+
+**Frontend (JavaScript/HTML):**
+- `max-miniapp/index.html` - Точка входа
+- `max-miniapp/menu.html` - Каталог товаров
+- `max-miniapp/checkout.html` - Оформление заказа
+- `max-miniapp/max-api.js` - API модуль
+- `max-miniapp/max-menu-app.js` - Логика меню
+- `max-miniapp/max-checkout-app.js` - Логика checkout
+
+**Конфигурация:**
+- Обновлен `application.yml` с секцией `max:`
+- Обновлен `docker-compose.yml` с переменными `MAX_BOT_*`
+- Обновлен `SecurityConfig.java` - разрешен доступ к `/api/v1/max-webapp/**`
+
+### Проблемы и решения
+- Проблема: MAX не имеет API для запроса контакта
+  - Решение: Реализован ручной ввод номера телефона с валидацией
+- Проблема: Отличия валидации initData от Telegram
+  - Решение: Используется `HMAC_SHA256("WebAppData", botToken.getBytes())` вместо конкатенации строк
+
+### Следующие шаги
+1. Настроить URL Mini App в MAX для партнёров
+2. Протестировать в приложении MAX
+3. Деплой на продакшн
+
+---
+
 ## 2023-06-10 - Запуск проекта
 
 ### Наблюдения
@@ -210,6 +255,63 @@
 - **Безопасность**: Многоуровневая защита от атак и злоупотреблений
 
 **Временные рамки**: 10-13 дней согласно ТЗ, разбиты на 4 этапа для итеративной разработки.
+
+## [2026-03-26] - Начало разработки MAX Mini App
+
+### Наблюдения
+- Мессенджер MAX является альтернативой Telegram на российском рынке
+- MAX имеет свою платформу Mini App с похожим, но отличным API
+- Существующий Telegram Mini App полностью функционален и может быть адаптирован для MAX
+- Основные отличия MAX от Telegram:
+  - Другой SDK (`max-bridge.js` вместо `telegram-web-app.js`)
+  - Отличия в валидации initData
+  - Promise-based API вместо callback-based
+  - Событийная модель для кнопки "Назад"
+
+### Технические решения
+
+1. **Архитектура MAX Mini App**:
+   - Отдельные статические файлы в `/max-miniapp/`
+   - Общий backend API с Telegram (`/api/v1/*`)
+   - Отдельные эндпоинты авторизации (`/api/v1/max-webapp/*`)
+
+2. **Двухботовая архитектура** (как в Telegram):
+   - **ДИМБО** (`id121603899498_bot`) - пользовательский бот с Mini App
+   - **ДИМБО Админ** (`id121603899498_1_bot`) - административные уведомления
+
+3. **Валидация MAX initData**:
+   - Ключевое отличие: `HMAC_SHA256("WebAppData", botToken)`
+   - Telegram: `HMAC_SHA256("WebAppData" + botToken, "")`
+   - Требует отдельной реализации в MaxWebAppService
+
+4. **Frontend**:
+   - Адаптация существующего кода Telegram Mini App
+   - Замена `window.Telegram.WebApp` на `window.WebApp`
+   - Обработка Promise-based API
+
+### Проблемы и решения
+
+1. **Проблема: Почему https://api.dimbopizza.ru/miniapp/menu не работает в MAX**
+   - **Причина 1**: Разные SDK - Telegram использует `telegram-web-app.js`, MAX требует `max-bridge.js`
+   - **Причина 2**: Разный глобальный объект - `window.Telegram.WebApp` vs `window.WebApp`
+   - **Причина 3**: Разный формат initData и валидации
+   - **Решение**: Создать отдельную версию Mini App для MAX
+
+2. **Проблема: Валидация initData**
+   - **Решение**: Создать отдельный MaxWebAppService с корректной логикой валидации
+
+### Документация
+- Создан `docs/MAX_MINIAPP_PROJECT.md` - полное описание проекта
+- Создан `docs/MAX_MINIAPP_TASKTRACKER.md` - отслеживание задач
+
+### Следующие шаги
+1. Получить токены ботов MAX
+2. Создать backend компоненты (MaxBotConfig, MaxWebAppService, MaxWebAppController)
+3. Создать frontend (max-app.js, max-menu.html, max-checkout.html)
+4. Настроить админ-уведомления
+5. Протестировать и задеплоить
+
+---
 
 ## [2025-01-27] - Кросс-платформенная авторизация через Telegram Mini App: проблемы и решения
 

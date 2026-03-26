@@ -87,6 +87,10 @@ public class SecurityConfig {
             "/api/v1/auth/telegram/**",
             // Telegram webhook endpoints
             "/api/v1/telegram/**",
+            // Telegram WebApp endpoints
+            "/api/v1/telegram-webapp/**",
+            // MAX WebApp endpoints
+            "/api/v1/max-webapp/**",
             // Public API
             "/api/v1/public/**",
             // Actuator
@@ -137,9 +141,14 @@ public class SecurityConfig {
             "/api/v1/delivery-locations/*",
             // Telegram WebApp endpoints
             "/api/v1/telegram-webapp/**",
-            // Mini App static resources
+            // MAX WebApp endpoints
+            "/api/v1/max-webapp/**",
+            // Mini App static resources (Telegram)
             "/miniapp/**",
             "/miniapp",
+            // MAX Mini App static resources
+            "/max-miniapp/**",
+            "/max-miniapp",
             // В dev режиме разрешаем все
             "/api/v1/cart",
             "/api/v1/cart/**",

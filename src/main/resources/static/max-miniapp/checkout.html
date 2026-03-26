@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DIMBO Pizza - Оформление заказа</title>
+
+    <!-- MAX WebApp SDK -->
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../miniapp/styles.css">
+    <link rel="stylesheet" href="../miniapp/checkout-styles.css">
+
+    <!-- Meta for MAX -->
+    <meta name="theme-color" content="#1a1a1a">
+
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=103585127', 'ym');
+
+        ym(103585127, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+    </script>
+    <noscript><div><img src="https://mc.yandex.ru/watch/103585127" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    <!-- /Yandex.Metrika counter -->
+
+    <!-- VK Pixel (Top.Mail.Ru counter) -->
+    <script type="text/javascript">
+        var _tmr = window._tmr || (window._tmr = []);
+        _tmr.push({id: "3695469", type: "pageView", start: (new Date()).getTime()});
+        (function (d, w, id) {
+          if (d.getElementById(id)) return;
+          var ts = d.createElement("script"); ts.type = "text/javascript"; ts.async = true; ts.id = id;
+          ts.src = "https://top-fwz1.mail.ru/js/code.js";
+          var f = function () {var s = d.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ts, s);};
+          if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); }
+        })(document, window, "tmr-code");
+    </script>
+    <noscript><div><img src="https://top-fwz1.mail.ru/counter?id=3695469;js=na" style="position:absolute;left:-9999px;" alt="Top.Mail.Ru" /></div></noscript>
+    <!-- /VK Pixel (Top.Mail.Ru counter) -->
+</head>
+<body class="max-theme checkout-page">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Оформление заказа...</div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <button class="back-button" id="back-button">← Назад</button>
+                <span class="header-title">Оформление заказа</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Delivery Options -->
+            <section class="delivery-section">
+                <h3>Способ получения</h3>
+                <div class="delivery-options">
+                    <label class="option-card">
+                        <input type="radio" name="deliveryMethod" value="DELIVERY" id="delivery-courier" checked>
+                        <div class="option-content">
+                            <div class="option-title">🚗 Доставка курьером</div>
+                            <div class="option-subtitle">Доставим по адресу</div>
+                        </div>
+                    </label>
+                    <label class="option-card">
+                        <input type="radio" name="deliveryMethod" value="PICKUP" id="pickup-option">
+                        <div class="option-content">
+                            <div class="option-title">🏪 Самовывоз</div>
+                            <div class="option-subtitle">Шестакова 1Б</div>
+                            <div class="option-price">Бесплатно</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Address Input -->
+                <div class="address-section" id="address-section">
+                    <h4>Адрес доставки</h4>
+                    <div class="address-input-container">
+                        <input type="text"
+                               id="address-input"
+                               placeholder="Введите адрес доставки..."
+                               class="address-input">
+                    </div>
+                    <div class="address-note">
+                        <small>Укажите адрес доставки. Стоимость доставки рассчитается автоматически.</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Payment Options -->
+            <section class="payment-section">
+                <h3>Способ оплаты</h3>
+                <div class="payment-options">
+                    <label class="option-card">
+                        <input type="radio" name="paymentMethod" value="SBP" id="payment-sbp" checked>
+                        <div class="option-content">
+                            <div class="option-title">
+                                <img src="../miniapp/sbp-logo.png" alt="СБП" style="height: 40px; width: auto; max-width: 120px;">
+                            </div>
+                            <div class="option-subtitle">Быстрая оплата</div>
+                        </div>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Order Summary -->
+            <section class="order-summary">
+                <h2>Ваш заказ</h2>
+                <div class="order-items" id="order-items">
+                    <!-- Order items will be loaded here -->
+                </div>
+                <div class="order-total">
+                    <span>Товары: <span id="items-total">₽0</span></span>
+                    <span class="delivery-cost">Доставка: <span id="delivery-cost">₽0</span></span>
+                    <div class="total-amount">Итого: <span id="total-amount">₽0</span></div>
+                </div>
+            </section>
+
+            <!-- User Info Section -->
+            <section class="user-info-section">
+                <h3>Получатель заказа</h3>
+                <div class="user-info-display" id="user-info-display">
+                    <div class="user-name" id="user-name">Загрузка...</div>
+                    <div class="user-phone" id="user-phone">Загрузка...</div>
+                </div>
+                <div class="comment-section">
+                    <textarea id="order-comment"
+                              placeholder="Комментарий к заказу (необязательно)"
+                              class="comment-textarea"></textarea>
+                </div>
+            </section>
+
+            <!-- Submit Button -->
+            <div class="submit-section">
+                <button class="submit-button" id="submit-order" disabled>
+                    Оформить заказ <span id="final-total">₽0</span>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="error-screen" class="error-screen" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <div class="error-message" id="error-message">Произошла ошибка</div>
+        <button class="retry-button" id="retry-button">Повторить</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="max-api.js"></script>
+    <script src="max-checkout-app.js"></script>
+    <script>
+        // Global instance for phone input handling
+        let maxCheckoutApp;
+
+        // Initialize app
+        function initializeApp() {
+            console.log('🔧 Starting MAX Checkout initialization...');
+            maxCheckoutApp = new PizzaNatMaxCheckoutApp();
+            window.maxCheckoutApp = maxCheckoutApp;
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(initializeApp, 100);
+            });
+        } else {
+            setTimeout(initializeApp, 100);
+        }
+    </script>
+</body>
+</html>
