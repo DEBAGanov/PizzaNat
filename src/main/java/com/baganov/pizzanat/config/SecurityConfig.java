@@ -49,7 +49,7 @@ public class SecurityConfig {
     @Value("${app.security.disable-jwt-auth:false}")
     private boolean disableJwtAuth;
 
-    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*,https://t.me/DIMBOpizzaBot/*,https://web.telegram.org/k/#@DIMBOpizzaBot}")
+    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*,https://t.me/DIMBOpizzaBot/*,https://web.telegram.org/k/#@DIMBOpizzaBot,https://max.ru,https://m.max.ru,https://web.max.ru,https://app.max.ru}")
     private String[] corsAllowedOrigins;
 
     @Value("${app.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")
@@ -175,6 +175,9 @@ public class SecurityConfig {
             return http
                     .csrf(AbstractHttpConfigurer::disable)
                     .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                    .headers(headers -> headers
+                            .frameOptions(frameOptions -> frameOptions.disable())
+                    )
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(AUTH_WHITELIST).permitAll()
                             .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
