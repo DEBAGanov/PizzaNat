@@ -110,6 +110,8 @@ public class SecurityConfig {
             // ЮKassa webhook endpoints (критически важно для обработки платежей)
             "/api/v1/payments/yookassa/webhook",
             "/api/v1/payments/yookassa/webhook/**",
+            // ЮKassa payment creation (для mini apps)
+            "/api/v1/payments/yookassa/create",
             // ЮKassa СБП API endpoints (для мобильного приложения)
             "/api/v1/payments/yookassa/sbp/banks",
             "/api/v1/payments/yookassa/sbp/**",
