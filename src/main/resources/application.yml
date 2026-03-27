@@ -119,20 +119,20 @@ max:
   bot:
     enabled: ${MAX_BOT_ENABLED:true}
     # Пользовательский бот ДИМБО: https://max.ru/id121603899498_bot
-    user-bot-token: ${MAX_USER_BOT_TOKEN:}
-    user-bot-username: ${MAX_USER_BOT_USERNAME:id121603899498_bot}
+    user-bot-token: ${MAX_BOT_USER_BOT_TOKEN:${MAX_USER_BOT_TOKEN:}}
+    user-bot-username: ${MAX_BOT_USER_BOT_USERNAME:${MAX_USER_BOT_USERNAME:id121603899498_bot}}
     # Административный бот ДИМБО Админ: https://max.ru/id121603899498_1_bot
-    admin-bot-token: ${MAX_ADMIN_BOT_TOKEN:}
-    admin-bot-username: ${MAX_ADMIN_BOT_USERNAME:id121603899498_1_bot}
+    admin-bot-token: ${MAX_BOT_ADMIN_BOT_TOKEN:${MAX_ADMIN_BOT_TOKEN:}}
+    admin-bot-username: ${MAX_BOT_ADMIN_BOT_USERNAME:${MAX_ADMIN_BOT_USERNAME:id121603899498_1_bot}}
     # Настройки API
-    api-url: ${MAX_API_URL:https://api.max.ru}
+    api-url: ${MAX_BOT_API_URL:${MAX_API_URL:https://api.max.ru}}
     # Chat ID для административных уведомлений
-    admin-chat-id: ${MAX_ADMIN_CHAT_ID:}
+    admin-chat-id: ${MAX_BOT_ADMIN_CHAT_ID:${MAX_ADMIN_CHAT_ID:}}
     # Webhook URL для Admin Bot (обязательно для получения событий)
     # Пример: https://api.pizzanat.ru/max-admin/
-    admin-webhook-url: ${MAX_ADMIN_WEBHOOK_URL:}
+    admin-webhook-url: ${MAX_BOT_ADMIN_WEBHOOK_URL:${MAX_ADMIN_WEBHOOK_URL:}}
     # Таймауты и повторные попытки
     timeout: ${MAX_BOT_TIMEOUT:30000}
     max-retries: ${MAX_BOT_MAX_RETRIES:3}
     # Включить административные уведомления
-    admin-enabled: ${MAX_ADMIN_ENABLED:true}
+    admin-enabled: ${MAX_BOT_ADMIN_ENABLED:${MAX_ADMIN_ENABLED:true}}

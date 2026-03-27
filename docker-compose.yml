@@ -184,6 +184,8 @@ services:
       MAX_BOT_API_URL: ${MAX_BOT_API_URL:-https://api.max.ru}
       # Chat ID для административных уведомлений
       MAX_BOT_ADMIN_CHAT_ID: ${MAX_BOT_ADMIN_CHAT_ID:-213154550}
+      # Webhook URL для Admin Bot - MAX API будет отправлять события на этот URL
+      MAX_BOT_ADMIN_WEBHOOK_URL: ${MAX_BOT_ADMIN_WEBHOOK_URL:-https://api.dimbopizza.ru/max-admin/}
       # Таймауты и повторные попытки
       MAX_BOT_TIMEOUT: ${MAX_BOT_TIMEOUT:-30000}
       MAX_BOT_MAX_RETRIES: ${MAX_BOT_MAX_RETRIES:-3}
