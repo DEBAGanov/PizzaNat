@@ -128,6 +128,9 @@ max:
     api-url: ${MAX_API_URL:https://api.max.ru}
     # Chat ID для административных уведомлений
     admin-chat-id: ${MAX_ADMIN_CHAT_ID:}
+    # Webhook URL для Admin Bot (обязательно для получения событий)
+    # Пример: https://api.pizzanat.ru/max-admin/
+    admin-webhook-url: ${MAX_ADMIN_WEBHOOK_URL:}
     # Таймауты и повторные попытки
     timeout: ${MAX_BOT_TIMEOUT:30000}
     max-retries: ${MAX_BOT_MAX_RETRIES:3}

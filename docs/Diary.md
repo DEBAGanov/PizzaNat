@@ -1,5 +1,41 @@
 # PizzaNat - Дневник наблюдений
 
+## 2026-03-27 - Webhook регистрация для MAX Admin Bot
+
+### Наблюдения
+- MAX Admin Bot не получал webhook события от MAX API
+- Причина: webhook URL не был зарегистрирован в MAX API
+- SecurityConfig уже содержал `/max-admin/**` в AUTH_WHITELIST
+- MAX API документация не детально описывает процесс регистрации webhook
+
+### Решения
+1. **Добавлена конфигурация webhook URL**:
+   - `MaxBotConfig.java`: добавлено поле `adminWebhookUrl`
+   - `application.yml`: переменная `MAX_ADMIN_WEBHOOK_URL`
+   - `docker-compose.production.yml`: настройка `MAX_ADMIN_WEBHOOK_URL: https://api.dimbopizza.ru/max-admin/`
+
+2. **Создан `MaxWebhookRegistrationService.java`**:
+   - Автоматическая регистрация webhook при запуске приложения
+   - Пробует разные API endpoints: `/subscriptions`, `/webhook`, `/setWebhook`
+   - Логирование результатов попыток регистрации
+   - Проверка текущих подписок
+
+3. **Обновлен docker-compose.production.yml**:
+   - Добавлены все переменные MAX Bot API
+   - Webhook URL по умолчанию: `https://api.dimbopizza.ru/max-admin/`
+
+### Проблемы
+- MAX API не имеет публичной документации по регистрации webhook
+- Возможно, webhook нужно настраивать вручную через кабинет разработчика MAX (dev.max.ru)
+
+### Следующие шаги
+1. Деплой изменений на сервер
+2. Проверка логов регистрации webhook
+3. Если автоматическая регистрация не работает - настройка вручную через dev.max.ru
+4. Тестирование команд бота: /register, /stats, /orders, /help
+
+---
+
 ## 2026-03-27 - Реализация полноценного MAX Admin Bot
 
 ### Наблюдения

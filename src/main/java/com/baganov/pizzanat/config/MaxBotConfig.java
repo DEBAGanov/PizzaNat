@@ -68,6 +68,13 @@ public class MaxBotConfig {
     private String adminChatId;
 
     /**
+     * Webhook URL для Admin Bot
+     * MAX API будет отправлять события на этот URL
+     * Формат: https://your-domain.com/max-admin/
+     */
+    private String adminWebhookUrl;
+
+    /**
      * Таймаут для API запросов (мс)
      */
     private int timeout = 30000;

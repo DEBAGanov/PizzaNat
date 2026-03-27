@@ -91,6 +91,8 @@ public class SecurityConfig {
             "/api/v1/telegram-webapp/**",
             // MAX WebApp endpoints
             "/api/v1/max-webapp/**",
+            // MAX Admin Bot webhook endpoints
+            "/max-admin/**",
             // Public API
             "/api/v1/public/**",
             // Actuator
