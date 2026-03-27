@@ -15,7 +15,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*,https://web.telegram.org/k/#@DIMBOpizzaBot}")
+    @Value("${app.cors.allowed-origins:https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*,https://web.telegram.org/k/#@DIMBOpizzaBot,https://max.ru,https://m.max.ru,https://web.max.ru,https://app.max.ru}")
     private String[] allowedOrigins;
 
     @Override
@@ -35,6 +35,11 @@ public class WebConfig implements WebMvcConfigurer {
         // Статические ресурсы Mini App
         registry.addResourceHandler("/miniapp/**")
                 .addResourceLocations("classpath:/static/miniapp/")
+                .setCachePeriod(3600); // 1 час кеширования
+
+        // Статические ресурсы MAX Mini App
+        registry.addResourceHandler("/max-miniapp/**")
+                .addResourceLocations("classpath:/static/max-miniapp/")
                 .setCachePeriod(3600); // 1 час кеширования
         
         // Обычные статические ресурсы
