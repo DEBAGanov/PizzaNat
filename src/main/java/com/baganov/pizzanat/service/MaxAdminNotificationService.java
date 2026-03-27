@@ -59,6 +59,12 @@ public class MaxAdminNotificationService {
     @EventListener
     @Async
     public void handleNewOrderEvent(NewOrderEvent event) {
+        log.info("🔔 MAX: Проверка конфигурации - enabled: {}, adminEnabled: {}, adminChatId: {}, adminBotToken: {}",
+                maxBotConfig.isEnabled(),
+                maxBotConfig.isAdminEnabled(),
+                maxBotConfig.getAdminChatId() != null ? maxBotConfig.getAdminChatId() : "NULL",
+                maxBotConfig.getAdminBotToken() != null ? "PRESENT" : "NULL");
+
         if (!maxBotConfig.isAdminEnabled()) {
             log.debug("MAX admin notifications disabled");
             return;

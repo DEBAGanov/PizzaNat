@@ -175,20 +175,20 @@ services:
       # Документация: https://dev.max.ru/docs/webapps/introduction
       MAX_BOT_ENABLED: ${MAX_BOT_ENABLED:-true}
       # Пользовательский бот ДИМБО: https://max.ru/id121603899498_bot
-      MAX_USER_BOT_TOKEN: ${MAX_USER_BOT_TOKEN:-f9LHodD0cOKMx3YM-LVjPl5fvgW1zrL3Gd8TB0et9Z4AXB1_v0jkTV26MDMTeGZ6sj4TZnOJOif8p7jDxwmZ}
-      MAX_USER_BOT_USERNAME: ${MAX_USER_BOT_USERNAME:-id121603899498_bot}
+      MAX_BOT_USER_BOT_TOKEN: ${MAX_BOT_USER_BOT_TOKEN:-f9LHodD0cOKMx3YM-LVjPl5fvgW1zrL3Gd8TB0et9Z4AXB1_v0jkTV26MDMTeGZ6sj4TZnOJOif8p7jDxwmZ}
+      MAX_BOT_USER_BOT_USERNAME: ${MAX_BOT_USER_BOT_USERNAME:-id121603899498_bot}
       # Административный бот ДИМБО Админ: https://max.ru/id121603899498_1_bot
-      MAX_ADMIN_BOT_TOKEN: ${MAX_ADMIN_BOT_TOKEN:-f9LHodD0cOKGjBhKOiTerO4tix7cID248uek0EkbqWEbEUALnKMRZMRw8XiZheOVmhVGFW_P6Ge9XMi5Lxph}
-      MAX_ADMIN_BOT_USERNAME: ${MAX_ADMIN_BOT_USERNAME:-id121603899498_1_bot}
+      MAX_BOT_ADMIN_BOT_TOKEN: ${MAX_BOT_ADMIN_BOT_TOKEN:-f9LHodD0cOKGjBhKOiTerO4tix7cID248uek0EkbqWEbEUALnKMRZMRw8XiZheOVmhVGFW_P6Ge9XMi5Lxph}
+      MAX_BOT_ADMIN_BOT_USERNAME: ${MAX_BOT_ADMIN_BOT_USERNAME:-id121603899498_1_bot}
       # Настройки API
-      MAX_API_URL: ${MAX_API_URL:-https://api.max.ru}
+      MAX_BOT_API_URL: ${MAX_BOT_API_URL:-https://api.max.ru}
       # Chat ID для административных уведомлений
-      MAX_ADMIN_CHAT_ID: ${MAX_ADMIN_CHAT_ID:-213154550}
+      MAX_BOT_ADMIN_CHAT_ID: ${MAX_BOT_ADMIN_CHAT_ID:-213154550}
       # Таймауты и повторные попытки
       MAX_BOT_TIMEOUT: ${MAX_BOT_TIMEOUT:-30000}
       MAX_BOT_MAX_RETRIES: ${MAX_BOT_MAX_RETRIES:-3}
       # Включить административные уведомления
-      MAX_ADMIN_ENABLED: ${MAX_ADMIN_ENABLED:-true}
+      MAX_BOT_ADMIN_ENABLED: ${MAX_BOT_ADMIN_ENABLED:-true}
 
       # CORS настройки для поддержки фронтенда
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://pizzanat.ru,https://www.pizzanat.ru,https://api.pizzanat.ru,http://localhost:5173,http://localhost:3000,http://localhost:8080,https://api.dimbopizza.ru,https://dimbopizza.ru,https://dimbopizza.ru/*,https://t.me/DIMBOpizzaBot/*,https://web.telegram.org/k/#@DIMBOpizzaBot,https://max.ru,https://m.max.ru,https://web.max.ru,https://app.max.ru}
