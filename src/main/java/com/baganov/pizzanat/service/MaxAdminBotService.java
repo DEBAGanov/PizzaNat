@@ -504,16 +504,20 @@ public class MaxAdminBotService {
         }
 
         try {
+            // Логируем тело запроса для отладки
+            String jsonBody = objectMapper.writeValueAsString(body);
+            log.info("MAX API: Отправка сообщения пользователю {}: URL={}, Body={}", maxUserId, url, jsonBody);
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
             var response = restTemplate.postForEntity(url, entity, String.class);
-            log.debug("MAX API response for user {}: Status: {}", maxUserId, response.getStatusCode());
+            log.info("MAX API: Ответ для пользователя {}: Status={}, Body={}", maxUserId, response.getStatusCode(), response.getBody());
 
         } catch (Exception e) {
-            log.error("MAX: Error calling MAX API for user {}: {}", maxUserId, e.getMessage());
+            log.error("MAX: Error calling MAX API for user {}: {}", maxUserId, e.getMessage(), e);
         }
     }
 
@@ -540,73 +544,83 @@ public class MaxAdminBotService {
         }
 
         try {
+            // Логируем тело запроса для отладки
+            String jsonBody = objectMapper.writeValueAsString(body);
+            log.info("MAX API: Отправка сообщения в чат {}: URL={}, Body={}", chatId, url, jsonBody);
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
             var response = restTemplate.postForEntity(url, entity, String.class);
-            log.debug("MAX API response for chat {}: Status: {}", chatId, response.getStatusCode());
+            log.info("MAX API: Ответ для чата {}: Status={}, Body={}", chatId, response.getStatusCode(), response.getBody());
 
         } catch (Exception e) {
-            log.error("MAX: Error calling MAX API for chat {}: {}", chatId, e.getMessage());
+            log.error("MAX: Error calling MAX API for chat {}: {}", chatId, e.getMessage(), e);
         }
     }
 
     // ==================== INLINE КНОПКИ ====================
 
     /**
-     * Создание inline кнопок для управления заказом (полный набор как в Telegram)
+     * Создание inline клавиатуры для управления заказом
+     * Формат соответствует MAX API документации:
+     * https://dev.max.ru/docs-api
      */
     private List<Map<String, Object>> createOrderManagementAttachments(Integer orderId) {
         List<Map<String, Object>> attachments = new ArrayList<>();
 
-        // Кнопки изменения статуса (строка 1)
-        Map<String, Object> row1 = new HashMap<>();
-        row1.put("type", "buttons");
-        List<Map<String, Object>> buttons1 = new ArrayList<>();
-        buttons1.add(createCallbackButton("✅ Подтвердить", "max_order_" + orderId + "_CONFIRMED"));
-        buttons1.add(createCallbackButton("👨‍🍳 Готовится", "max_order_" + orderId + "_PREPARING"));
-        row1.put("buttons", buttons1);
-        attachments.add(row1);
+        // Создаем кнопки по строкам (2D массив - array of rows)
+        List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
 
-        // Кнопки изменения статуса (строка 2)
-        Map<String, Object> row2 = new HashMap<>();
-        row2.put("type", "buttons");
-        List<Map<String, Object>> buttons2 = new ArrayList<>();
-        buttons2.add(createCallbackButton("📦 Готов", "max_order_" + orderId + "_READY"));
-        buttons2.add(createCallbackButton("🚗 В доставке", "max_order_" + orderId + "_DELIVERING"));
-        row2.put("buttons", buttons2);
-        attachments.add(row2);
+        // Строка 1: Подтвердить, Готовится
+        List<Map<String, Object>> row1 = new ArrayList<>();
+        row1.add(createCallbackButton("✅ Подтвердить", "max_order_" + orderId + "_CONFIRMED"));
+        row1.add(createCallbackButton("👨‍🍳 Готовится", "max_order_" + orderId + "_PREPARING"));
+        buttonRows.add(row1);
 
-        // Кнопки изменения статуса (строка 3)
-        Map<String, Object> row3 = new HashMap<>();
-        row3.put("type", "buttons");
-        List<Map<String, Object>> buttons3 = new ArrayList<>();
-        buttons3.add(createCallbackButton("✅ Доставлен", "max_order_" + orderId + "_DELIVERED"));
-        buttons3.add(createCallbackButton("❌ Отменить", "max_order_" + orderId + "_CANCELLED"));
-        row3.put("buttons", buttons3);
-        attachments.add(row3);
+        // Строка 2: Готов, В доставке
+        List<Map<String, Object>> row2 = new ArrayList<>();
+        row2.add(createCallbackButton("📦 Готов", "max_order_" + orderId + "_READY"));
+        row2.add(createCallbackButton("🚗 В доставке", "max_order_" + orderId + "_DELIVERING"));
+        buttonRows.add(row2);
 
-        // Кнопки действий (строка 4) - детали и отзыв
-        Map<String, Object> row4 = new HashMap<>();
-        row4.put("type", "buttons");
-        List<Map<String, Object>> buttons4 = new ArrayList<>();
-        buttons4.add(createCallbackButton("🔍 Детали", "max_details_" + orderId));
-        buttons4.add(createCallbackButton("⭐ Отзыв", "max_review_" + orderId));
-        row4.put("buttons", buttons4);
-        attachments.add(row4);
+        // Строка 3: Доставлен, Отменить
+        List<Map<String, Object>> row3 = new ArrayList<>();
+        row3.add(createCallbackButton("✅ Доставлен", "max_order_" + orderId + "_DELIVERED"));
+        row3.add(createCallbackButton("❌ Отменить", "max_order_" + orderId + "_CANCELLED"));
+        buttonRows.add(row3);
 
+        // Строка 4: Детали, Отзыв
+        List<Map<String, Object>> row4 = new ArrayList<>();
+        row4.add(createCallbackButton("🔍 Детали", "max_details_" + orderId));
+        row4.add(createCallbackButton("⭐ Отзыв", "max_review_" + orderId));
+        buttonRows.add(row4);
+
+        // Формируем attachment в формате MAX API
+        Map<String, Object> attachment = new HashMap<>();
+        attachment.put("type", "inline_keyboard");
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("buttons", buttonRows);
+        attachment.put("payload", payload);
+
+        attachments.add(attachment);
+
+        log.debug("MAX: Создана inline клавиатура для заказа #{}: {} строк", orderId, buttonRows.size());
         return attachments;
     }
 
     /**
-     * Создание callback кнопки
+     * Создание callback кнопки в формате MAX API
+     * Документация: https://dev.max.ru/docs-api
      */
-    private Map<String, Object> createCallbackButton(String text, String callbackData) {
+    private Map<String, Object> createCallbackButton(String text, String payload) {
         Map<String, Object> button = new HashMap<>();
+        button.put("type", "callback");
         button.put("text", text);
-        button.put("callbackData", callbackData);
+        button.put("payload", payload);
         return button;
     }
 
