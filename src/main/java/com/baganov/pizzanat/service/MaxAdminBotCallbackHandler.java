@@ -59,6 +59,9 @@ public class MaxAdminBotCallbackHandler {
             log.debug("MAX Admin: Обработка команды: command={}, userId={}", command, maxUserId);
 
             switch (command) {
+                case "/start":
+                    handleStartCommand(maxUserId, username, firstName);
+                    break;
                 case "/register":
                     handleRegisterCommand(maxUserId, username, firstName);
                     break;
@@ -79,6 +82,35 @@ public class MaxAdminBotCallbackHandler {
         } catch (Exception e) {
             log.error("MAX Admin: Ошибка обработки команды {}: {}", command, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Обработка команды /start (запуск бота)
+     */
+    private void handleStartCommand(Long maxUserId, String username, String firstName) {
+        String displayName = (firstName != null && !firstName.isEmpty()) ? firstName : username;
+        if (displayName == null || displayName.isEmpty()) {
+            displayName = "пользователь";
+        }
+
+        String welcomeMessage = String.format("""
+                👋 **Добро пожаловать, %s!**
+
+                Это **MAX Admin Bot** для ДИМБО ПИЦЦА.
+
+                **Для начала работы:**
+                1. Используйте /register для регистрации как администратор
+                2. После регистрации вы будете получать уведомления о новых заказах
+
+                **Доступные команды:**
+                `/register` - Регистрация
+                `/stats` - Статистика заказов
+                `/orders` - Активные заказы
+                `/help` - Справка
+                """, displayName);
+
+        maxAdminBotService.sendMessageToUser(maxUserId, welcomeMessage);
+        log.info("MAX Admin: Команда /start обработана для userId={}, username={}", maxUserId, username);
     }
 
     /**

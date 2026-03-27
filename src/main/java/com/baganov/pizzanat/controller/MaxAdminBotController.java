@@ -183,6 +183,7 @@ public class MaxAdminBotController {
                     /help - Справка
                     """;
 
+            // Вызываем обработчик /start который отправит приветствие
             callbackHandler.handleCommand("/start", userId, username, firstName);
 
         } catch (Exception e) {

@@ -498,6 +498,7 @@ public class MaxAdminBotService {
         Map<String, Object> body = new HashMap<>();
         body.put("user_id", maxUserId);
         body.put("text", message);
+        body.put("format", "markdown"); // Включаем Markdown форматирование
 
         if (attachments != null && !attachments.isEmpty()) {
             body.put("attachments", attachments);
