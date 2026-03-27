@@ -125,7 +125,7 @@ max:
     admin-bot-token: ${MAX_BOT_ADMIN_BOT_TOKEN:${MAX_ADMIN_BOT_TOKEN:}}
     admin-bot-username: ${MAX_BOT_ADMIN_BOT_USERNAME:${MAX_ADMIN_BOT_USERNAME:id121603899498_1_bot}}
     # Настройки API
-    api-url: ${MAX_BOT_API_URL:${MAX_API_URL:https://api.max.ru}}
+    api-url: ${MAX_BOT_API_URL:${MAX_API_URL:https://platform-api.max.ru}}
     # Chat ID для административных уведомлений
     admin-chat-id: ${MAX_BOT_ADMIN_CHAT_ID:${MAX_ADMIN_CHAT_ID:}}
     # Webhook URL для Admin Bot (обязательно для получения событий)

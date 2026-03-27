@@ -46,7 +46,6 @@ public class MaxAdminBotService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    private static final String MAX_API_BASE_URL = "https://api.max.ru";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     // ==================== РЕГИСТРАЦИЯ АДМИНИСТРАТОРОВ ====================
@@ -494,7 +493,7 @@ public class MaxAdminBotService {
             return;
         }
 
-        String url = String.format("%s/bots/%s/messages", MAX_API_BASE_URL, adminBotToken);
+        String url = String.format("%s/bots/%s/messages", maxBotConfig.getApiUrl(), adminBotToken);
 
         Map<String, Object> body = new HashMap<>();
         body.put("user_id", maxUserId);
@@ -530,7 +529,7 @@ public class MaxAdminBotService {
             return;
         }
 
-        String url = String.format("%s/bots/%s/messages", MAX_API_BASE_URL, adminBotToken);
+        String url = String.format("%s/bots/%s/messages", maxBotConfig.getApiUrl(), adminBotToken);
 
         Map<String, Object> body = new HashMap<>();
         body.put("chat_id", chatId);

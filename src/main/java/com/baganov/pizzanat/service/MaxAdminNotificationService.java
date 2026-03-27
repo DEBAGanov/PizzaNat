@@ -37,7 +37,7 @@ import java.util.Map;
  * - Оплатах
  * - Изменении статусов заказов
  *
- * Использует MAX API: https://api.max.ru
+ * Использует MAX API: https://platform-api.max.ru
  */
 @Slf4j
 @Service
@@ -49,7 +49,6 @@ public class MaxAdminNotificationService {
     private final ObjectMapper objectMapper;
     private final DeliveryLocationRepository deliveryLocationRepository;
 
-    private static final String MAX_API_BASE_URL = "https://api.max.ru";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     /**
@@ -196,7 +195,7 @@ public class MaxAdminNotificationService {
             return;
         }
 
-        String url = String.format("%s/bots/%s/messages", MAX_API_BASE_URL, adminBotToken);
+        String url = String.format("%s/bots/%s/messages", maxBotConfig.getApiUrl(), adminBotToken);
 
         Map<String, Object> body = new HashMap<>();
         body.put("chat_id", adminChatId);

@@ -181,7 +181,7 @@ services:
       MAX_BOT_ADMIN_BOT_TOKEN: ${MAX_BOT_ADMIN_BOT_TOKEN:-f9LHodD0cOKGjBhKOiTerO4tix7cID248uek0EkbqWEbEUALnKMRZMRw8XiZheOVmhVGFW_P6Ge9XMi5Lxph}
       MAX_BOT_ADMIN_BOT_USERNAME: ${MAX_BOT_ADMIN_BOT_USERNAME:-id121603899498_1_bot}
       # Настройки API
-      MAX_BOT_API_URL: ${MAX_BOT_API_URL:-https://api.max.ru}
+      MAX_BOT_API_URL: ${MAX_BOT_API_URL:-https://platform-api.max.ru}
       # Chat ID для административных уведомлений
       MAX_BOT_ADMIN_CHAT_ID: ${MAX_BOT_ADMIN_CHAT_ID:-213154550}
       # Webhook URL для Admin Bot - MAX API будет отправлять события на этот URL

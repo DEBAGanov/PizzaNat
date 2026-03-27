@@ -42,8 +42,6 @@ public class MaxWebhookRegistrationService {
     private final MaxBotConfig maxBotConfig;
     private final RestTemplate restTemplate;
 
-    private static final String MAX_API_BASE_URL = "https://api.max.ru";
-
     /**
      * Регистрация webhook при запуске приложения
      */
@@ -120,7 +118,7 @@ public class MaxWebhookRegistrationService {
      * Метод 1: Регистрация через /subscriptions
      */
     private boolean trySubscriptionsEndpoint(String botToken, String webhookUrl) {
-        String url = String.format("%s/bots/%s/subscriptions", MAX_API_BASE_URL, botToken);
+        String url = String.format("%s/bots/%s/subscriptions", maxBotConfig.getApiUrl(), botToken);
 
         Map<String, Object> body = new HashMap<>();
         body.put("url", webhookUrl);
@@ -158,7 +156,7 @@ public class MaxWebhookRegistrationService {
      * Метод 2: Регистрация через /webhook
      */
     private boolean tryWebhookEndpoint(String botToken, String webhookUrl) {
-        String url = String.format("%s/bots/%s/webhook", MAX_API_BASE_URL, botToken);
+        String url = String.format("%s/bots/%s/webhook", maxBotConfig.getApiUrl(), botToken);
 
         Map<String, Object> body = new HashMap<>();
         body.put("url", webhookUrl);
@@ -190,7 +188,7 @@ public class MaxWebhookRegistrationService {
      * Метод 3: Регистрация через /setWebhook (как в Telegram)
      */
     private boolean trySetWebhookEndpoint(String botToken, String webhookUrl) {
-        String url = String.format("%s/bots/%s/setWebhook?url=%s", MAX_API_BASE_URL, botToken, webhookUrl);
+        String url = String.format("%s/bots/%s/setWebhook?url=%s", maxBotConfig.getApiUrl(), botToken, webhookUrl);
 
         try {
             log.debug("MAX Admin Bot: Попытка регистрации через /setWebhook: {}", url);
@@ -214,7 +212,7 @@ public class MaxWebhookRegistrationService {
      * Удаление регистрации webhook
      */
     public void unregisterWebhook(String botToken) {
-        String url = String.format("%s/bots/%s/subscriptions", MAX_API_BASE_URL, botToken);
+        String url = String.format("%s/bots/%s/subscriptions", maxBotConfig.getApiUrl(), botToken);
 
         try {
             restTemplate.delete(url);
@@ -232,7 +230,7 @@ public class MaxWebhookRegistrationService {
         String[] endpoints = {"/subscriptions", "/webhook", "/getWebhook"};
 
         for (String endpoint : endpoints) {
-            String url = String.format("%s/bots/%s%s", MAX_API_BASE_URL, botToken, endpoint);
+            String url = String.format("%s/bots/%s%s", maxBotConfig.getApiUrl(), botToken, endpoint);
             try {
                 var response = restTemplate.exchange(url, HttpMethod.GET, null, String.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null && !response.getBody().isEmpty()) {

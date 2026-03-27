@@ -49,7 +49,7 @@ public class MaxBotConfig {
     /**
      * URL MAX API для отправки сообщений
      */
-    private String apiUrl = "https://api.max.ru";
+    private String apiUrl = "https://platform-api.max.ru";
 
     /**
      * Включена ли интеграция с MAX
