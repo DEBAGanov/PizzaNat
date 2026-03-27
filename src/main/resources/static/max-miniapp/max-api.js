@@ -16,10 +16,22 @@ class MaxPizzaAPI {
         // Auth token
         this.authToken = localStorage.getItem('pizzanat_max_token');
 
+        // Session ID for cart
+        this.sessionId = localStorage.getItem('pizzanat_max_session_id');
+
         // Request timeout
         this.timeout = 30000;
 
         console.log('🍕 MaxPizzaAPI initialized with base URL:', this.baseURL);
+    }
+
+    /**
+     * Сохранение sessionId
+     */
+    setSessionId(sessionId) {
+        this.sessionId = sessionId;
+        localStorage.setItem('pizzanat_max_session_id', sessionId);
+        console.log('🔑 Session ID saved:', sessionId);
     }
 
     /**
@@ -270,6 +282,11 @@ class MaxPizzaAPI {
             defaultOptions.headers['Authorization'] = `Bearer ${this.authToken}`;
         }
 
+        // Добавляем sessionId если есть (для корзины)
+        if (this.sessionId) {
+            defaultOptions.headers['X-Session-Id'] = this.sessionId;
+        }
+
         const finalOptions = {
             ...defaultOptions,
             ...options,
@@ -298,9 +315,21 @@ class MaxPizzaAPI {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
+            // Извлекаем sessionId из заголовка ответа если есть
+            const responseSessionId = response.headers.get('X-Session-Id');
+            if (responseSessionId && responseSessionId !== this.sessionId) {
+                this.setSessionId(responseSessionId);
+            }
+
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const data = await response.json();
+
+                // Извлекаем sessionId из ответа (для корзины)
+                if (data && data.sessionId && data.sessionId !== this.sessionId) {
+                    this.setSessionId(data.sessionId);
+                }
+
                 console.log(`✅ Request successful: ${finalOptions.method} ${url}`, data);
                 return data;
             } else {

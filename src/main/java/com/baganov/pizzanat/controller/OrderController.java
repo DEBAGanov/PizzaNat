@@ -41,13 +41,19 @@ public class OrderController {
 
         String sessionId = null;
         if (userId == null) {
-            // Получаем сессию анонимного пользователя
-            jakarta.servlet.http.Cookie[] cookies = httpRequest.getCookies();
-            if (cookies != null) {
-                for (jakarta.servlet.http.Cookie cookie : cookies) {
-                    if ("CART_SESSION_ID".equals(cookie.getName())) {
-                        sessionId = cookie.getValue();
-                        break;
+            // Сначала проверяем заголовок X-Session-Id (для MAX mini app)
+            sessionId = httpRequest.getHeader("X-Session-Id");
+            log.debug("SessionId from X-Session-Id header: {}", sessionId);
+
+            // Если заголовка нет, проверяем cookie
+            if (sessionId == null) {
+                jakarta.servlet.http.Cookie[] cookies = httpRequest.getCookies();
+                if (cookies != null) {
+                    for (jakarta.servlet.http.Cookie cookie : cookies) {
+                        if ("CART_SESSION_ID".equals(cookie.getName())) {
+                            sessionId = cookie.getValue();
+                            break;
+                        }
                     }
                 }
             }

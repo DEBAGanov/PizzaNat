@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class CartController {
     @Operation(summary = "Получение корзины")
     public ResponseEntity<CartDTO> getCart(
             HttpServletRequest request,
+            HttpServletResponse response,
             Authentication authentication) {
 
         Integer userId = getUserId(authentication);
@@ -44,6 +46,10 @@ public class CartController {
                 authentication != null ? authentication.getName() : "null");
 
         CartDTO cart = cartService.getCart(sessionId, userId);
+
+        // Добавляем sessionId в заголовок для MAX mini app
+        response.setHeader("X-Session-Id", sessionId);
+
         return ResponseEntity.ok(cart);
     }
 
@@ -52,6 +58,7 @@ public class CartController {
     public ResponseEntity<CartDTO> addToCart(
             @Valid @RequestBody AddToCartRequest addToCartRequest,
             HttpServletRequest request,
+            HttpServletResponse response,
             Authentication authentication) {
 
         Integer userId = getUserId(authentication);
@@ -65,6 +72,9 @@ public class CartController {
                 userId,
                 addToCartRequest.getProductId(),
                 addToCartRequest.getQuantity());
+
+        // Добавляем sessionId в заголовок для MAX mini app
+        response.setHeader("X-Session-Id", sessionId);
 
         return ResponseEntity.ok(cart);
     }
