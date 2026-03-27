@@ -190,6 +190,14 @@ public class CartController {
     }
 
     private String getSessionId(HttpServletRequest request) {
+        // Сначала проверяем заголовок X-Session-Id (для MAX mini app и мобильных приложений)
+        String headerSessionId = request.getHeader("X-Session-Id");
+        if (headerSessionId != null && !headerSessionId.isEmpty()) {
+            log.debug("Using sessionId from X-Session-Id header: {}", headerSessionId);
+            return headerSessionId;
+        }
+
+        // Затем проверяем cookie
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
