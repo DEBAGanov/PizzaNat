@@ -183,7 +183,7 @@ services:
       # Настройки API
       MAX_API_URL: ${MAX_API_URL:-https://api.max.ru}
       # Chat ID для административных уведомлений
-      MAX_ADMIN_CHAT_ID: ${MAX_ADMIN_CHAT_ID:-}
+      MAX_ADMIN_CHAT_ID: ${MAX_ADMIN_CHAT_ID:-213154550}
       # Таймауты и повторные попытки
       MAX_BOT_TIMEOUT: ${MAX_BOT_TIMEOUT:-30000}
       MAX_BOT_MAX_RETRIES: ${MAX_BOT_MAX_RETRIES:-3}
