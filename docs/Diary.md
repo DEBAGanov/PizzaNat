@@ -1,5 +1,86 @@
 # PizzaNat - Дневник наблюдений
 
+## 2026-03-27 - Реализация полноценного MAX Admin Bot
+
+### Наблюдения
+- Существующая таблица `telegram_admin_users` может использоваться для хранения администраторов MAX
+- MAX Admin Bot уже частично реализован в `MaxAdminNotificationService.java` (только отправка уведомлений)
+- Для полноценной работы нужны: обработка callback, команды, детали заказов
+- Telegram Admin Bot (`AdminBotService.java`) содержит ~1767 строк с полным функционалом
+
+### Решения
+1. **Создан `MaxAdminBotService.java`**:
+   - Регистрация администраторов (использует `TelegramAdminUserRepository`)
+   - Обработка callback для изменения статусов: `max_order_{orderId}_{status}`
+   - Запрос деталей заказа: `max_details_{orderId}`
+   - Запрос отзыва: `max_review_{orderId}`
+   - Команды: /register, /stats, /orders, /help
+   - Интеграция с событиями `NewOrderEvent` и `PaymentAlertEvent`
+
+2. **Создан `MaxAdminBotCallbackHandler.java`**:
+   - Роутинг callback запросов
+   - Обработка команд бота
+   - Проверка прав администратора
+
+3. **Создан `MaxAdminBotController.java`**:
+   - Webhook endpoint `/max-admin/`
+   - Обработка `message_created`, `message_callback`, `bot_started`
+   - Health check endpoint `/max-admin/health`
+
+4. **Inline кнопки MAX** (полный набор как в Telegram):
+   - ✅ Подтвердить, 👨‍🍳 Готовится
+   - 📦 Готов, 🚗 В доставке
+   - ✅ Доставлен, ❌ Отменить
+   - 🔍 Детали, ⭐ Отзыв
+
+### Архитектура
+```
+MAX API → /max-admin/ → MaxAdminBotController
+                               ↓
+                    MaxAdminBotCallbackHandler
+                               ↓
+                      MaxAdminBotService → TelegramAdminUserRepository
+                                        → OrderService
+                                        → PaymentRepository
+```
+
+### Следующие шаги
+1. Настроить webhook URL в MAX Bot API
+2. Протестировать команды и callback
+3. Добавить уведомления пользователей о смене статуса (интеграция с MAX User Bot)
+
+---
+
+## 2026-03-27 - Добавление правил ведения журнала разработки в CLAUDE.md
+
+### Наблюдения
+- В проекте уже существовали три файла документации в `/docs/`: `Project.md`, `Tasktracker.md`, `Diary.md`
+- Файлы активно ведутся и содержат актуальную информацию о проекте
+- `Tasktracker.md` большой (~47k токенов) из-за детального описания задач
+- `Project.md` содержит полное описание архитектуры, включая интеграцию с Telegram Mini App и MAX
+
+### Решения
+1. **Добавлена секция "Development Journal Rules" в CLAUDE.md**:
+   - Описание трёх файлов документации и их назначения
+   - Правила обновления каждого файла
+   - Формат записей для Diary.md
+   - Обязанности Claude при работе с документацией
+
+2. **Структура правил**:
+   - `Project.md` - архитектура, цели, технологии (обновлять при изменениях)
+   - `Tasktracker.md` - отслеживание прогресса с приоритетами (Критический/Высокий/Средний/Низкий)
+   - `Diary.md` - ежедневные записи с секциями: Наблюдения, Решения, Проблемы
+
+### Проблемы
+- Нет проблем, документация уже ведётся систематически
+
+### Следующие шаги
+1. При каждом запуске читать Diary.md и Tasktracker.md
+2. Обновлять документацию при прогрессе в работе
+3. Добавлять новые задачи с приоритетами
+
+---
+
 ## 2026-03-26 - Интеграция MAX Mini App
 
 ### Наблюдения

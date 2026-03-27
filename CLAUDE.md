@@ -132,3 +132,94 @@ Also: `CANCELLED`
 - Customer bot: handles authentication, order notifications
 - Admin bot: receives order notifications, status updates, payment alerts
 - Configuration in `TelegramBotConfig` and `TelegramAdminBotConfig`
+
+## Development Journal Rules
+
+The project maintains three documentation files in `/docs/` that must be updated during development:
+
+### 1. Project.md - Project Overview
+**Location:** `docs/Project.md`
+
+Detailed structured description of the project including:
+- Project goals and objectives
+- Architecture and component design
+- Development stages and milestones
+- Technologies and standards used
+- Requirements for consistency and maintainability
+
+**When to update:**
+- When architecture changes are made
+- When new functional requirements are added
+- When technology stack changes
+- When significant refactoring occurs
+
+### 2. Tasktracker.md - Progress Tracking
+**Location:** `docs/Tasktracker.md`
+
+Development progress tracking based on Project.md.
+
+**Task priorities:**
+- 🔴 **Critical** - blocks other work or production
+- 🟠 **High** - important for next release
+- 🟡 **Medium** - planned features
+- 🟢 **Low** - nice-to-have improvements
+
+**Task statuses:**
+- `[ ]` - Pending
+- `[~]` - In progress
+- `[x]` - Completed
+- `[-]` - Cancelled/Deferred
+
+**When to update:**
+- When starting a new task (change status to in-progress)
+- When completing a task (mark as completed)
+- When adding new tasks (include priority)
+- When task priorities change
+
+### 3. Diary.md - Development Diary
+**Location:** `docs/Diary.md`
+
+Detailed project observation diary for seamless handoff between developers.
+
+**Entry format:**
+```markdown
+## YYYY-MM-DD - [Entry Title]
+
+### Observations
+- Technical observations about the system
+- Discovered patterns or behaviors
+- Notes about codebase structure
+
+### Solutions
+- Problems solved today
+- Technical decisions made
+- Implementation approaches chosen
+
+### Problems
+- Outstanding issues
+- Blockers encountered
+- Questions that need answers
+```
+
+**When to update:**
+- Daily during active development
+- When important technical decisions are made
+- When problems and their solutions are discovered
+- When significant changes are implemented
+
+### Claude's Responsibilities
+
+At the **start of each session**, Claude should:
+1. Read `docs/Diary.md` to understand recent work
+2. Check `docs/Tasktracker.md` for current task status
+3. Review `docs/Project.md` if architectural context is needed
+
+During **active development**, Claude should:
+1. Update Tasktracker.md when task status changes
+2. Add entries to Diary.md for significant work
+3. Update Project.md when architecture changes
+
+At the **end of each session**, Claude should:
+1. Ensure Diary.md has an entry for today's work
+2. Verify all completed tasks are marked in Tasktracker.md
+3. Note any new tasks discovered during the session

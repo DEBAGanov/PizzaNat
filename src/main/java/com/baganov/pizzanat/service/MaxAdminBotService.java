@@ -1,0 +1,969 @@
+/**
+ * @file: MaxAdminBotService.java
+ * @description: Сервис для работы с админским MAX ботом
+ * @dependencies: MaxAdminUserRepository, OrderService, MaxAdminNotificationService
+ * @created: 2026-03-27
+ */
+package com.baganov.pizzanat.service;
+
+import com.baganov.pizzanat.config.MaxBotConfig;
+import com.baganov.pizzanat.entity.*;
+import com.baganov.pizzanat.event.NewOrderEvent;
+import com.baganov.pizzanat.event.PaymentAlertEvent;
+import com.baganov.pizzanat.model.dto.order.OrderDTO;
+import com.baganov.pizzanat.model.entity.TelegramAdminUser;
+import com.baganov.pizzanat.repository.TelegramAdminUserRepository;
+import com.baganov.pizzanat.repository.PaymentRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class MaxAdminBotService {
+
+    private final TelegramAdminUserRepository adminUserRepository;
+    private final MaxBotConfig maxBotConfig;
+    private final OrderService orderService;
+    private final PaymentRepository paymentRepository;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
+
+    private static final String MAX_API_BASE_URL = "https://api.max.ru";
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+    // ==================== РЕГИСТРАЦИЯ АДМИНИСТРАТОРОВ ====================
+
+    /**
+     * Регистрация администратора
+     */
+    public boolean registerAdmin(Long maxUserId, String username, String firstName, String lastName) {
+        try {
+            // Используем telegram_chat_id для хранения MAX User ID
+            Optional<TelegramAdminUser> existing = adminUserRepository.findByTelegramChatId(maxUserId);
+            if (existing.isPresent()) {
+                log.info("MAX: Администратор уже зарегистрирован: userId={}, username={}", maxUserId, username);
+                return false;
+            }
+
+            TelegramAdminUser adminUser = TelegramAdminUser.builder()
+                    .telegramChatId(maxUserId) // MAX User ID храним в telegramChatId
+                    .username(username)
+                    .firstName(firstName)
+                    .lastName(lastName)
+                    .isActive(true)
+                    .registeredAt(LocalDateTime.now())
+                    .build();
+
+            adminUserRepository.save(adminUser);
+            log.info("MAX: Зарегистрирован новый администратор: userId={}, username={}", maxUserId, username);
+            return true;
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при регистрации администратора: userId={}, error={}", maxUserId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Проверка, является ли пользователь зарегистрированным администратором
+     */
+    public boolean isRegisteredAdmin(Long maxUserId) {
+        return adminUserRepository.findByTelegramChatIdAndIsActiveTrue(maxUserId).isPresent();
+    }
+
+    /**
+     * Получение всех активных администраторов
+     */
+    public List<TelegramAdminUser> getActiveAdmins() {
+        return adminUserRepository.findByIsActiveTrue();
+    }
+
+    // ==================== ОБРАБОТКА CALLBACK ====================
+
+    /**
+     * Обработка изменения статуса заказа через кнопки
+     */
+    public void handleOrderStatusChange(Long maxUserId, Long messageId, String callbackData) {
+        try {
+            // Парсим callback data: max_order_{orderId}_{newStatus}
+            String[] parts = callbackData.split("_");
+            if (parts.length != 4) {
+                log.error("MAX: Некорректный формат callback data: {}", callbackData);
+                return;
+            }
+
+            Integer orderId = Integer.parseInt(parts[2]);
+            String newStatusStr = parts[3];
+
+            // Проверяем текущий статус заказа перед изменением
+            Optional<Order> orderOpt = orderService.findById(orderId.longValue());
+            if (orderOpt.isPresent()) {
+                Order currentOrder = orderOpt.get();
+                String currentStatus = currentOrder.getStatus().getName();
+
+                // Если статус уже установлен, не выполняем изменение
+                if (newStatusStr.equalsIgnoreCase(currentStatus)) {
+                    String alreadySetMessage = String.format(
+                            "ℹ️ **Статус заказа #%d уже установлен**\n\n" +
+                                    "Текущий статус: %s\n" +
+                                    "Изменений не требуется",
+                            orderId,
+                            getStatusDisplayNameByString(newStatusStr));
+                    sendMessageToUser(maxUserId, alreadySetMessage);
+
+                    log.info("MAX: Статус заказа #{} уже установлен на {}, пропускаем изменение", orderId, newStatusStr);
+                    return;
+                }
+            }
+
+            // Обновляем статус заказа
+            OrderDTO updatedOrder = orderService.updateOrderStatus(orderId, newStatusStr);
+
+            String statusDisplayName = getStatusDisplayNameByString(newStatusStr);
+
+            String successMessage = String.format(
+                    "✅ **Статус заказа #%d изменен**\n\n" +
+                            "Новый статус: %s\n" +
+                            "Изменено: %s",
+                    orderId,
+                    statusDisplayName,
+                    LocalDateTime.now().format(TIME_FORMATTER));
+            sendMessageToUser(maxUserId, successMessage);
+
+            log.info("MAX: Статус заказа #{} изменен на {} администратором userId={}",
+                    orderId, newStatusStr, maxUserId);
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при обработке изменения статуса заказа: {}", e.getMessage(), e);
+            sendMessageToUser(maxUserId, "❌ Ошибка при изменении статуса заказа");
+        }
+    }
+
+    /**
+     * Обработка запроса деталей заказа
+     */
+    public void handleOrderDetailsRequest(Long maxUserId, String callbackData) {
+        try {
+            // Парсим callback data: max_details_{orderId}
+            String[] parts = callbackData.split("_");
+            if (parts.length != 3) {
+                log.error("MAX: Некорректный формат callback data: {}", callbackData);
+                return;
+            }
+
+            Long orderId = Long.parseLong(parts[2]);
+            Optional<Order> orderOpt = orderService.findById(orderId);
+
+            if (orderOpt.isPresent()) {
+                String detailsMessage = formatOrderDetails(orderOpt.get());
+                sendMessageToUser(maxUserId, detailsMessage);
+            } else {
+                sendMessageToUser(maxUserId, "❌ Заказ не найден");
+            }
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при получении деталей заказа: {}", e.getMessage(), e);
+            sendMessageToUser(maxUserId, "❌ Произошла ошибка при получении деталей заказа");
+        }
+    }
+
+    /**
+     * Обработка запроса на отправку отзыва пользователю
+     */
+    public void handleOrderReviewRequest(Long maxUserId, String callbackData) {
+        try {
+            // Парсим callback data: max_review_{orderId}
+            String[] parts = callbackData.split("_");
+            if (parts.length != 3) {
+                log.error("MAX: Некорректный формат callback data: {}", callbackData);
+                return;
+            }
+
+            Long orderId = Long.parseLong(parts[2]);
+
+            // Подтверждаем администратору
+            String successMessage = String.format(
+                    "✅ **Запрос на отзыв отправлен**\n\n" +
+                            "📋 Заказ #%d\n" +
+                            "Отправлено: %s\n\n" +
+                            "📱 Уведомление отправлено пользователю",
+                    orderId,
+                    LocalDateTime.now().format(TIME_FORMATTER));
+
+            sendMessageToUser(maxUserId, successMessage);
+
+            log.info("MAX: Запрос на отзыв для заказа #{} отправлен администратором userId={}", orderId, maxUserId);
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при отправке запроса на отзыв: {}", e.getMessage(), e);
+            sendMessageToUser(maxUserId, "❌ Произошла ошибка при отправке запроса на отзыв");
+        }
+    }
+
+    // ==================== КОМАНДЫ ====================
+
+    /**
+     * Получение статистики заказов
+     */
+    public String getOrdersStats() {
+        try {
+            LocalDate today = LocalDate.now();
+            LocalDateTime startOfDay = today.atStartOfDay();
+            LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
+
+            List<Order> todayOrders = orderService.findOrdersByDateRange(startOfDay, endOfDay);
+
+            long totalOrders = todayOrders.size();
+            BigDecimal totalRevenue = todayOrders.stream()
+                    .map(Order::getTotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            long pendingCount = todayOrders.stream()
+                    .filter(o -> "CREATED".equals(o.getStatus().getName()) || "PENDING".equals(o.getStatus().getName()))
+                    .count();
+            long confirmedCount = todayOrders.stream().filter(o -> "CONFIRMED".equals(o.getStatus().getName())).count();
+            long preparingCount = todayOrders.stream().filter(
+                    o -> "PREPARING".equals(o.getStatus().getName()) || "COOKING".equals(o.getStatus().getName()))
+                    .count();
+            long readyCount = todayOrders.stream().filter(o -> "READY".equals(o.getStatus().getName())).count();
+            long deliveringCount = todayOrders.stream().filter(o -> "DELIVERING".equals(o.getStatus().getName()))
+                    .count();
+            long deliveredCount = todayOrders.stream().filter(
+                    o -> "DELIVERED".equals(o.getStatus().getName()) || "COMPLETED".equals(o.getStatus().getName()))
+                    .count();
+            long cancelledCount = todayOrders.stream().filter(
+                    o -> "CANCELLED".equals(o.getStatus().getName()) || "CANCELED".equals(o.getStatus().getName()))
+                    .count();
+
+            return String.format(
+                    "📊 **Статистика заказов за %s**\n\n" +
+                            "📦 Всего заказов: %d\n" +
+                            "💰 Общая сумма: %.2f ₽\n\n" +
+                            "**По статусам:**\n" +
+                            "🆕 Новые: %d\n" +
+                            "✅ Подтвержденные: %d\n" +
+                            "👨‍🍳 Готовятся: %d\n" +
+                            "🍕 Готовы: %d\n" +
+                            "🚗 Доставляются: %d\n" +
+                            "✅ Доставлены: %d\n" +
+                            "❌ Отменены: %d",
+                    today.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                    totalOrders, totalRevenue,
+                    pendingCount, confirmedCount, preparingCount,
+                    readyCount, deliveringCount, deliveredCount, cancelledCount);
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при получении статистики заказов: {}", e.getMessage(), e);
+            return "❌ Ошибка при получении статистики";
+        }
+    }
+
+    /**
+     * Получение списка активных заказов
+     */
+    public String getActiveOrders() {
+        try {
+            List<Order> activeOrders = orderService.findActiveOrders();
+
+            if (activeOrders.isEmpty()) {
+                return "📋 **Активные заказы**\n\nНет активных заказов";
+            }
+
+            StringBuilder message = new StringBuilder("📋 **Активные заказы**\n\n");
+
+            for (Order order : activeOrders) {
+                message.append(String.format(
+                        "🔸 **Заказ #%d**\n" +
+                                "Статус: %s\n" +
+                                "Сумма: %.2f ₽\n" +
+                                "Время: %s\n\n",
+                        order.getId(),
+                        getStatusDisplayName(order.getStatus()),
+                        order.getTotalAmount(),
+                        order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM HH:mm"))));
+            }
+
+            return message.toString();
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при получении активных заказов: {}", e.getMessage(), e);
+            return "❌ Ошибка при получении списка заказов";
+        }
+    }
+
+    /**
+     * Отправка активных заказов с кнопками управления
+     */
+    public void sendActiveOrdersWithButtons(Long maxUserId) {
+        try {
+            List<Order> activeOrders = orderService.findActiveOrdersIncludingNew();
+
+            if (activeOrders.isEmpty()) {
+                sendMessageToUser(maxUserId, "📋 **Активные заказы**\n\nНет активных заказов");
+                return;
+            }
+
+            // Отправляем заголовок
+            sendMessageToUser(maxUserId, "📋 **Активные заказы (включая новые)**");
+
+            // Отправляем каждый заказ отдельным сообщением с кнопками
+            for (Order order : activeOrders) {
+                Payment latestPayment = getLatestPayment(order);
+                OrderDisplayStatus displayStatus = determineOrderDisplayStatus(order, latestPayment);
+
+                StringBuilder orderMessage = new StringBuilder();
+                orderMessage.append(displayStatus.getEmoji()).append(" **Заказ #").append(order.getId()).append("**\n");
+                orderMessage.append("Статус: ").append(getStatusDisplayName(order.getStatus())).append("\n");
+                orderMessage.append("Оплата: ").append(getPaymentStatusDisplay(order)).append("\n");
+                orderMessage.append("Сумма: ").append(String.format("%.2f", order.getTotalAmount())).append(" ₽\n");
+                orderMessage.append("Время: ")
+                        .append(order.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM HH:mm"))).append("\n\n");
+
+                // Контактные данные
+                orderMessage.append("📞 **Контакт:** ").append(escapeMarkdown(order.getContactName()))
+                        .append("\n");
+                orderMessage.append("📞 **Телефон:** ").append(escapeMarkdown(order.getContactPhone())).append("\n");
+
+                String finalMessage = orderMessage.toString();
+                List<Map<String, Object>> attachments = createOrderManagementAttachments(order.getId());
+
+                sendMessageToUserWithButtons(maxUserId, finalMessage, attachments);
+            }
+
+            log.debug("MAX: Отправлено {} активных заказов с кнопками администратору: userId={}",
+                    activeOrders.size(), maxUserId);
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при отправке активных заказов с кнопками: {}", e.getMessage(), e);
+            sendMessageToUser(maxUserId, "❌ Ошибка при получении списка заказов");
+        }
+    }
+
+    // ==================== СОБЫТИЯ ====================
+
+    /**
+     * Обработчик события создания нового заказа
+     */
+    @EventListener
+    @Async
+    public void handleNewOrderEvent(NewOrderEvent event) {
+        if (!maxBotConfig.isAdminEnabled()) {
+            log.debug("MAX admin notifications disabled");
+            return;
+        }
+
+        try {
+            Order order = event.getOrder();
+            log.info("📧 MAX: Получено событие о новом заказе #{} для уведомления администраторов", order.getId());
+
+            notifyAdminsAboutNewOrder(order);
+            log.info("✅ MAX: Уведомление о новом заказе #{} отправлено", order.getId());
+
+        } catch (Exception e) {
+            log.error("❌ MAX: Ошибка обработки события нового заказа #{}: {}",
+                    event.getOrder().getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Обработчик событий алертов платежной системы
+     */
+    @EventListener
+    @Async
+    public void handlePaymentAlertEvent(PaymentAlertEvent event) {
+        if (!maxBotConfig.isAdminEnabled()) {
+            return;
+        }
+
+        try {
+            log.info("🚨 MAX: Получено событие алерта платежной системы: {}", event.getAlertType());
+            notifyAdminsAboutPaymentAlert(event.getAlertMessage());
+        } catch (Exception e) {
+            log.error("❌ MAX: Ошибка обработки события алерта платежной системы: {}", e.getMessage(), e);
+        }
+    }
+
+    // ==================== УВЕДОМЛЕНИЯ ====================
+
+    /**
+     * Уведомление всех администраторов о новом заказе
+     */
+    public void notifyAdminsAboutNewOrder(Order order) {
+        try {
+            List<TelegramAdminUser> activeAdmins = adminUserRepository.findByIsActiveTrue();
+
+            if (activeAdmins.isEmpty()) {
+                log.warn("MAX: Нет активных администраторов для уведомления о заказе #{}", order.getId());
+                // Отправляем в общий чат если настроен
+                if (maxBotConfig.getAdminChatId() != null && !maxBotConfig.getAdminChatId().isEmpty()) {
+                    String orderMessage = formatNewOrderMessage(order);
+                    List<Map<String, Object>> attachments = createOrderManagementAttachments(order.getId());
+                    sendMessageToChatWithButtons(maxBotConfig.getAdminChatId(), orderMessage, attachments);
+                }
+                return;
+            }
+
+            String orderMessage = formatNewOrderMessage(order);
+            List<Map<String, Object>> attachments = createOrderManagementAttachments(order.getId());
+
+            for (TelegramAdminUser admin : activeAdmins) {
+                try {
+                    sendMessageToUserWithButtons(admin.getTelegramChatId(), orderMessage, attachments);
+                    log.debug("MAX: Уведомление о заказе #{} отправлено администратору: {}",
+                            order.getId(), admin.getUsername());
+                } catch (Exception e) {
+                    log.error("MAX: Ошибка отправки уведомления администратору {}: {}",
+                            admin.getUsername(), e.getMessage());
+                }
+            }
+
+            log.info("MAX: Уведомления о заказе #{} отправлены {} администраторам",
+                    order.getId(), activeAdmins.size());
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при уведомлении администраторов о заказе #{}: {}",
+                    order.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Отправка алерта всем администраторам
+     */
+    private void notifyAdminsAboutPaymentAlert(String alertMessage) {
+        try {
+            List<TelegramAdminUser> activeAdmins = adminUserRepository.findByIsActiveTrue();
+
+            if (activeAdmins.isEmpty()) {
+                log.warn("MAX: Нет активных администраторов для отправки алерта");
+                return;
+            }
+
+            for (TelegramAdminUser admin : activeAdmins) {
+                try {
+                    sendMessageToUser(admin.getTelegramChatId(), alertMessage);
+                    log.debug("MAX: Алерт отправлен администратору: {}", admin.getUsername());
+                } catch (Exception e) {
+                    log.error("MAX: Ошибка отправки алерта администратору {}: {}",
+                            admin.getUsername(), e.getMessage());
+                }
+            }
+
+            log.info("MAX: Алерт отправлен {} администраторам", activeAdmins.size());
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при отправке алерта администраторам: {}", e.getMessage(), e);
+        }
+    }
+
+    // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
+
+    /**
+     * Отправка сообщения пользователю
+     */
+    public void sendMessageToUser(Long maxUserId, String message) {
+        sendMessageToUserWithButtons(maxUserId, message, null);
+    }
+
+    /**
+     * Отправка сообщения пользователю с кнопками
+     */
+    public void sendMessageToUserWithButtons(Long maxUserId, String message,
+            List<Map<String, Object>> attachments) {
+        String adminBotToken = maxBotConfig.getAdminBotToken();
+
+        if (adminBotToken == null || adminBotToken.isEmpty()) {
+            log.warn("MAX: Admin bot token не настроен - нельзя отправить сообщение");
+            return;
+        }
+
+        String url = String.format("%s/bots/%s/messages", MAX_API_BASE_URL, adminBotToken);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("user_id", maxUserId);
+        body.put("text", message);
+
+        if (attachments != null && !attachments.isEmpty()) {
+            body.put("attachments", attachments);
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            var response = restTemplate.postForEntity(url, entity, String.class);
+            log.debug("MAX API response for user {}: Status: {}", maxUserId, response.getStatusCode());
+
+        } catch (Exception e) {
+            log.error("MAX: Error calling MAX API for user {}: {}", maxUserId, e.getMessage());
+        }
+    }
+
+    /**
+     * Отправка сообщения в чат с кнопками
+     */
+    private void sendMessageToChatWithButtons(String chatId, String message,
+            List<Map<String, Object>> attachments) {
+        String adminBotToken = maxBotConfig.getAdminBotToken();
+
+        if (adminBotToken == null || adminBotToken.isEmpty()) {
+            log.warn("MAX: Admin bot token не настроен");
+            return;
+        }
+
+        String url = String.format("%s/bots/%s/messages", MAX_API_BASE_URL, adminBotToken);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("chat_id", chatId);
+        body.put("text", message);
+
+        if (attachments != null && !attachments.isEmpty()) {
+            body.put("attachments", attachments);
+        }
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            var response = restTemplate.postForEntity(url, entity, String.class);
+            log.debug("MAX API response for chat {}: Status: {}", chatId, response.getStatusCode());
+
+        } catch (Exception e) {
+            log.error("MAX: Error calling MAX API for chat {}: {}", chatId, e.getMessage());
+        }
+    }
+
+    // ==================== INLINE КНОПКИ ====================
+
+    /**
+     * Создание inline кнопок для управления заказом (полный набор как в Telegram)
+     */
+    private List<Map<String, Object>> createOrderManagementAttachments(Integer orderId) {
+        List<Map<String, Object>> attachments = new ArrayList<>();
+
+        // Кнопки изменения статуса (строка 1)
+        Map<String, Object> row1 = new HashMap<>();
+        row1.put("type", "buttons");
+        List<Map<String, Object>> buttons1 = new ArrayList<>();
+        buttons1.add(createCallbackButton("✅ Подтвердить", "max_order_" + orderId + "_CONFIRMED"));
+        buttons1.add(createCallbackButton("👨‍🍳 Готовится", "max_order_" + orderId + "_PREPARING"));
+        row1.put("buttons", buttons1);
+        attachments.add(row1);
+
+        // Кнопки изменения статуса (строка 2)
+        Map<String, Object> row2 = new HashMap<>();
+        row2.put("type", "buttons");
+        List<Map<String, Object>> buttons2 = new ArrayList<>();
+        buttons2.add(createCallbackButton("📦 Готов", "max_order_" + orderId + "_READY"));
+        buttons2.add(createCallbackButton("🚗 В доставке", "max_order_" + orderId + "_DELIVERING"));
+        row2.put("buttons", buttons2);
+        attachments.add(row2);
+
+        // Кнопки изменения статуса (строка 3)
+        Map<String, Object> row3 = new HashMap<>();
+        row3.put("type", "buttons");
+        List<Map<String, Object>> buttons3 = new ArrayList<>();
+        buttons3.add(createCallbackButton("✅ Доставлен", "max_order_" + orderId + "_DELIVERED"));
+        buttons3.add(createCallbackButton("❌ Отменить", "max_order_" + orderId + "_CANCELLED"));
+        row3.put("buttons", buttons3);
+        attachments.add(row3);
+
+        // Кнопки действий (строка 4) - детали и отзыв
+        Map<String, Object> row4 = new HashMap<>();
+        row4.put("type", "buttons");
+        List<Map<String, Object>> buttons4 = new ArrayList<>();
+        buttons4.add(createCallbackButton("🔍 Детали", "max_details_" + orderId));
+        buttons4.add(createCallbackButton("⭐ Отзыв", "max_review_" + orderId));
+        row4.put("buttons", buttons4);
+        attachments.add(row4);
+
+        return attachments;
+    }
+
+    /**
+     * Создание callback кнопки
+     */
+    private Map<String, Object> createCallbackButton(String text, String callbackData) {
+        Map<String, Object> button = new HashMap<>();
+        button.put("text", text);
+        button.put("callbackData", callbackData);
+        return button;
+    }
+
+    // ==================== ФОРМАТИРОВАНИЕ СООБЩЕНИЙ ====================
+
+    /**
+     * Форматирование сообщения о новом заказе
+     */
+    private String formatNewOrderMessage(Order order) {
+        StringBuilder sb = new StringBuilder();
+
+        // Определяем статус оплаты
+        Payment latestPayment = getLatestPayment(order);
+        OrderDisplayStatus displayStatus = determineOrderDisplayStatus(order, latestPayment);
+
+        // Заголовок
+        String paymentEmoji = getPaymentEmoji(order.getPaymentMethod());
+        String paymentLabel = order.getPaymentMethod() != null ? order.getPaymentMethod().getDisplayName() : "Не указан";
+        sb.append(displayStatus.getEmoji()).append(" **НОВЫЙ ЗАКАЗ #").append(order.getId())
+                .append(" ").append(paymentEmoji).append("**\n\n");
+
+        // Время заказа
+        sb.append("🕐 **Время заказа:** ").append(order.getCreatedAt().format(TIME_FORMATTER)).append("\n\n");
+
+        // Контактные данные
+        sb.append("📞 **КОНТАКТНЫЕ ДАННЫЕ**\n");
+        sb.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
+        sb.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
+
+        // Адрес доставки
+        if (order.getDeliveryAddress() != null && !order.getDeliveryAddress().isEmpty()) {
+            sb.append("📍 **ДОСТАВКА**\n");
+            sb.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n\n");
+        } else if (order.getDeliveryLocation() != null) {
+            sb.append("📍 **ПУНКТ ВЫДАЧИ**\n");
+            sb.append("Пункт: ").append(escapeMarkdown(order.getDeliveryLocation().getName())).append("\n");
+            if (order.getDeliveryLocation().getAddress() != null) {
+                sb.append("Адрес: ").append(escapeMarkdown(order.getDeliveryLocation().getAddress())).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        // Способ доставки
+        String deliveryType = order.getDeliveryType() != null ? order.getDeliveryType() : "Доставка курьером";
+        String deliveryEmoji = deliveryType.contains("Самовывоз") ? "🏠" : "🚛";
+        sb.append(deliveryEmoji).append(" **Способ доставки:** ").append(escapeMarkdown(deliveryType)).append("\n\n");
+
+        // Комментарий
+        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
+            sb.append("💬 **Комментарий:** ").append(escapeMarkdown(order.getComment())).append("\n\n");
+        }
+
+        // Состав заказа
+        sb.append("🛒 **СОСТАВ ЗАКАЗА**\n");
+        BigDecimal itemsTotal = BigDecimal.ZERO;
+        if (order.getItems() != null) {
+            for (OrderItem item : order.getItems()) {
+                BigDecimal itemTotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                itemsTotal = itemsTotal.add(itemTotal);
+                sb.append("• ").append(escapeMarkdown(item.getProduct().getName()))
+                        .append(" x").append(item.getQuantity())
+                        .append(" = ").append(String.format("%.2f ₽", itemTotal))
+                        .append("\n");
+            }
+        }
+        sb.append("\n");
+
+        // Детальный расчёт
+        sb.append("💰 **ДЕТАЛЬНЫЙ РАСЧЕТ СУММЫ:**\n");
+        sb.append("├ Товары: ").append(String.format("%.2f ₽", itemsTotal)).append("\n");
+
+        BigDecimal deliveryCost = order.getDeliveryCost() != null ? order.getDeliveryCost() : BigDecimal.ZERO;
+        String deliveryCostStr = deliveryCost.compareTo(BigDecimal.ZERO) == 0 ? "Бесплатно" : String.format("%.2f ₽", deliveryCost);
+        sb.append("├ Доставка: ").append(deliveryCostStr).append("\n");
+
+        BigDecimal total = order.getTotalAmount() != null ? order.getTotalAmount() : itemsTotal.add(deliveryCost);
+        sb.append("└ **ИТОГО: ").append(String.format("%.2f ₽", total)).append("**\n\n");
+
+        // Статус оплаты
+        sb.append("💳 **СТАТУС ОПЛАТЫ:** ").append(getPaymentStatusDisplay(order)).append("\n");
+        sb.append("💰 **СПОСОБ ОПЛАТЫ:** ").append(paymentLabel).append("\n");
+
+        return sb.toString();
+    }
+
+    /**
+     * Форматирование деталей заказа
+     */
+    private String formatOrderDetails(Order order) {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("🔍 **ДЕТАЛИ ЗАКАЗА #").append(order.getId()).append("**\n\n");
+
+        sb.append("📅 **Время создания:** ").append(formatDateTime(order.getCreatedAt())).append("\n");
+        sb.append("📋 **Статус:** ").append(getStatusDisplayName(order.getStatus())).append("\n\n");
+
+        // Пользователь системы
+        if (order.getUser() != null) {
+            sb.append("👤 **ПОЛЬЗОВАТЕЛЬ СИСТЕМЫ**\n");
+            sb.append("Имя: ").append(escapeMarkdown(order.getUser().getFirstName()));
+            if (order.getUser().getLastName() != null) {
+                sb.append(" ").append(escapeMarkdown(order.getUser().getLastName()));
+            }
+            sb.append("\n");
+            if (order.getUser().getUsername() != null) {
+                sb.append("Username: @").append(escapeMarkdown(order.getUser().getUsername())).append("\n");
+            }
+            if (order.getUser().getPhone() != null) {
+                sb.append("Телефон: ").append(escapeMarkdown(order.getUser().getPhone())).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        // Контактные данные заказа
+        sb.append("📞 **КОНТАКТНЫЕ ДАННЫЕ ЗАКАЗА**\n");
+        sb.append("Имя: ").append(escapeMarkdown(order.getContactName())).append("\n");
+        sb.append("Телефон: ").append(escapeMarkdown(order.getContactPhone())).append("\n\n");
+
+        // Адрес доставки
+        if (order.getDeliveryAddress() != null) {
+            sb.append("📍 **ДОСТАВКА**\n");
+            sb.append("Адрес: ").append(escapeMarkdown(order.getDeliveryAddress())).append("\n");
+        } else if (order.getDeliveryLocation() != null) {
+            sb.append("📍 **ПУНКТ ВЫДАЧИ**\n");
+            sb.append("Адрес: ").append(escapeMarkdown(order.getDeliveryLocation().getAddress())).append("\n");
+        }
+
+        // Способ доставки
+        if (order.getDeliveryType() != null) {
+            String deliveryIcon = order.isPickup() ? "🏠" : "🚗";
+            sb.append("🚛 **Способ доставки:** ").append(deliveryIcon).append(" ")
+                    .append(escapeMarkdown(order.getDeliveryType())).append("\n");
+        }
+        sb.append("\n");
+
+        // Состав заказа
+        sb.append("🛒 **СОСТАВ ЗАКАЗА**\n");
+        BigDecimal itemsTotal = BigDecimal.ZERO;
+        if (order.getItems() != null) {
+            for (OrderItem item : order.getItems()) {
+                BigDecimal itemSubtotal = item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                itemsTotal = itemsTotal.add(itemSubtotal);
+
+                sb.append("• ").append(escapeMarkdown(item.getProduct().getName())).append("\n");
+                sb.append("  Цена: ").append(item.getPrice()).append(" ₽\n");
+                sb.append("  Количество: ").append(item.getQuantity()).append("\n");
+                sb.append("  Сумма: ").append(itemSubtotal).append(" ₽\n\n");
+            }
+        }
+
+        // Расчет суммы
+        sb.append("💰 **ДЕТАЛЬНЫЙ РАСЧЕТ СУММЫ:**\n");
+        sb.append("├ Товары: ").append(itemsTotal).append(" ₽\n");
+
+        if (order.getDeliveryCost() != null && order.getDeliveryCost().compareTo(BigDecimal.ZERO) > 0) {
+            sb.append("├ Доставка: ").append(order.getDeliveryCost()).append(" ₽\n");
+        } else if (order.isDeliveryByCourier()) {
+            sb.append("├ Доставка: БЕСПЛАТНО\n");
+        } else if (order.isPickup()) {
+            sb.append("├ Доставка: Самовывоз (0 ₽)\n");
+        }
+
+        sb.append("└ **ИТОГО: ").append(order.getTotalAmount()).append(" ₽**\n\n");
+
+        // Статус оплаты
+        sb.append("💳 **СТАТУС ОПЛАТЫ:** ").append(getPaymentStatusDisplay(order)).append("\n");
+        sb.append("💰 **СПОСОБ ОПЛАТЫ:** ")
+                .append(order.getPaymentMethod() != null ? order.getPaymentMethod().getDisplayName() : "Не указан")
+                .append("\n");
+
+        // Комментарий
+        if (order.getComment() != null && !order.getComment().trim().isEmpty()) {
+            sb.append("\n💬 **КОММЕНТАРИЙ**\n").append(escapeMarkdown(order.getComment()));
+        }
+
+        return sb.toString();
+    }
+
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
+    /**
+     * Получает последний платеж для заказа
+     */
+    private Payment getLatestPayment(Order order) {
+        try {
+            List<Payment> payments = paymentRepository.findByOrderIdOrderByCreatedAtDesc(order.getId().longValue());
+            return payments.isEmpty() ? null : payments.get(0);
+        } catch (Exception e) {
+            log.error("MAX: Ошибка получения платежа для заказа #{}: {}", order.getId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Определение статуса отображения заказа
+     */
+    private OrderDisplayStatus determineOrderDisplayStatus(Order order, Payment latestPayment) {
+        if (latestPayment != null && latestPayment.getStatus() == PaymentStatus.SUCCEEDED) {
+            return OrderDisplayStatus.PAYMENT_SUCCESS;
+        }
+
+        if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+            return OrderDisplayStatus.PAYMENT_SUCCESS;
+        }
+
+        if (latestPayment != null) {
+            switch (latestPayment.getStatus()) {
+                case PENDING:
+                case WAITING_FOR_CAPTURE:
+                    long minutesElapsed = ChronoUnit.MINUTES.between(
+                            latestPayment.getCreatedAt(), LocalDateTime.now());
+
+                    if (minutesElapsed >= 10) {
+                        return OrderDisplayStatus.PAYMENT_TIMEOUT;
+                    } else {
+                        return OrderDisplayStatus.PAYMENT_POLLING;
+                    }
+
+                case CANCELLED:
+                case FAILED:
+                    return OrderDisplayStatus.PAYMENT_CANCELLED;
+
+                default:
+                    return OrderDisplayStatus.PAYMENT_PENDING;
+            }
+        }
+
+        return OrderDisplayStatus.CASH_NEW;
+    }
+
+    /**
+     * Получение отображаемого статуса оплаты
+     */
+    private String getPaymentStatusDisplay(Order order) {
+        if (order.getPaymentStatus() == OrderPaymentStatus.PAID) {
+            return "✅ Оплачено";
+        }
+
+        if (order.getPaymentMethod() == PaymentMethod.CASH) {
+            if (order.getStatus() != null &&
+                    ("DELIVERED".equals(order.getStatus().getName()) ||
+                            "COMPLETED".equals(order.getStatus().getName()))) {
+                return "✅ Оплачено наличными";
+            } else {
+                return "💵 Оплата при доставке";
+            }
+        }
+
+        Payment latestPayment = getLatestPayment(order);
+        if (latestPayment != null) {
+            switch (latestPayment.getStatus()) {
+                case SUCCEEDED:
+                    return "✅ Оплачено";
+                case PENDING:
+                case WAITING_FOR_CAPTURE:
+                    return "🔄 Ожидает оплаты";
+                case CANCELLED:
+                    return "❌ Платеж отменен";
+                case FAILED:
+                    return "❌ Ошибка оплаты";
+                default:
+                    return "❓ Статус неизвестен";
+            }
+        }
+
+        return "❌ Не оплачено";
+    }
+
+    /**
+     * Получение отображаемого названия статуса
+     */
+    private String getStatusDisplayName(OrderStatus status) {
+        if (status == null || status.getName() == null) {
+            return "❓ Неизвестно";
+        }
+        return getStatusDisplayNameByString(status.getName());
+    }
+
+    /**
+     * Получение отображаемого названия статуса по строке
+     */
+    private String getStatusDisplayNameByString(String statusName) {
+        if (statusName == null) {
+            return "❓ Неизвестно";
+        }
+
+        switch (statusName.toUpperCase()) {
+            case "PENDING":
+                return "🆕 Новый";
+            case "CONFIRMED":
+                return "✅ Подтвержден";
+            case "PREPARING":
+            case "COOKING":
+                return "👨‍🍳 Готовится";
+            case "READY":
+                return "🍕 Готов";
+            case "DELIVERING":
+                return "🚗 Доставляется";
+            case "DELIVERED":
+            case "COMPLETED":
+                return "✅ Доставлен";
+            case "CANCELLED":
+            case "CANCELED":
+                return "❌ Отменен";
+            case "CREATED":
+                return "📝 Создан";
+            default:
+                return statusName;
+        }
+    }
+
+    /**
+     * Получить эмодзи для способа оплаты
+     */
+    private String getPaymentEmoji(PaymentMethod paymentMethod) {
+        if (paymentMethod == null)
+            return "💵";
+        return switch (paymentMethod) {
+            case SBP -> "📱";
+            case BANK_CARD -> "💳";
+            case CASH -> "💵";
+            case YOOMONEY -> "💳";
+            default -> "💵";
+        };
+    }
+
+    /**
+     * Экранирование символов для Markdown
+     */
+    private String escapeMarkdown(String text) {
+        if (text == null)
+            return "";
+        return text.replace("_", "\\_")
+                .replace("*", "\\*")
+                .replace("[", "\\[")
+                .replace("]", "\\]")
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+                .replace("~", "\\~")
+                .replace("`", "\\`")
+                .replace(">", "\\>")
+                .replace("#", "\\#")
+                .replace("+", "\\+")
+                .replace("-", "\\-")
+                .replace("=", "\\=")
+                .replace("|", "\\|")
+                .replace("{", "\\{")
+                .replace("}", "\\}")
+                .replace(".", "\\.")
+                .replace("!", "\\!");
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        if (dateTime == null) {
+            return "Неизвестно";
+        }
+        return dateTime.format(TIME_FORMATTER);
+    }
+}
