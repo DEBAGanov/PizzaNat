@@ -88,26 +88,33 @@ public class MaxAdminBotCallbackHandler {
      * Обработка команды /start (запуск бота)
      */
     private void handleStartCommand(Long maxUserId, String username, String firstName) {
-        String displayName = (firstName != null && !firstName.isEmpty()) ? firstName : username;
-        if (displayName == null || displayName.isEmpty()) {
-            displayName = "пользователь";
-        }
+        String welcomeMessage = """
+                **Справка по командам PizzaNat Admin Bot**
 
-        String welcomeMessage = String.format("""
-                👋 **Добро пожаловать, %s!**
+                **Основные команды:**
+                `/start` - Начать работу с ботом
+                `/register` - Зарегистрироваться как администратор
+                `/help` - Показать эту справку
+                `/stats` - Показать статистику заказов за сегодня
+                `/orders` - Показать список активных заказов
+                `/message <текст>` - Массовая рассылка от @DIMBOpizzaBot
 
-                Это **MAX Admin Bot** для ДИМБО ПИЦЦА.
+                **Функции бота:**
+                • 🔔 Автоматические уведомления о новых заказах
+                • ⚡️ Быстрое изменение статуса заказа через кнопки
+                • 📊 Просмотр статистики и активных заказов
+                • 👥 Управление доступом администраторов
+                • 📢 Массовая рассылка от @DIMBOpizzaBot (с соблюдением лимитов)
 
-                **Для начала работы:**
-                1. Используйте /register для регистрации как администратор
-                2. После регистрации вы будете получать уведомления о новых заказах
-
-                **Доступные команды:**
-                `/register` - Регистрация
-                `/stats` - Статистика заказов
-                `/orders` - Активные заказы
-                `/help` - Справка
-                """, displayName);
+                **Статусы заказов:**
+                🆕 PENDING - Новый заказ
+                ✅ CONFIRMED - Подтвержден
+                👨‍🍳 PREPARING - Готовится
+                🍕 READY - Готов к выдаче
+                🚗 DELIVERING - Доставляется
+                ✅ DELIVERED - Доставлен
+                ❌ CANCELLED - Отменен
+                """;
 
         maxAdminBotService.sendMessageToUser(maxUserId, welcomeMessage);
         log.info("MAX Admin: Команда /start обработана для userId={}, username={}", maxUserId, username);

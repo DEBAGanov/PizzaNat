@@ -483,6 +483,10 @@ public class MaxAdminBotService {
 
     /**
      * Отправка сообщения пользователю с кнопками
+     *
+     * Документация MAX API: https://dev.max.ru/docs-api/methods/POST/messages
+     * URL: POST /messages?user_id={user_id}
+     * Authorization: Header "Authorization: {access_token}"
      */
     public void sendMessageToUserWithButtons(Long maxUserId, String message,
             List<Map<String, Object>> attachments) {
@@ -493,10 +497,11 @@ public class MaxAdminBotService {
             return;
         }
 
-        String url = String.format("%s/bots/%s/messages", maxBotConfig.getApiUrl(), adminBotToken);
+        // MAX API формат: POST /messages?user_id={user_id}
+        // Токен передается в заголовке Authorization
+        String url = String.format("%s/messages?user_id=%d", maxBotConfig.getApiUrl(), maxUserId);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("user_id", maxUserId);
         body.put("text", message);
         body.put("format", "markdown"); // Включаем Markdown форматирование
 
@@ -511,6 +516,7 @@ public class MaxAdminBotService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", adminBotToken); // Токен в заголовке Authorization
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -524,6 +530,10 @@ public class MaxAdminBotService {
 
     /**
      * Отправка сообщения в чат с кнопками
+     *
+     * Документация MAX API: https://dev.max.ru/docs-api/methods/POST/messages
+     * URL: POST /messages?chat_id={chat_id}
+     * Authorization: Header "Authorization: {access_token}"
      */
     private void sendMessageToChatWithButtons(String chatId, String message,
             List<Map<String, Object>> attachments) {
@@ -534,11 +544,12 @@ public class MaxAdminBotService {
             return;
         }
 
-        String url = String.format("%s/bots/%s/messages", maxBotConfig.getApiUrl(), adminBotToken);
+        // MAX API формат: POST /messages?chat_id={chat_id}
+        String url = String.format("%s/messages?chat_id=%s", maxBotConfig.getApiUrl(), chatId);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("chat_id", chatId);
         body.put("text", message);
+        body.put("format", "markdown"); // Включаем Markdown форматирование
 
         if (attachments != null && !attachments.isEmpty()) {
             body.put("attachments", attachments);
@@ -551,6 +562,7 @@ public class MaxAdminBotService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", adminBotToken); // Токен в заголовке Authorization
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 

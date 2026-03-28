@@ -183,6 +183,10 @@ public class MaxAdminNotificationService {
     /**
      * Отправка сообщения в чат MAX
      *
+     * Документация MAX API: https://dev.max.ru/docs-api/methods/POST/messages
+     * URL: POST /messages?chat_id={chat_id}
+     * Authorization: Header "Authorization: {access_token}"
+     *
      * @param message текст сообщения
      * @param orderId ID заказа для логирования
      * @param attachments вложения (inline кнопки)
@@ -201,11 +205,12 @@ public class MaxAdminNotificationService {
             return;
         }
 
-        String url = String.format("%s/bots/%s/messages", maxBotConfig.getApiUrl(), adminBotToken);
+        // MAX API формат: POST /messages?chat_id={chat_id}
+        String url = String.format("%s/messages?chat_id=%s", maxBotConfig.getApiUrl(), adminChatId);
 
         Map<String, Object> body = new HashMap<>();
-        body.put("chat_id", adminChatId);
         body.put("text", message);
+        body.put("format", "markdown"); // Включаем Markdown форматирование
 
         if (attachments != null && !attachments.isEmpty()) {
             body.put("attachments", attachments);
@@ -214,6 +219,7 @@ public class MaxAdminNotificationService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", adminBotToken); // Токен в заголовке Authorization
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
