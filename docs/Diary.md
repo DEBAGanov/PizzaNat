@@ -1,39 +1,47 @@
 # PizzaNat - Дневник наблюдений
 
-## 2026-03-28 - Исправление callback кнопок и массовая рассылка в MAX
+## 2026-03-28 - MAX User Bot - полноценный функционал как в Telegram
 
 ### Наблюдения
-- Callback кнопки не работали из-за неверной структуры JSON
-- В MAX API пользователь находится в `callback.user`, а не `callback.sender`
-- Текст сообщения в `message.body.text`, а не `message.text`
-- Telegram использует поля `telegram_id`, `telegram_username`, `is_telegram_verified` для хранения ID пользователей
+- Telegram user bot @DIMBOpizzaBot имеет:
+  - /start с токеном авторизации - генерирует ссыл для входа
+  - /help - показывает справку
+  - /menu - открывает меню с inline кнопками
+  - Сохранение контактов (номер телефона)
+  - Уведомления о статусе заказов
+- MAX user bot https://max.ru/id121603899498_bot должен повторить этот функционал
 
 ### Решения
-1. **Исправлен парсинг callback в `MaxAdminBotPollingService.java`**:
-   - Пользователь: `callback.user` вместо `callback.sender`
-   - Текст сообщения: `message.body.text` вместо `message.text`
+1. **Создан `MaxUserBotPollingService.java`**:
+   - Long Polling для MAX User Bot (отдельный от Admin Bot)
+   - Обрабатывает: `message_created`, `message_callback`, `bot_started`
+   - Сохраняет пользователей в таблицу users (поля telegram_id)
 
-2. **Добавлена массовая рассылка `/message <текст>`**:
-   - Команда доступна только администраторам
-   - Рассылает сообщение всем пользователям с MAX ID
-   - Использует поля `telegram_id` для хранения MAX user ID (без создания новых колонок)
-   - Соблюдает лимит MAX API (30 rps) - задержка 50мс между сообщениями
+2. **Команды MAX User Bot**:
+   - `/start` - авторизация и сохранение пользователя
+   - `/help` - справка
+   - `/menu` - меню с inline кнопками
 
-3. **Добавлено уведомление об успешной оплате**:
-   - Слушатель `PaymentStatusChangedEvent` в `MaxAdminBotService`
-   - Отправляет администраторам уведомление: "💳 ОПЛАТА ПРОШЛА УСПЕШНО"
+3. **Inline кнопки**:
+   - 🍕 Открыть меню - открывает Mini App
+   - 📞 Связь с поддержкой - открывает @DIMBOpizzaBot
 
-4. **Метод `saveMaxUser()`** для сохранения пользователей:
-   - Сохраняет MAX user ID в поле `telegram_id`
-   - Сохраняет MAX username в поле `telegram_username`
-   - Устанавливает `is_telegram_verified = true`
+4. **Сохранение в базу данных**:
+   - MAX user ID сохраняется в поле `telegram_id`
+   - MAX username сохраняется в поле `telegram_username`
+   - `is_telegram_verified = true`
 
-### Используемые поля таблицы users для MAX
-- `telegram_id` → MAX User ID
-- `telegram_username` → MAX Username
-- `is_telegram_verified` → подтвержденный MAX пользователь
+5. **Массовая рассылка `/message`** теперь работает:
+   - Пользователи сохраняются при /start в MAX User Bot
+   - Рассылка отправляется всем с `is_telegram_verified = true`
+
+### Используемые боты MAX
+- User Bot: `https://max.ru/id121603899498_bot` (пользовательский)
+- Admin Bot: `https://max.ru/id121603899498_1_bot` (административный)
 
 ---
+
+## 2026-03-28 - Исправление callback кнопок и массовая рассылка в MAX
 
 ## 2026-03-28 - Реализация Long Polling для MAX Admin Bot
 
