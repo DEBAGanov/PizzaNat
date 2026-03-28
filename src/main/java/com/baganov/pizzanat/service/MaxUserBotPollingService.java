@@ -561,18 +561,18 @@ public class MaxUserBotPollingService {
             List<Map<String, Object>> attachments = new ArrayList<>();
             List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
 
-            // Кнопка: Открыть меню
+            // Кнопка: Открыть меню (link тип для открытия URL)
             Map<String, Object> menuButton = new HashMap<>();
-            menuButton.put("type", "callback");
+            menuButton.put("type", "link");
             menuButton.put("text", "🍕 Открыть меню");
             menuButton.put("url", "https://api.dimbopizza.ru/miniapp/menu");
             buttonRows.add(List.of(menuButton));
 
-            // Кнопка: Связь с поддержкой
+            // Кнопка: Связь с поддержкой (link тип для открытия URL)
             Map<String, Object> supportButton = new HashMap<>();
-            supportButton.put("type", "callback");
+            supportButton.put("type", "link");
             supportButton.put("text", "📞 Связь с поддержкой");
-            supportButton.put("url", "https://t.me/DIMBOpizzaBot");
+            supportButton.put("url", "https://max.ru/u/f9LHodD0cOLntZ_-fT2vQ_TC2goPd1KD3E48k309fX_KUv4aGYawlXRscU8");
             buttonRows.add(List.of(supportButton));
 
             Map<String, Object> attachment = new HashMap<>();
