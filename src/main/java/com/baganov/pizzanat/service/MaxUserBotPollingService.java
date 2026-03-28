@@ -24,6 +24,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +56,19 @@ public class MaxUserBotPollingService {
     private final MaxBotConfig maxBotConfig;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
+
+    // Создаем RestTemplate с длинным timeout для Long Polling (60 секунд)
+    private final RestTemplate longPollingRestTemplate = createLongPollingRestTemplate();
+
+    // RestTemplate для обычных запросов (отправка сообщений)
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    private RestTemplate createLongPollingRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000); // 10 секунд на подключение
+        factory.setReadTimeout(60000);    // 60 секунд на чтение (Long Polling)
+        return new RestTemplate(factory);
+    }
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicLong marker = new AtomicLong(0);
@@ -123,8 +136,18 @@ public class MaxUserBotPollingService {
     private void pollUpdates() {
         try {
             String userBotToken = maxBotConfig.getUserBotToken();
+
+            // Проверяем наличие токена
+            if (userBotToken == null || userBotToken.isEmpty()) {
+                log.warn("MAX User Bot token is not configured");
+                Thread.sleep(10000); // Ждем перед повторной попыткой
+                return;
+            }
+
             String url = String.format("%s/updates?marker=%d&timeout=30",
                     maxBotConfig.getApiUrl(), marker.get());
+
+            log.debug("MAX User: Polling updates with marker={}", marker.get());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -132,17 +155,28 @@ public class MaxUserBotPollingService {
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            var response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            // Используем RestTemplate с длинным timeout для Long Polling
+            var response = longPollingRestTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 processUpdates(response.getBody());
             }
 
-        } catch (Exception e) {
-            log.error("Error polling MAX updates: {}", e.getMessage());
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // Timeout при Long Polling - это нормально, значит нет новых обновлений
+            if (e.getMessage() != null && e.getMessage().contains("timed out")) {
+                log.debug("MAX User: Long polling timeout - no new updates");
+                return; // Просто возвращаемся, это нормальная ситуация
+            }
+            log.error("MAX User: Resource access error: {}", e.getMessage());
+            throw new RuntimeException("Polling failed", e);
 
+        } catch (Exception e) {
+            log.error("MAX User: Error polling updates: {}", e.getMessage());
+
+            // Если ошибка связана с маркером - сбрасываем
             if (e.getMessage() != null && e.getMessage().contains("marker")) {
-                log.warn("Resetting MAX polling marker due to error");
+                log.warn("MAX User: Resetting polling marker due to error");
                 marker.set(0);
             }
             throw new RuntimeException("Polling failed", e);

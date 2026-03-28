@@ -17,6 +17,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -39,7 +40,16 @@ public class MaxAdminBotPollingService {
     private final MaxBotConfig maxBotConfig;
     private final MaxAdminBotCallbackHandler callbackHandler;
     private final ObjectMapper objectMapper;
-    private final RestTemplate restTemplate;
+
+    // Создаем RestTemplate с длинным timeout для Long Polling (60 секунд)
+    private final RestTemplate longPollingRestTemplate = createLongPollingRestTemplate();
+
+    private RestTemplate createLongPollingRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10000); // 10 секунд на подключение
+        factory.setReadTimeout(60000);    // 60 секунд на чтение (Long Polling)
+        return new RestTemplate(factory);
+    }
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicLong marker = new AtomicLong(0); // Маркер для Long Polling
@@ -108,8 +118,18 @@ public class MaxAdminBotPollingService {
     private void pollUpdates() {
         try {
             String adminBotToken = maxBotConfig.getAdminBotToken();
+
+            // Проверяем наличие токена
+            if (adminBotToken == null || adminBotToken.isEmpty()) {
+                log.warn("MAX Admin Bot token is not configured");
+                Thread.sleep(10000); // Ждем перед повторной попыткой
+                return;
+            }
+
             String url = String.format("%s/updates?marker=%d&timeout=30",
                     maxBotConfig.getApiUrl(), marker.get());
+
+            log.debug("MAX Admin: Polling updates with marker={}", marker.get());
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -117,19 +137,28 @@ public class MaxAdminBotPollingService {
 
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            // Используем RestTemplate через exchange для GET с заголовками
-            var response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            // Используем RestTemplate с длинным timeout для Long Polling
+            var response = longPollingRestTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 processUpdates(response.getBody());
             }
 
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            // Timeout при Long Polling - это нормально, значит нет новых обновлений
+            if (e.getMessage() != null && e.getMessage().contains("timed out")) {
+                log.debug("MAX Admin: Long polling timeout - no new updates");
+                return; // Просто возвращаемся, это нормальная ситуация
+            }
+            log.error("MAX Admin: Resource access error: {}", e.getMessage());
+            throw new RuntimeException("Polling failed", e);
+
         } catch (Exception e) {
-            log.error("Error polling MAX updates: {}", e.getMessage());
+            log.error("MAX Admin: Error polling updates: {}", e.getMessage());
 
             // Если ошибка связана с маркером, сбрасываем его
             if (e.getMessage() != null && e.getMessage().contains("marker")) {
-                log.warn("Resetting MAX polling marker due to error");
+                log.warn("MAX Admin: Resetting polling marker due to error");
                 marker.set(0);
             }
 
