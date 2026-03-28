@@ -437,8 +437,8 @@ public class MaxUserBotPollingService {
                         "👤 **Ваш ID:** %d\n" +
                         "🔑 **Токен:** `%s`\n\n" +
                         "📱 Используйте токен для входа на сайте или в приложении:\n" +
-                        "🌐 [Открыть меню](https://dimbopizza.ru/menu)\n\n" +
-                        "📞 Для связи: @DIMBOpizzaBot",
+                        "🌐 [Открыть меню](https://max.ru/id121603899498_bot?startapp)\n\n" +
+                        "📞 Для связи: +7 (902) 105 -34-34 ",
                 token, token));
         log.info("MAX User: User {} authenticated with token: {}", userId, token);
     }
@@ -513,7 +513,13 @@ public class MaxUserBotPollingService {
      */
     private void handleMenuCommand(Long userId) {
         String menuMessage = """
-                🍕 **МЕНЮ ДИМБО ПИЦЦА**
+                🍕 **Димбо пицца - приложение для заказа пиццы в Волжске.
+
+                Доставка с 11:00 до 20:00.
+
+                тел. +7 (902) 105 -34-34
+
+                Адрес г. Волжск  ул. Шестакова 1б.**
 
                 Выберите действие:
                 """;
@@ -535,7 +541,7 @@ public class MaxUserBotPollingService {
                 **Функции:**
                 • 🍕 Заказ пиццы через Mini App
                 • 📱 Получение уведомлений о статусе заказов
-                • 📞 Связь с поддержкой через @DIMBOpizzaBot
+                • 📞 Связь с поддержкой через +7 (902) 105 -34-34
                 """;
         sendMessage(userId, helpMessage);
     }
@@ -565,7 +571,7 @@ public class MaxUserBotPollingService {
             Map<String, Object> menuButton = new HashMap<>();
             menuButton.put("type", "link");
             menuButton.put("text", "🍕 Открыть меню");
-            menuButton.put("url", "https://api.dimbopizza.ru/miniapp/menu");
+            menuButton.put("url", "https://max.ru/id121603899498_bot?startapp");
             buttonRows.add(List.of(menuButton));
 
             // Кнопка: Связь с поддержкой (link тип для открытия URL)
@@ -574,6 +580,13 @@ public class MaxUserBotPollingService {
             supportButton.put("text", "📞 Связь с поддержкой");
             supportButton.put("url", "https://max.ru/u/f9LHodD0cOLntZ_-fT2vQ_TC2goPd1KD3E48k309fX_KUv4aGYawlXRscU8");
             buttonRows.add(List.of(supportButton));
+
+            // Кнопка: Позвонить (tel: схема для звонка)
+            Map<String, Object> phoneButton = new HashMap<>();
+            phoneButton.put("type", "link");
+            phoneButton.put("text", "📱 Позвонить: +7 (902) 105-34-34");
+            phoneButton.put("url", "tel:+79021053434");
+            buttonRows.add(List.of(phoneButton));
 
             Map<String, Object> attachment = new HashMap<>();
             attachment.put("type", "inline_keyboard");
