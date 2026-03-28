@@ -198,7 +198,13 @@ public class MaxAdminBotPollingService {
                 log.info("MAX Admin: Bot added to chat");
                 break;
             default:
-                log.debug("MAX Admin: Unknown update_type: {}", updateType);
+                // Логируем все неизвестные типы - возможно это callback!
+                log.info("MAX Admin: ⚠️ Unknown update_type '{}', full update: {}", updateType, update.toString());
+                // Пробуем обработать как callback если есть callback поле
+                if (update.has("callback")) {
+                    log.info("MAX Admin: Found callback in unknown update, processing...");
+                    handleMessageCallback(update);
+                }
         }
     }
 

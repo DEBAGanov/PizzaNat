@@ -10,6 +10,7 @@ import com.baganov.pizzanat.config.MaxBotConfig;
 import com.baganov.pizzanat.entity.*;
 import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.event.PaymentAlertEvent;
+import com.baganov.pizzanat.event.PaymentStatusChangedEvent;
 import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.entity.TelegramAdminUser;
 import com.baganov.pizzanat.repository.TelegramAdminUserRepository;
@@ -398,6 +399,89 @@ public class MaxAdminBotService {
         } catch (Exception e) {
             log.error("❌ MAX: Ошибка обработки события алерта платежной системы: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Обработчик события успешной оплаты
+     */
+    @EventListener
+    @Async
+    public void handlePaymentStatusChangedEvent(PaymentStatusChangedEvent event) {
+        if (!maxBotConfig.isAdminEnabled()) {
+            return;
+        }
+
+        try {
+            // Отправляем уведомление только при успешной оплате
+            if (event.getNewStatus() == PaymentStatus.SUCCEEDED) {
+                Integer orderId = event.getOrderId();
+                Optional<Order> orderOpt = orderService.findById(orderId.longValue());
+
+                if (orderOpt.isPresent()) {
+                    Order order = orderOpt.get();
+                    notifyAdminsAboutPaymentSuccess(order);
+                    log.info("✅ MAX: Уведомление об успешной оплате заказа #{} отправлено", orderId);
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ MAX: Ошибка обработки события оплаты: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Уведомление администраторов об успешной оплате
+     */
+    private void notifyAdminsAboutPaymentSuccess(Order order) {
+        try {
+            String paymentMessage = formatPaymentSuccessMessage(order);
+
+            List<TelegramAdminUser> activeAdmins = adminUserRepository.findByIsActiveTrue();
+
+            if (activeAdmins.isEmpty()) {
+                // Отправляем в общий чат если настроен
+                if (maxBotConfig.getAdminChatId() != null && !maxBotConfig.getAdminChatId().isEmpty()) {
+                    sendMessageToChat(maxBotConfig.getAdminChatId(), paymentMessage);
+                }
+                return;
+            }
+
+            for (TelegramAdminUser admin : activeAdmins) {
+                try {
+                    sendMessageToUser(admin.getTelegramChatId(), paymentMessage);
+                    log.debug("MAX: Уведомление об оплате отправлено администратору: {}", admin.getUsername());
+                } catch (Exception e) {
+                    log.error("MAX: Ошибка отправки уведомления об оплате {}: {}", admin.getUsername(), e.getMessage());
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при уведомлении об оплате: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Форматирование сообщения об успешной оплате
+     */
+    private String formatPaymentSuccessMessage(Order order) {
+        return String.format(
+                "💳 **ОПЛАТА ПРОШЛА УСПЕШНО**\n\n" +
+                        "📦 **Заказ номер %d успешно оплачен**\n" +
+                        "💰 **Сумма:** %.2f ₽\n" +
+                        "📅 **Дата:** %s\n\n" +
+                        "👤 **Клиент:** %s\n" +
+                        "📞 **Телефон:** %s",
+                order.getId(),
+                order.getTotalAmount(),
+                LocalDateTime.now().format(TIME_FORMATTER),
+                escapeMarkdown(order.getContactName()),
+                escapeMarkdown(order.getContactPhone()));
+    }
+
+    /**
+     * Отправка сообщения в чат
+     */
+    private void sendMessageToChat(String chatId, String message) {
+        sendMessageToChatWithButtons(chatId, message, null);
     }
 
     // ==================== УВЕДОМЛЕНИЯ ====================
