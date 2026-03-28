@@ -1,5 +1,78 @@
 # PizzaNat - Дневник наблюдений
 
+## 2026-03-28 - Реализация Long Polling для MAX Admin Bot
+
+### Наблюдения
+- MAX Admin Bot не получал события через webhook
+- Проверка `GET /subscriptions` показала: `{"subscriptions":[]}` - подписки пустые
+- Однако Long Polling `GET /updates?timeout=30` работает и возвращает реальные сообщения
+- Telegram бот использует Long Polling через `TelegramBotsApi(DefaultBotSession.class)`
+- MAX API поддерживает Long Polling: https://dev.max.ru/docs-api/methods/GET/updates
+
+### Решения
+1. **Создан `MaxAdminBotPollingService.java`**:
+   - Запускает отдельный daemon thread для Long Polling
+   - Использует `GET /updates?marker={marker}&timeout=30`
+   - Обрабатывает события: `message_created`, `message_callback`, `bot_started`
+   - Автоматически запускается при старте приложения (@PostConstruct)
+   - Корректно останавливается при shutdown (@PreDestroy)
+
+2. **Маркер (marker) для Long Polling**:
+   - После каждого запроса обновляется маркер из ответа
+   - Это позволяет получать только новые события
+   - При ошибке с маркером - автоматический сброс на 0
+
+3. **Обработка событий**:
+   - `message_created` → `callbackHandler.handleMessage()`
+   - `message_callback` → `callbackHandler.handleCallback()`
+   - `bot_started` → `callbackHandler.handleCommand("/start")`
+
+### Преимущества Long Polling
+- Не требует настройки webhook URL
+- Не нужен HTTPS сертификат
+- Работает за NAT/localhost
+- Проще отладка
+
+### Следующие шаги
+1. Деплой на сервер
+2. Проверка логов: `docker logs pizzanat-app | grep "MAX Admin"`
+3. Тестирование бота: https://max.ru/id121603899498_1_bot
+
+---
+
+## 2026-03-28 - Исправление MAX API формата
+
+### Наблюдения
+- MAX Admin Bot не отвечал на команды и заказы не приходили
+- **Критическая ошибка**: код использовал неправильный формат MAX API
+- Был: `POST /bots/{token}/messages` с токеном в URL
+- Должен быть: `POST /messages?user_id={id}` с токеном в заголовке `Authorization`
+- Документация MAX API: https://dev.max.ru/docs-api/methods/POST/messages
+
+### Решения
+1. **Исправлен формат API в `MaxAdminBotService.java`**:
+   - URL: `https://platform-api.max.ru/messages?user_id={user_id}`
+   - Токен передается в заголовке `Authorization: {access_token}`
+   - Добавлен `format: "markdown"` для форматирования сообщений
+
+2. **Исправлен формат API в `MaxAdminNotificationService.java`**:
+   - Аналогичные изменения для отправки уведомлений о заказах
+
+3. **Обновлено приветствие `/start`**:
+   - Полный список команд бота
+   - Описание функций и статусов заказов
+
+### Проблемы
+- Telegram использует Long Polling, MAX использует Webhook
+- Предыдущие коммиты также добавили обработку `/start` команды
+
+### Следующие шаги
+1. Деплой на сервер
+2. Тестирование бота: https://max.ru/id121603899498_1_bot
+3. Проверка уведомлений о новых заказах
+
+---
+
 ## 2026-03-27 - Webhook регистрация для MAX Admin Bot
 
 ### Наблюдения
