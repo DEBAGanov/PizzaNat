@@ -96,6 +96,16 @@
 .menu-item-actions {
     display: flex;
     align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+
+
+/* Action Buttons */
+.menu-item-actions {
+    display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 8px;
 }
