@@ -256,8 +256,7 @@ public class MaxAdminBotPollingService {
      * {
      *   "update_type": "message_callback",
      *   "callback": {
-     *     "sender": { "user_id": 123 },
-     *     "message_id": 456,
+     *     "user": { "user_id": 123 },  <-- user, не sender!
      *     "payload": "max_order_1_CONFIRMED"
      *   }
      * }
@@ -265,20 +264,23 @@ public class MaxAdminBotPollingService {
     private void handleMessageCallback(JsonNode update) {
         try {
             JsonNode callback = update.path("callback");
-            JsonNode sender = callback.path("sender");
 
-            Long userId = sender.has("user_id") ? sender.get("user_id").asLong() : null;
+            // Пользователь в callback.user, не в callback.sender!
+            JsonNode user = callback.path("user");
+            if (user.isMissingNode() || user.isNull()) {
+                user = callback.path("sender"); // fallback на случай изменения API
+            }
+
+            Long userId = user.has("user_id") ? user.get("user_id").asLong() : null;
             Long messageId = callback.has("message_id") ? callback.get("message_id").asLong() : null;
-            // payload может быть в payload или callback_data
-            String callbackData = callback.has("payload") ? callback.get("payload").asText() :
-                                 (callback.has("callback_data") ? callback.get("callback_data").asText() : null);
+            String callbackData = callback.has("payload") ? callback.get("payload").asText() : null;
 
             if (userId == null || callbackData == null) {
                 log.warn("MAX Admin: Callback without required data: userId={}, data={}", userId, callbackData);
                 return;
             }
 
-            log.info("MAX Admin: Received callback from userId={}, messageId={}, data={}",
+            log.info("MAX Admin: ✅ Received callback from userId={}, messageId={}, data={}",
                     userId, messageId, callbackData);
 
             callbackHandler.handleCallback(userId, messageId, callbackData);
