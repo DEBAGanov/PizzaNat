@@ -256,6 +256,7 @@ public class MaxUserBotPollingService {
             String username = sender.has("username") ? sender.get("username").asText() : null;
             String firstName = sender.has("first_name") ? sender.get("first_name").asText() :
                     (sender.has("name") ? sender.get("name").asText() : null);
+            String lastName = sender.has("last_name") ? sender.get("last_name").asText() : null;
             String messageText = body.has("text") ? body.get("text").asText() : "";
 
             if (userId == null) {
@@ -267,7 +268,7 @@ public class MaxUserBotPollingService {
 
             // Обработка команд
             if (messageText.startsWith("/start")) {
-                handleStartCommand(userId, username, firstName, messageText);
+                handleStartCommand(userId, username, firstName, lastName, messageText);
             } else if (messageText.equals("/help")) {
                 handleHelpCommand(userId);
             } else if (messageText.equals("/menu")) {
@@ -333,6 +334,7 @@ public class MaxUserBotPollingService {
             String username = user.has("username") ? user.get("username").asText() : null;
             String firstName = user.has("first_name") ? user.get("first_name").asText() :
                     (user.has("name") ? user.get("name").asText() : null);
+            String lastName = user.has("last_name") ? user.get("last_name").asText() : null;
 
             if (userId == null) {
                 log.warn("MAX User: Bot started without user_id");
@@ -340,7 +342,7 @@ public class MaxUserBotPollingService {
             }
 
             log.info("MAX User: Bot started by userId={}, username={}", userId, username);
-            handleStartCommand(userId, username, firstName, "/start");
+            handleStartCommand(userId, username, firstName, lastName, "/start");
         } catch (Exception e) {
             log.error("MAX User: Error processing bot_started: {}", e.getMessage(), e);
         }
@@ -351,7 +353,7 @@ public class MaxUserBotPollingService {
     /**
      * Обработка команды /start
      */
-    private void handleStartCommand(Long userId, String username, String firstName, String messageText) {
+    private void handleStartCommand(Long userId, String username, String firstName, String lastName, String messageText) {
         // Парсим токен авторизации (если есть)
         String token = null;
         if (messageText.startsWith("/start ")) {
@@ -363,10 +365,17 @@ public class MaxUserBotPollingService {
         userAuthTokens.put(userId, authToken);
 
         // Сохраняем пользователя в базу (если новый)
-        saveMaxUserToDatabase(userId, username, firstName);
+        saveMaxUserToDatabase(userId, username, firstName, lastName);
+
+        // Формируем полное имя для приветствия
+        String fullName = (firstName != null ? firstName : "") +
+                          (lastName != null && !lastName.isEmpty() ? " " + lastName : "");
+        if (fullName.trim().isEmpty()) {
+            fullName = "Друг";
+        }
 
         // Отправляем приветственное сообщение с кнопками меню
-        handleMenuCommand(userId);
+        handleMenuCommand(userId, fullName.trim());
     }
 
     /**
@@ -380,7 +389,7 @@ public class MaxUserBotPollingService {
      * Сохранение пользователя MAX в базу данных
      */
     @Transactional
-    public void saveMaxUserToDatabase(Long maxUserId, String maxUsername, String firstName) {
+    public void saveMaxUserToDatabase(Long maxUserId, String maxUsername, String firstName, String lastName) {
         try {
             // Проверяем, существует ли пользователь с таким telegram ID (MAX ID)
             Optional<User> existingUser = userRepository.findByTelegramId(maxUserId);
@@ -393,6 +402,9 @@ public class MaxUserBotPollingService {
                 if (firstName != null && !firstName.isEmpty()) {
                     user.setFirstName(firstName);
                 }
+                if (lastName != null && !lastName.isEmpty()) {
+                    user.setLastName(lastName);
+                }
                 userRepository.save(user);
                 log.info("MAX User: Updated existing user: maxUserId={}", maxUserId);
                 return;
@@ -403,6 +415,7 @@ public class MaxUserBotPollingService {
             user.setUsername("max_" + maxUserId);
             user.setPassword("");
             user.setFirstName(firstName);
+            user.setLastName(lastName);
             user.setTelegramId(maxUserId);
             user.setTelegramUsername(maxUsername);
             user.setIsTelegramVerified(true);
@@ -511,19 +524,28 @@ public class MaxUserBotPollingService {
     /**
      * Обработка команды /menu
      */
-    private void handleMenuCommand(Long userId) {
-        String menuMessage = """
-                🍕 **Димбо пицца - приложение для заказа пиццы в Волжске.
+    private void handleMenuCommand(Long userId, String userName) {
+        String menuMessage = String.format("""
+                👋 **Привет, %s!**
+
+                🍕 **Димбо пицца - приложение для заказа пиццы в Волжске.**
 
                 Доставка с 11:00 до 20:00.
 
-                тел. +7 (902) 105 -34-34
+                📞 тел. +7 (902) 105-34-34
 
-                Адрес г. Волжск  ул. Шестакова 1б.**
+                📍 Адрес: г. Волжск, ул. Шестакова 1б
 
                 Выберите действие:
-                """;
+                """, userName);
         sendMenuWithButtons(userId, menuMessage);
+    }
+
+    /**
+     * Обработка команды /menu (без имени)
+     */
+    private void handleMenuCommand(Long userId) {
+        handleMenuCommand(userId, "Друг");
     }
 
     /**
@@ -581,12 +603,7 @@ public class MaxUserBotPollingService {
             supportButton.put("url", "https://max.ru/u/f9LHodD0cOLntZ_-fT2vQ_TC2goPd1KD3E48k309fX_KUv4aGYawlXRscU8");
             buttonRows.add(List.of(supportButton));
 
-            // Кнопка: Позвонить (tel: схема для звонка)
-            Map<String, Object> phoneButton = new HashMap<>();
-            phoneButton.put("type", "link");
-            phoneButton.put("text", "📱 Позвонить: +7 (902) 105-34-34");
-            phoneButton.put("url", "tel:+79021053434");
-            buttonRows.add(List.of(phoneButton));
+            // Примечание: телефон указан в тексте сообщения - MAX не поддерживает tel: в кнопках
 
             Map<String, Object> attachment = new HashMap<>();
             attachment.put("type", "inline_keyboard");
