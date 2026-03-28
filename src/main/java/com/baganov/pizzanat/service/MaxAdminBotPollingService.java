@@ -181,7 +181,8 @@ public class MaxAdminBotPollingService {
             return;
         }
 
-        log.info("MAX Admin: Processing update type: {}", updateType);
+        // Логируем весь update для отладки
+        log.info("MAX Admin: Processing update type: {}, data: {}", updateType, update.toString());
 
         switch (updateType) {
             case "message_created":
@@ -203,16 +204,29 @@ public class MaxAdminBotPollingService {
 
     /**
      * Обработка нового сообщения
+     *
+     * Структура MAX API:
+     * {
+     *   "update_type": "message_created",
+     *   "message": {
+     *     "sender": { "user_id": 123, "first_name": "Name" },
+     *     "body": { "text": "Hello" }
+     *   }
+     * }
      */
     private void handleMessageCreated(JsonNode update) {
         try {
             JsonNode message = update.path("message");
             JsonNode sender = message.path("sender");
+            JsonNode body = message.path("body");
 
             Long userId = sender.has("user_id") ? sender.get("user_id").asLong() : null;
             String username = sender.has("username") ? sender.get("username").asText() : null;
-            String firstName = sender.has("name") ? sender.get("name").asText() : null;
-            String messageText = message.has("text") ? message.get("text").asText() : "";
+            // Имя может быть в first_name или name
+            String firstName = sender.has("first_name") ? sender.get("first_name").asText() :
+                              (sender.has("name") ? sender.get("name").asText() : null);
+            // Текст в body.text, не в text напрямую
+            String messageText = body.has("text") ? body.get("text").asText() : "";
 
             if (userId == null) {
                 log.warn("MAX Admin: Message without user_id");
@@ -231,6 +245,16 @@ public class MaxAdminBotPollingService {
 
     /**
      * Обработка callback от inline кнопки
+     *
+     * Структура MAX API:
+     * {
+     *   "update_type": "message_callback",
+     *   "callback": {
+     *     "sender": { "user_id": 123 },
+     *     "message_id": 456,
+     *     "payload": "max_order_1_CONFIRMED"
+     *   }
+     * }
      */
     private void handleMessageCallback(JsonNode update) {
         try {
@@ -239,7 +263,9 @@ public class MaxAdminBotPollingService {
 
             Long userId = sender.has("user_id") ? sender.get("user_id").asLong() : null;
             Long messageId = callback.has("message_id") ? callback.get("message_id").asLong() : null;
-            String callbackData = callback.has("payload") ? callback.get("payload").asText() : null;
+            // payload может быть в payload или callback_data
+            String callbackData = callback.has("payload") ? callback.get("payload").asText() :
+                                 (callback.has("callback_data") ? callback.get("callback_data").asText() : null);
 
             if (userId == null || callbackData == null) {
                 log.warn("MAX Admin: Callback without required data: userId={}, data={}", userId, callbackData);
@@ -258,22 +284,41 @@ public class MaxAdminBotPollingService {
 
     /**
      * Обработка запуска бота (/start)
+     *
+     * Структура MAX API:
+     * {
+     *   "update_type": "bot_started",
+     *   "initiator": {
+     *     "user": { "user_id": 123, "first_name": "Name" }
+     *   }
+     * }
+     * Или:
+     * {
+     *   "update_type": "bot_started",
+     *   "user": { "user_id": 123 }
+     * }
      */
     private void handleBotStarted(JsonNode update) {
         try {
-            JsonNode initiator = update.path("initiator");
-            JsonNode user = initiator.path("user");
+            // Пробуем разные варианты структуры
+            JsonNode user = update.path("user");
+            if (user.isMissingNode() || user.isNull()) {
+                JsonNode initiator = update.path("initiator");
+                user = initiator.path("user");
+            }
 
             Long userId = user.has("user_id") ? user.get("user_id").asLong() : null;
             String username = user.has("username") ? user.get("username").asText() : null;
-            String firstName = user.has("name") ? user.get("name").asText() : null;
+            // Имя может быть в first_name, name или last_name
+            String firstName = user.has("first_name") ? user.get("first_name").asText() :
+                              (user.has("name") ? user.get("name").asText() : null);
 
             if (userId == null) {
                 log.warn("MAX Admin: Bot started without user_id");
                 return;
             }
 
-            log.info("MAX Admin: Bot started by userId={}, username={}", userId, username);
+            log.info("MAX Admin: Bot started by userId={}, username={}, firstName={}", userId, username, firstName);
 
             // Отправляем приветственное сообщение через handler
             callbackHandler.handleCommand("/start", userId, username, firstName);
