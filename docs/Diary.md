@@ -1,5 +1,40 @@
 # PizzaNat - Дневник наблюдений
 
+## 2026-03-28 - Исправление callback кнопок и массовая рассылка в MAX
+
+### Наблюдения
+- Callback кнопки не работали из-за неверной структуры JSON
+- В MAX API пользователь находится в `callback.user`, а не `callback.sender`
+- Текст сообщения в `message.body.text`, а не `message.text`
+- Telegram использует поля `telegram_id`, `telegram_username`, `is_telegram_verified` для хранения ID пользователей
+
+### Решения
+1. **Исправлен парсинг callback в `MaxAdminBotPollingService.java`**:
+   - Пользователь: `callback.user` вместо `callback.sender`
+   - Текст сообщения: `message.body.text` вместо `message.text`
+
+2. **Добавлена массовая рассылка `/message <текст>`**:
+   - Команда доступна только администраторам
+   - Рассылает сообщение всем пользователям с MAX ID
+   - Использует поля `telegram_id` для хранения MAX user ID (без создания новых колонок)
+   - Соблюдает лимит MAX API (30 rps) - задержка 50мс между сообщениями
+
+3. **Добавлено уведомление об успешной оплате**:
+   - Слушатель `PaymentStatusChangedEvent` в `MaxAdminBotService`
+   - Отправляет администраторам уведомление: "💳 ОПЛАТА ПРОШЛА УСПЕШНО"
+
+4. **Метод `saveMaxUser()`** для сохранения пользователей:
+   - Сохраняет MAX user ID в поле `telegram_id`
+   - Сохраняет MAX username в поле `telegram_username`
+   - Устанавливает `is_telegram_verified = true`
+
+### Используемые поля таблицы users для MAX
+- `telegram_id` → MAX User ID
+- `telegram_username` → MAX Username
+- `is_telegram_verified` → подтвержденный MAX пользователь
+
+---
+
 ## 2026-03-28 - Реализация Long Polling для MAX Admin Bot
 
 ### Наблюдения

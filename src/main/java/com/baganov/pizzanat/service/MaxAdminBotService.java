@@ -15,6 +15,7 @@ import com.baganov.pizzanat.model.dto.order.OrderDTO;
 import com.baganov.pizzanat.model.entity.TelegramAdminUser;
 import com.baganov.pizzanat.repository.TelegramAdminUserRepository;
 import com.baganov.pizzanat.repository.PaymentRepository;
+import com.baganov.pizzanat.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class MaxAdminBotService {
     private final MaxBotConfig maxBotConfig;
     private final OrderService orderService;
     private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
@@ -1075,5 +1077,122 @@ public class MaxAdminBotService {
             return "Неизвестно";
         }
         return dateTime.format(TIME_FORMATTER);
+    }
+
+    // ==================== МАССОВАЯ РАССЫЛКА ====================
+
+    /**
+     * Массовая рассылка сообщения всем пользователям с MAX ID
+     * (используем telegram_id для хранения MAX user ID)
+     *
+     * @param adminUserId  ID администратора MAX
+     * @param messageText  текст сообщения для рассылки
+     */
+    @Async
+    public void broadcastMessageToAllMaxUsers(Long adminUserId, String messageText) {
+        try {
+            // Получаем всех пользователей с telegram_id (хранящим MAX user ID)
+            List<User> users = userRepository.findByTelegramIdIsNotNullAndIsTelegramVerifiedTrue();
+
+            if (users.isEmpty()) {
+                sendMessageToUser(adminUserId, "ℹ️ **Нет пользователей для отправки сообщения**");
+                return;
+            }
+
+            log.info("📤 MAX: Начинаем массовую рассылку {} пользователям", users.size());
+
+            // Уведомляем администратора о начале рассылки
+            sendMessageToUser(adminUserId, String.format(
+                    "🚀 **Рассылка запущена**\n\n" +
+                            "👥 Пользователей: %d\n" +
+                            "📝 Сообщение: \"%s\"\n\n" +
+                            "⏳ Отправка сообщений...",
+                    users.size(),
+                    messageText.length() > 50 ? messageText.substring(0, 50) + "..." : messageText));
+
+            int successCount = 0;
+            int failureCount = 0;
+
+            // Отправляем сообщения с задержкой для соблюдения лимитов MAX API (30 rps)
+            for (User user : users) {
+                try {
+                    // telegram_id хранит MAX user ID
+                    Long maxUserId = user.getTelegramId();
+                    if (maxUserId != null) {
+                        sendMessageToUser(maxUserId, messageText);
+                        successCount++;
+                        log.debug("MAX: Рассылка - сообщение отправлено пользователю {}", maxUserId);
+
+                        // Задержка 50мс для соблюдения лимита 30 rps
+                        Thread.sleep(50);
+                    }
+                } catch (Exception e) {
+                    failureCount++;
+                    log.error("MAX: Ошибка отправки сообщения пользователю {}: {}",
+                            user.getTelegramId(), e.getMessage());
+                }
+            }
+
+            // Отчет для администратора
+            String reportMessage = String.format(
+                    "✅ **Рассылка завершена**\n\n" +
+                            "📊 **Статистика:**\n" +
+                            "👥 Всего пользователей: %d\n" +
+                            "✅ Успешно отправлено: %d\n" +
+                            "❌ Ошибок: %d\n\n" +
+                            "📝 **Текст сообщения:**\n\"%s\"",
+                    users.size(), successCount, failureCount, messageText);
+
+            sendMessageToUser(adminUserId, reportMessage);
+
+            log.info("✅ MAX: Массовая рассылка завершена: успешно={}, ошибок={}, всего={}",
+                    successCount, failureCount, users.size());
+
+        } catch (Exception e) {
+            log.error("❌ MAX: Ошибка при массовой рассылке: {}", e.getMessage(), e);
+            sendMessageToUser(adminUserId, "❌ **Произошла ошибка при массовой рассылке:** " + e.getMessage());
+        }
+    }
+
+    /**
+     * Сохранение MAX пользователя в таблицу users
+     * (используем поля telegram_id, telegram_username для хранения MAX данных)
+     *
+     * @param maxUserId   ID пользователя в MAX
+     * @param username    username в MAX
+     * @param firstName   имя пользователя
+     * @param lastName    фамилия пользователя
+     * @return true если пользователь сохранен
+     */
+    @Transactional
+    public boolean saveMaxUser(Long maxUserId, String username, String firstName, String lastName) {
+        try {
+            // Проверяем, существует ли пользователь с таким MAX ID
+            Optional<User> existingUser = userRepository.findByTelegramId(maxUserId);
+
+            if (existingUser.isPresent()) {
+                log.debug("MAX: Пользователь уже существует: maxUserId={}", maxUserId);
+                return false;
+            }
+
+            // Создаем нового пользователя
+            User user = new User();
+            user.setUsername("max_" + maxUserId); // Уникальный username
+            user.setPassword(""); // Пустой пароль для MAX пользователей
+            user.setFirstName(firstName);
+            user.setLastName(lastName);
+            user.setTelegramId(maxUserId); // Сохраняем MAX ID в telegram_id
+            user.setTelegramUsername(username); // Сохраняем MAX username в telegram_username
+            user.setIsTelegramVerified(true); // Помечаем как верифицированного MAX пользователя
+            user.setActive(true);
+
+            userRepository.save(user);
+            log.info("MAX: Сохранен новый пользователь: maxUserId={}, username={}", maxUserId, username);
+            return true;
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка при сохранении пользователя: {}", e.getMessage(), e);
+            return false;
+        }
     }
 }

@@ -75,9 +75,14 @@ public class MaxAdminBotCallbackHandler {
                     handleHelpCommand(maxUserId);
                     break;
                 default:
-                    log.debug("MAX Admin: Неизвестная команда: {}", command);
-                    maxAdminBotService.sendMessageToUser(maxUserId,
-                            "❓ Неизвестная команда. Используйте /help для списка команд.");
+                    // Проверяем, является ли это командой /message
+                    if (command.startsWith("/message")) {
+                        handleBroadcastMessageCommand(maxUserId, command);
+                    } else {
+                        log.debug("MAX Admin: Неизвестная команда: {}", command);
+                        maxAdminBotService.sendMessageToUser(maxUserId,
+                                "❓ Неизвестная команда. Используйте /help для списка команд.");
+                    }
             }
         } catch (Exception e) {
             log.error("MAX Admin: Ошибка обработки команды {}: {}", command, e.getMessage(), e);
@@ -219,5 +224,42 @@ public class MaxAdminBotCallbackHandler {
                         "• /stats - Статистика\n" +
                         "• /orders - Активные заказы\n" +
                         "• /help - Справка");
+    }
+
+    /**
+     * Обработка команды массовой рассылки /message <текст>
+     */
+    private void handleBroadcastMessageCommand(Long maxUserId, String fullCommand) {
+        // Проверяем права администратора
+        if (!maxAdminBotService.isRegisteredAdmin(maxUserId)) {
+            log.warn("MAX Admin: Неавторизованная попытка массовой рассылки: userId={}", maxUserId);
+            maxAdminBotService.sendMessageToUser(maxUserId, "❌ У вас нет прав для отправки сообщений");
+            return;
+        }
+
+        // Извлекаем текст сообщения после команды
+        String messageText;
+        if (fullCommand.startsWith("/message ")) {
+            messageText = fullCommand.substring("/message ".length()).trim();
+        } else if (fullCommand.equals("/message")) {
+            messageText = "";
+        } else {
+            messageText = "";
+        }
+
+        if (messageText.isEmpty()) {
+            maxAdminBotService.sendMessageToUser(maxUserId,
+                    "❌ **Укажите текст сообщения**\n\n" +
+                            "📝 Использование: `/message Ваш текст для рассылки`\n\n" +
+                            "Пример:\n" +
+                            "`/message 🍕 Сегодня скидка 20% на все пиццы!`");
+            return;
+        }
+
+        log.info("MAX Admin: Администратор {} инициировал массовую рассылку: '{}'", maxUserId,
+                messageText.length() > 50 ? messageText.substring(0, 50) + "..." : messageText);
+
+        // Запускаем рассылку асинхронно
+        maxAdminBotService.broadcastMessageToAllMaxUsers(maxUserId, messageText);
     }
 }
