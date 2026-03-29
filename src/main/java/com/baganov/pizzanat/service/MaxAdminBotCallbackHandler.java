@@ -55,6 +55,19 @@ public class MaxAdminBotCallbackHandler {
      * @param firstName имя
      */
     public void handleCommand(String command, Long maxUserId, String username, String firstName) {
+        handleCommand(command, maxUserId, username, firstName, command);
+    }
+
+    /**
+     * Обработка команд MAX админского бота
+     *
+     * @param command  команда
+     * @param maxUserId ID пользователя MAX
+     * @param username  имя пользователя
+     * @param firstName имя
+     * @param fullMessageText полный текст сообщения (для команд с параметрами)
+     */
+    public void handleCommand(String command, Long maxUserId, String username, String firstName, String fullMessageText) {
         try {
             log.debug("MAX Admin: Обработка команды: command={}, userId={}", command, maxUserId);
 
@@ -77,7 +90,7 @@ public class MaxAdminBotCallbackHandler {
                 default:
                     // Проверяем, является ли это командой /message
                     if (command.startsWith("/message")) {
-                        handleBroadcastMessageCommand(maxUserId, command);
+                        handleBroadcastMessageCommand(maxUserId, fullMessageText);
                     } else {
                         log.debug("MAX Admin: Неизвестная команда: {}", command);
                         maxAdminBotService.sendMessageToUser(maxUserId,
@@ -212,7 +225,7 @@ public class MaxAdminBotCallbackHandler {
         // Если сообщение начинается с /, обрабатываем как команду
         if (messageText.startsWith("/")) {
             String command = messageText.split("\\s+")[0].toLowerCase();
-            handleCommand(command, maxUserId, username, firstName);
+            handleCommand(command, maxUserId, username, firstName, messageText);
             return;
         }
 
