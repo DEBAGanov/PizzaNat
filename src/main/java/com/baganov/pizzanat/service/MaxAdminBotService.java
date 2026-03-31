@@ -561,7 +561,7 @@ public class MaxAdminBotService {
     // ==================== ОТПРАВКА СООБЩЕНИЙ ====================
 
     /**
-     * Отправка сообщения пользователю
+     * Отправка сообщения пользователю через Admin Bot
      *
      * @return true если сообщение отправлено успешно, false при ошибке
      */
@@ -570,7 +570,7 @@ public class MaxAdminBotService {
     }
 
     /**
-     * Отправка сообщения пользователю с кнопками
+     * Отправка сообщения пользователю с кнопками через Admin Bot
      *
      * Документация MAX API: https://dev.max.ru/docs-api/methods/POST/messages
      * URL: POST /messages?user_id={user_id}
@@ -580,10 +580,29 @@ public class MaxAdminBotService {
      */
     public boolean sendMessageToUserWithButtons(Long maxUserId, String message,
             List<Map<String, Object>> attachments) {
-        String adminBotToken = maxBotConfig.getAdminBotToken();
+        return sendMessageToUserWithButtonsAndToken(maxUserId, message, attachments, maxBotConfig.getAdminBotToken());
+    }
 
-        if (adminBotToken == null || adminBotToken.isEmpty()) {
-            log.warn("MAX: Admin bot token не настроен - нельзя отправить сообщение");
+    /**
+     * Отправка сообщения пользователю через User Bot (для рассылок)
+     * Пользователи начинали диалог с User Bot, поэтому он может им писать
+     *
+     * @return true если сообщение отправлено успешно, false при ошибке
+     */
+    public boolean sendMessageToUserViaUserBot(Long maxUserId, String message) {
+        return sendMessageToUserWithButtonsAndToken(maxUserId, message, null, maxBotConfig.getUserBotToken());
+    }
+
+    /**
+     * Внутренний метод отправки сообщения с указанным токеном
+     *
+     * @return true если сообщение отправлено успешно, false при ошибке
+     */
+    private boolean sendMessageToUserWithButtonsAndToken(Long maxUserId, String message,
+            List<Map<String, Object>> attachments, String botToken) {
+
+        if (botToken == null || botToken.isEmpty()) {
+            log.warn("MAX: Bot token не настроен - нельзя отправить сообщение");
             return false;
         }
 
@@ -606,7 +625,7 @@ public class MaxAdminBotService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", adminBotToken); // Токен в заголовке Authorization
+            headers.set("Authorization", botToken); // Токен в заголовке Authorization
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -1123,11 +1142,15 @@ public class MaxAdminBotService {
             int failureCount = 0;
 
             // Отправляем сообщения с задержкой для соблюдения лимитов MAX API (30 rps)
+            // Используем User Bot токен, так как пользователи начинали диалог с User Bot
             for (User user : users) {
                 // telegram_id хранит MAX user ID
                 Long maxUserId = user.getTelegramId();
                 if (maxUserId != null) {
-                    boolean sent = sendMessageToUser(maxUserId, messageText);
+                    // Используем sendMessageToUserViaUserBot вместо sendMessageToUser
+                    // потому что пользователи начинали диалог с User Bot (id121603899498_bot),
+                    // а не с Admin Bot (id121603899498_1_bot)
+                    boolean sent = sendMessageToUserViaUserBot(maxUserId, messageText);
                     if (sent) {
                         successCount++;
                         log.debug("MAX: Рассылка - сообщение отправлено пользователю {}", maxUserId);
