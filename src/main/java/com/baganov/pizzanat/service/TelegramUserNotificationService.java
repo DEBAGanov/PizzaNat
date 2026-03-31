@@ -24,7 +24,9 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -372,6 +374,131 @@ public class TelegramUserNotificationService {
             log.error("Ошибка при отправке фото пользователю {}: {}", telegramId, errorMsg);
             return false;
         }
+    }
+
+    /**
+     * Отправка текстового сообщения с inline кнопками пользователю
+     * @param telegramId ID пользователя в Telegram
+     * @param text       Текст сообщения
+     * @param buttons    Inline кнопки в формате Telegram API (List<List<Map>>)
+     * @return true если успешно, false если ошибка
+     */
+    public boolean sendPersonalMessageWithButtons(Long telegramId, String text, List<List<Map<String, Object>>> buttons) {
+        try {
+            String url = telegramAuthProperties.getApiUrl() + "/sendMessage";
+
+            Map<String, Object> message = new HashMap<>();
+            message.put("chat_id", telegramId.toString());
+            message.put("text", text);
+            message.put("parse_mode", "HTML");
+            message.put("reply_markup", Map.of("inline_keyboard", buttons));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(message, headers);
+
+            ResponseEntity<String> response = telegramAuthRestTemplate.postForEntity(url, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.debug("Сообщение с кнопками отправлено пользователю: {}", telegramId);
+                return true;
+            } else {
+                int statusCode = response.getStatusCode().value();
+                if (statusCode == 403) {
+                    log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                } else if (statusCode == 400) {
+                    log.debug("⚠️ Чат не найден для пользователя {}", telegramId);
+                } else {
+                    log.warn("Ошибка отправки сообщения пользователю {}: HTTP {}", telegramId, statusCode);
+                }
+                return false;
+            }
+
+        } catch (Exception e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("403 Forbidden") || errorMsg.contains("Forbidden: bot was blocked"))) {
+                log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                return false;
+            }
+            log.error("Ошибка при отправке сообщения с кнопками пользователю {}: {}", telegramId, errorMsg);
+            return false;
+        }
+    }
+
+    /**
+     * Отправка фото с подписью и inline кнопками пользователю
+     * @param telegramId ID пользователя в Telegram
+     * @param photoUrl   URL фото
+     * @param caption    Текст под фото
+     * @param buttons    Inline кнопки в формате Telegram API (List<List<Map>>)
+     * @return true если успешно, false если ошибка
+     */
+    public boolean sendPersonalPhotoWithButtons(Long telegramId, String photoUrl, String caption, List<List<Map<String, Object>>> buttons) {
+        try {
+            String url = telegramAuthProperties.getApiUrl() + "/sendPhoto";
+
+            Map<String, Object> photoMessage = new HashMap<>();
+            photoMessage.put("chat_id", telegramId.toString());
+            photoMessage.put("photo", photoUrl);
+            photoMessage.put("caption", caption);
+            photoMessage.put("parse_mode", "HTML");
+            photoMessage.put("reply_markup", Map.of("inline_keyboard", buttons));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(photoMessage, headers);
+
+            ResponseEntity<String> response = telegramAuthRestTemplate.postForEntity(url, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.debug("Фото с кнопками отправлено пользователю: {}", telegramId);
+                return true;
+            } else {
+                int statusCode = response.getStatusCode().value();
+                if (statusCode == 403) {
+                    log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                } else if (statusCode == 400) {
+                    log.debug("⚠️ Чат не найден для пользователя {}", telegramId);
+                } else {
+                    log.warn("Ошибка отправки фото пользователю {}: HTTP {}", telegramId, statusCode);
+                }
+                return false;
+            }
+
+        } catch (Exception e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null && (errorMsg.contains("403 Forbidden") || errorMsg.contains("Forbidden: bot was blocked"))) {
+                log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                return false;
+            }
+            log.error("Ошибка при отправке фото с кнопками пользователю {}: {}", telegramId, errorMsg);
+            return false;
+        }
+    }
+
+    /**
+     * Создает стандартные inline кнопки для рассылки
+     * Формат: List<List<Map>> где каждый внутренний List - это строка кнопок
+     * @return список строк с кнопками в формате Telegram API
+     */
+    public static List<List<Map<String, Object>>> createBroadcastButtons() {
+        List<List<Map<String, Object>>> buttons = new ArrayList<>();
+
+        // Строка 1: 🍕 Открыть меню
+        Map<String, Object> menuButton = new HashMap<>();
+        menuButton.put("text", "🍕 Открыть меню");
+        menuButton.put("url", "https://t.me/DIMBOpizzaBot?start=menu");
+        buttons.add(List.of(menuButton));
+
+        // Строка 2: 📞 Связь с поддержкой
+        Map<String, Object> supportButton = new HashMap<>();
+        supportButton.put("text", "📞 Связь с поддержкой");
+        supportButton.put("url", "https://t.me/DIMBOpizzaBot?start=support");
+        buttons.add(List.of(supportButton));
+
+        return buttons;
     }
 
     /**

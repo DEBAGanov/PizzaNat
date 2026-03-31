@@ -586,11 +586,14 @@ public class MaxAdminBotService {
     /**
      * Отправка сообщения пользователю через User Bot (для рассылок)
      * Пользователи начинали диалог с User Bot, поэтому он может им писать
+     * Автоматически добавляет inline кнопки
      *
      * @return true если сообщение отправлено успешно, false при ошибке
      */
     public boolean sendMessageToUserViaUserBot(Long maxUserId, String message) {
-        return sendMessageToUserWithButtonsAndToken(maxUserId, message, null, maxBotConfig.getUserBotToken());
+        // Создаем кнопки для рассылки
+        List<Map<String, Object>> attachments = createBroadcastButtons();
+        return sendMessageToUserWithButtonsAndToken(maxUserId, message, attachments, maxBotConfig.getUserBotToken());
     }
 
     /**
@@ -1256,7 +1259,7 @@ public class MaxAdminBotService {
     }
 
     /**
-     * Отправка фото с подписью пользователю через User Bot токен
+     * Отправка фото с подписью и inline кнопками пользователю через User Bot токен
      *
      * @param maxUserId ID пользователя MAX
      * @param photoUrl  URL фото
@@ -1281,16 +1284,23 @@ public class MaxAdminBotService {
             body.put("format", "markdown");
         }
 
-        // Добавляем attachment для фото
+        // Создаем attachments: фото + inline кнопки
         List<Map<String, Object>> attachments = new ArrayList<>();
+
+        // Attachment 1: Фото
         Map<String, Object> photoAttachment = new HashMap<>();
         photoAttachment.put("type", "image");
-
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("url", photoUrl);
-        photoAttachment.put("payload", payload);
-
+        Map<String, Object> photoPayload = new HashMap<>();
+        photoPayload.put("url", photoUrl);
+        photoAttachment.put("payload", photoPayload);
         attachments.add(photoAttachment);
+
+        // Attachment 2: Inline кнопки
+        Map<String, Object> buttonsAttachment = createBroadcastButtonsAttachment();
+        if (buttonsAttachment != null) {
+            attachments.add(buttonsAttachment);
+        }
+
         body.put("attachments", attachments);
 
         try {
@@ -1341,5 +1351,73 @@ public class MaxAdminBotService {
         }
 
         return null;
+    }
+
+    /**
+     * Создает стандартные inline кнопки для рассылки в формате MAX API
+     * @return список attachments с inline кнопками
+     */
+    private List<Map<String, Object>> createBroadcastButtons() {
+        List<Map<String, Object>> attachments = new ArrayList<>();
+
+        // Создаем inline keyboard attachment
+        Map<String, Object> keyboardAttachment = new HashMap<>();
+        keyboardAttachment.put("type", "inline_keyboard");
+
+        // Создаем кнопки
+        List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
+
+        // Строка 1: 🍕 Открыть меню
+        Map<String, Object> menuButton = new HashMap<>();
+        menuButton.put("type", "link");
+        menuButton.put("text", "🍕 Открыть меню");
+        menuButton.put("url", "https://max.ru/id121603899498_bot");
+        buttonRows.add(List.of(menuButton));
+
+        // Строка 2: 📞 Связь с поддержкой
+        Map<String, Object> supportButton = new HashMap<>();
+        supportButton.put("type", "link");
+        supportButton.put("text", "📞 Связь с поддержкой");
+        supportButton.put("url", "https://max.ru/id121603899498_bot");
+        buttonRows.add(List.of(supportButton));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("buttons", buttonRows);
+        keyboardAttachment.put("payload", payload);
+
+        attachments.add(keyboardAttachment);
+        return attachments;
+    }
+
+    /**
+     * Создает attachment с inline кнопками для добавления к другим attachments
+     * @return attachment с inline кнопками
+     */
+    private Map<String, Object> createBroadcastButtonsAttachment() {
+        Map<String, Object> keyboardAttachment = new HashMap<>();
+        keyboardAttachment.put("type", "inline_keyboard");
+
+        // Создаем кнопки
+        List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
+
+        // Строка 1: 🍕 Открыть меню
+        Map<String, Object> menuButton = new HashMap<>();
+        menuButton.put("type", "link");
+        menuButton.put("text", "🍕 Открыть меню");
+        menuButton.put("url", "https://max.ru/id121603899498_bot");
+        buttonRows.add(List.of(menuButton));
+
+        // Строка 2: 📞 Связь с поддержкой
+        Map<String, Object> supportButton = new HashMap<>();
+        supportButton.put("type", "link");
+        supportButton.put("text", "📞 Связь с поддержкой");
+        supportButton.put("url", "https://max.ru/id121603899498_bot");
+        buttonRows.add(List.of(supportButton));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("buttons", buttonRows);
+        keyboardAttachment.put("payload", payload);
+
+        return keyboardAttachment;
     }
 }

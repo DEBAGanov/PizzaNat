@@ -34,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -1745,8 +1746,12 @@ public class AdminBotService {
     /**
      * Обрабатывает пакет пользователей с учетом лимитов
      * Использует возвращаемое значение sendPersonalMessage для корректного подсчета
+     * Добавляет inline кнопки к каждому сообщению
      */
     private void processBatch(List<com.baganov.pizzanat.entity.User> batch, String message, String broadcastId) {
+        // Создаем кнопки для рассылки
+        List<List<Map<String, Object>>> buttons = TelegramUserNotificationService.createBroadcastButtons();
+
         for (com.baganov.pizzanat.entity.User user : batch) {
             try {
                 // Проверяем лимиты перед отправкой
@@ -1756,8 +1761,9 @@ public class AdminBotService {
                     Thread.sleep(delay);
                 }
 
-                // Отправляем сообщение и получаем результат
-                boolean sent = telegramUserNotificationService.sendPersonalMessage(user.getTelegramId(), message);
+                // Отправляем сообщение с кнопками и получаем результат
+                boolean sent = telegramUserNotificationService.sendPersonalMessageWithButtons(
+                        user.getTelegramId(), message, buttons);
 
                 if (sent) {
                     rateLimitService.registerMessageSent();
@@ -1792,9 +1798,12 @@ public class AdminBotService {
     }
 
     /**
-     * Обрабатывает пакет пользователей для отправки фото с подписью
+     * Обрабатывает пакет пользователей для отправки фото с подписью и inline кнопками
      */
     private void processPhotoBatch(List<com.baganov.pizzanat.entity.User> batch, String photoUrl, String caption, String broadcastId) {
+        // Создаем кнопки для рассылки
+        List<List<Map<String, Object>>> buttons = TelegramUserNotificationService.createBroadcastButtons();
+
         for (com.baganov.pizzanat.entity.User user : batch) {
             try {
                 // Проверяем лимиты перед отправкой
@@ -1804,8 +1813,9 @@ public class AdminBotService {
                     Thread.sleep(delay);
                 }
 
-                // Отправляем фото с подписью
-                boolean sent = telegramUserNotificationService.sendPersonalPhoto(user.getTelegramId(), photoUrl, caption);
+                // Отправляем фото с подписью и кнопками
+                boolean sent = telegramUserNotificationService.sendPersonalPhotoWithButtons(
+                        user.getTelegramId(), photoUrl, caption, buttons);
 
                 if (sent) {
                     rateLimitService.registerMessageSent();
