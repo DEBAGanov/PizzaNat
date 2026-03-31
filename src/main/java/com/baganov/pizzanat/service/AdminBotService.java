@@ -1661,8 +1661,11 @@ public class AdminBotService {
             if (photoUrl != null) {
                 // Это фото с подписью - убираем URL из текста
                 isPhotoMessage = true;
-                broadcastMessage = messageText.replace(photoUrl, "").trim();
+                // Удаляем URL из текста, заменяя на пустую строку и убирая лишние пробелы
+                broadcastMessage = messageText.replace(photoUrl, "").replaceAll("\\s+", " ").trim();
                 log.info("📤 Начинаем массовую рассылку ФОТО {} пользователям (ID: {})", users.size(), broadcastId);
+                log.debug("📷 URL фото: {}", photoUrl);
+                log.debug("📝 Текст подписи: {}", broadcastMessage);
             } else {
                 isPhotoMessage = false;
                 broadcastMessage = messageText;
@@ -1838,6 +1841,7 @@ public class AdminBotService {
 
     /**
      * Извлекает URL фото из текста сообщения
+     * Поддерживает URL с query параметрами и без расширения
      * @param message текст сообщения, может содержать URL картинки
      * @return URL картинки или null если не найден
      */
@@ -1846,18 +1850,20 @@ public class AdminBotService {
             return null;
         }
 
-        // Ищем URL в тексте
-        String[] words = message.split("\\s+");
-        for (String word : words) {
-            // Проверяем, является ли слово URL картинки
-            if (word.startsWith("http://") || word.startsWith("https://")) {
-                String lowerWord = word.toLowerCase();
-                if (lowerWord.endsWith(".jpg") || lowerWord.endsWith(".jpeg") ||
-                    lowerWord.endsWith(".png") || lowerWord.endsWith(".gif")) {
-                    return word;
-                }
-            }
+        // Регулярное выражение для поиска URL картинок
+        // Поддерживает: .jpg, .jpeg, .png, .gif (с учетом query параметров)
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "(https?://[^\\s]+?\\.(?:jpg|jpeg|png|gif)(?:\\?[^\\s]*)?)",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        java.util.regex.Matcher matcher = pattern.matcher(message);
+
+        if (matcher.find()) {
+            String url = matcher.group(1);
+            log.debug("📷 Найден URL фото: {}", url);
+            return url;
         }
+
         return null;
     }
 
