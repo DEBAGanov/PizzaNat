@@ -1109,16 +1109,15 @@ public class MaxAdminBotService {
     /**
      * Массовая рассылка сообщения всем пользователям с MAX ID
      * (используем telegram_id для хранения MAX user ID)
+     * Поддерживает отправку текста и фото с подписью
      *
      * @param adminUserId  ID администратора MAX
-     * @param messageText  текст сообщения для рассылки
+     * @param messageText  текст сообщения для рассылки (может содержать URL картинки)
      */
     @Async
     public void broadcastMessageToAllMaxUsers(Long adminUserId, String messageText) {
         try {
             // Получаем только MAX пользователей (username начинается с "max_")
-            // Это важно! telegram_id хранит ID и от Telegram, и от MAX
-            // Фильтруем по префиксу username чтобы отправлять только через MAX API
             List<User> users = userRepository.findByUsernameStartingWithAndIsTelegramVerifiedTrue("max_");
 
             if (users.isEmpty()) {
@@ -1127,16 +1126,34 @@ public class MaxAdminBotService {
                 return;
             }
 
-            log.info("📤 MAX: Начинаем массовую рассылку {} пользователям MAX", users.size());
+            // Проверяем, является ли сообщение URL картинки
+            String photoUrl = extractPhotoUrl(messageText);
+            String broadcastMessage;
+            boolean isPhotoMessage;
+
+            if (photoUrl != null) {
+                // Это фото с подписью - убираем URL из текста
+                isPhotoMessage = true;
+                broadcastMessage = messageText.replace(photoUrl, "").replaceAll("\\s+", " ").trim();
+                log.info("📤 MAX: Начинаем массовую рассылку ФОТО {} пользователям MAX", users.size());
+                log.debug("📷 MAX URL фото: {}", photoUrl);
+                log.debug("📝 MAX Текст подписи: {}", broadcastMessage);
+            } else {
+                isPhotoMessage = false;
+                broadcastMessage = messageText;
+                log.info("📤 MAX: Начинаем массовую рассылку {} пользователям MAX", users.size());
+            }
 
             // Уведомляем администратора о начале рассылки
+            String messageType = isPhotoMessage ? "ФОТО" : "Рассылка";
             sendMessageToUser(adminUserId, String.format(
-                    "🚀 **Рассылка запущена**\n\n" +
+                    "🚀 **%s запущена**\n\n" +
                             "👥 Пользователей: %d\n" +
                             "📝 Сообщение: \"%s\"\n\n" +
                             "⏳ Отправка сообщений...",
+                    messageType,
                     users.size(),
-                    messageText.length() > 50 ? messageText.substring(0, 50) + "..." : messageText));
+                    broadcastMessage.length() > 50 ? broadcastMessage.substring(0, 50) + "..." : broadcastMessage));
 
             int successCount = 0;
             int failureCount = 0;
@@ -1147,10 +1164,15 @@ public class MaxAdminBotService {
                 // telegram_id хранит MAX user ID
                 Long maxUserId = user.getTelegramId();
                 if (maxUserId != null) {
-                    // Используем sendMessageToUserViaUserBot вместо sendMessageToUser
-                    // потому что пользователи начинали диалог с User Bot (id121603899498_bot),
-                    // а не с Admin Bot (id121603899498_1_bot)
-                    boolean sent = sendMessageToUserViaUserBot(maxUserId, messageText);
+                    boolean sent;
+                    if (isPhotoMessage) {
+                        // Отправляем фото с подписью через User Bot
+                        sent = sendPhotoToUserViaUserBot(maxUserId, photoUrl, broadcastMessage);
+                    } else {
+                        // Отправляем текст через User Bot
+                        sent = sendMessageToUserViaUserBot(maxUserId, broadcastMessage);
+                    }
+
                     if (sent) {
                         successCount++;
                         log.debug("MAX: Рассылка - сообщение отправлено пользователю {}", maxUserId);
@@ -1178,7 +1200,7 @@ public class MaxAdminBotService {
                             "✅ Успешно отправлено: %d\n" +
                             "❌ Ошибок: %d\n\n" +
                             "📝 **Текст сообщения:**\n\"%s\"",
-                    users.size(), successCount, failureCount, messageText);
+                    users.size(), successCount, failureCount, broadcastMessage);
 
             sendMessageToUser(adminUserId, reportMessage);
 
@@ -1231,5 +1253,93 @@ public class MaxAdminBotService {
             log.error("MAX: Ошибка при сохранении пользователя: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+    /**
+     * Отправка фото с подписью пользователю через User Bot токен
+     *
+     * @param maxUserId ID пользователя MAX
+     * @param photoUrl  URL фото
+     * @param caption   Текст подписи (может содержать Markdown)
+     * @return true если успешно, false при ошибке
+     */
+    public boolean sendPhotoToUserViaUserBot(Long maxUserId, String photoUrl, String caption) {
+        String userBotToken = maxBotConfig.getUserBotToken();
+
+        if (userBotToken == null || userBotToken.isEmpty()) {
+            log.warn("MAX: User bot token не настроен - нельзя отправить фото");
+            return false;
+        }
+
+        // MAX API формат: POST /messages?user_id={user_id}
+        String url = String.format("%s/messages?user_id=%d", maxBotConfig.getApiUrl(), maxUserId);
+
+        Map<String, Object> body = new HashMap<>();
+        // Если есть подпись, добавляем текст
+        if (caption != null && !caption.isEmpty()) {
+            body.put("text", caption);
+            body.put("format", "markdown");
+        }
+
+        // Добавляем attachment для фото
+        List<Map<String, Object>> attachments = new ArrayList<>();
+        Map<String, Object> photoAttachment = new HashMap<>();
+        photoAttachment.put("type", "image");
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("url", photoUrl);
+        photoAttachment.put("payload", payload);
+
+        attachments.add(photoAttachment);
+        body.put("attachments", attachments);
+
+        try {
+            String jsonBody = objectMapper.writeValueAsString(body);
+            log.info("MAX API: Отправка фото пользователю {}: URL={}, Photo={}, Body={}",
+                    maxUserId, url, photoUrl, jsonBody);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", userBotToken);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+            var response = restTemplate.postForEntity(url, entity, String.class);
+            log.info("MAX API: Ответ для пользователя {}: Status={}, Body={}",
+                    maxUserId, response.getStatusCode(), response.getBody());
+            return true;
+
+        } catch (Exception e) {
+            log.error("MAX: Error sending photo to user {}: {}", maxUserId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Извлекает URL фото из текста сообщения
+     * Поддерживает URL с query параметрами
+     *
+     * @param message текст сообщения, может содержать URL картинки
+     * @return URL картинки или null если не найден
+     */
+    private String extractPhotoUrl(String message) {
+        if (message == null || message.isEmpty()) {
+            return null;
+        }
+
+        // Регулярное выражение для поиска URL картинок
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "(https?://[^\\s]+?\\.(?:jpg|jpeg|png|gif)(?:\\?[^\\s]*)?)",
+                java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        java.util.regex.Matcher matcher = pattern.matcher(message);
+
+        if (matcher.find()) {
+            String url = matcher.group(1);
+            log.debug("📷 MAX: Найден URL фото: {}", url);
+            return url;
+        }
+
+        return null;
     }
 }
