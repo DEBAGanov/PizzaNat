@@ -562,9 +562,11 @@ public class MaxAdminBotService {
 
     /**
      * Отправка сообщения пользователю
+     *
+     * @return true если сообщение отправлено успешно, false при ошибке
      */
-    public void sendMessageToUser(Long maxUserId, String message) {
-        sendMessageToUserWithButtons(maxUserId, message, null);
+    public boolean sendMessageToUser(Long maxUserId, String message) {
+        return sendMessageToUserWithButtons(maxUserId, message, null);
     }
 
     /**
@@ -573,14 +575,16 @@ public class MaxAdminBotService {
      * Документация MAX API: https://dev.max.ru/docs-api/methods/POST/messages
      * URL: POST /messages?user_id={user_id}
      * Authorization: Header "Authorization: {access_token}"
+     *
+     * @return true если сообщение отправлено успешно, false при ошибке
      */
-    public void sendMessageToUserWithButtons(Long maxUserId, String message,
+    public boolean sendMessageToUserWithButtons(Long maxUserId, String message,
             List<Map<String, Object>> attachments) {
         String adminBotToken = maxBotConfig.getAdminBotToken();
 
         if (adminBotToken == null || adminBotToken.isEmpty()) {
             log.warn("MAX: Admin bot token не настроен - нельзя отправить сообщение");
-            return;
+            return false;
         }
 
         // MAX API формат: POST /messages?user_id={user_id}
@@ -608,9 +612,11 @@ public class MaxAdminBotService {
 
             var response = restTemplate.postForEntity(url, entity, String.class);
             log.info("MAX API: Ответ для пользователя {}: Status={}, Body={}", maxUserId, response.getStatusCode(), response.getBody());
+            return true; // Успешно отправлено
 
         } catch (Exception e) {
             log.error("MAX: Error calling MAX API for user {}: {}", maxUserId, e.getMessage(), e);
+            return false; // Ошибка отправки
         }
     }
 
@@ -1118,21 +1124,26 @@ public class MaxAdminBotService {
 
             // Отправляем сообщения с задержкой для соблюдения лимитов MAX API (30 rps)
             for (User user : users) {
-                try {
-                    // telegram_id хранит MAX user ID
-                    Long maxUserId = user.getTelegramId();
-                    if (maxUserId != null) {
-                        sendMessageToUser(maxUserId, messageText);
+                // telegram_id хранит MAX user ID
+                Long maxUserId = user.getTelegramId();
+                if (maxUserId != null) {
+                    boolean sent = sendMessageToUser(maxUserId, messageText);
+                    if (sent) {
                         successCount++;
                         log.debug("MAX: Рассылка - сообщение отправлено пользователю {}", maxUserId);
-
-                        // Задержка 50мс для соблюдения лимита 30 rps
-                        Thread.sleep(50);
+                    } else {
+                        failureCount++;
+                        log.warn("MAX: Рассылка - не удалось отправить пользователю {}", maxUserId);
                     }
-                } catch (Exception e) {
-                    failureCount++;
-                    log.error("MAX: Ошибка отправки сообщения пользователю {}: {}",
-                            user.getTelegramId(), e.getMessage());
+
+                    // Задержка 50мс для соблюдения лимита 30 rps
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.warn("MAX: Рассылка прервана");
+                        break;
+                    }
                 }
             }
 
