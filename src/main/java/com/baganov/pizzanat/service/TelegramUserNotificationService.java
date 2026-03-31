@@ -24,6 +24,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Сервис для отправки персональных уведомлений пользователям в Telegram.
@@ -265,8 +267,9 @@ public class TelegramUserNotificationService {
 
     /**
      * Отправка персонального сообщения пользователю
+     * @return true если успешно, false если ошибка (пользователь заблокировал бота, чат не найден и т.д.)
      */
-    public void sendPersonalMessage(Long telegramId, String text) {
+    public boolean sendPersonalMessage(Long telegramId, String text) {
         try {
             String url = telegramAuthProperties.getApiUrl() + "/sendMessage";
 
@@ -284,14 +287,90 @@ public class TelegramUserNotificationService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.debug("Персональное Telegram сообщение отправлено пользователю: {}", telegramId);
+                return true;
             } else {
-                log.error("Ошибка отправки персонального Telegram сообщения пользователю {}: {}",
-                        telegramId, response.getStatusCode());
+                int statusCode = response.getStatusCode().value();
+                // 403 = пользователь заблокировал бота, 400 = чат не найден
+                if (statusCode == 403) {
+                    log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                } else if (statusCode == 400) {
+                    log.debug("⚠️ Чат не найден для пользователя {} (не начинал диалог с ботом)", telegramId);
+                } else {
+                    log.warn("Ошибка отправки сообщения пользователю {}: HTTP {}", telegramId, statusCode);
+                }
+                return false;
             }
 
         } catch (Exception e) {
+            // Обрабатываем HTTP ошибки из исключения
+            String errorMsg = e.getMessage();
+            if (errorMsg != null) {
+                if (errorMsg.contains("403 Forbidden") || errorMsg.contains("Forbidden: bot was blocked")) {
+                    log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                    return false;
+                } else if (errorMsg.contains("400 Bad Request") || errorMsg.contains("chat not found")) {
+                    log.debug("⚠️ Чат не найден для пользователя {}", telegramId);
+                    return false;
+                }
+            }
             log.error("Ошибка при отправке персонального Telegram сообщения пользователю {}: {}",
-                    telegramId, e.getMessage(), e);
+                    telegramId, errorMsg);
+            return false;
+        }
+    }
+
+    /**
+     * Отправка фото с подписью пользователю
+     * @param telegramId ID пользователя в Telegram
+     * @param photoUrl    URL фото или file_id
+     * @param caption      Текст под фото (может содержать HTML)
+     * @return true если успешно, false если ошибка
+     */
+    public boolean sendPersonalPhoto(Long telegramId, String photoUrl, String caption) {
+        try {
+            String url = telegramAuthProperties.getApiUrl() + "/sendPhoto";
+
+            Map<String, Object> photoMessage = new HashMap<>();
+            photoMessage.put("chat_id", telegramId.toString());
+            photoMessage.put("photo", photoUrl);
+            photoMessage.put("caption", caption);
+            photoMessage.put("parse_mode", "HTML");
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(photoMessage, headers);
+
+            ResponseEntity<String> response = telegramAuthRestTemplate.postForEntity(url, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.debug("Фото отправлено пользователю: {}", telegramId);
+                return true;
+            } else {
+                int statusCode = response.getStatusCode().value();
+                if (statusCode == 403) {
+                    log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                } else if (statusCode == 400) {
+                    log.debug("⚠️ Чат не найден для пользователя {}", telegramId);
+                } else {
+                    log.warn("Ошибка отправки фото пользователю {}: HTTP {}", telegramId, statusCode);
+                }
+                return false;
+            }
+
+        } catch (Exception e) {
+            String errorMsg = e.getMessage();
+            if (errorMsg != null) {
+                if (errorMsg.contains("403 Forbidden") || errorMsg.contains("Forbidden: bot was blocked")) {
+                    log.debug("⚠️ Пользователь {} заблокировал бота @DIMBOpizzaBot", telegramId);
+                    return false;
+                } else if (errorMsg.contains("400 Bad Request") || errorMsg.contains("chat not found")) {
+                    log.debug("⚠️ Чат не найден для пользователя {}", telegramId);
+                    return false;
+                }
+            }
+            log.error("Ошибка при отправке фото пользователю {}: {}", telegramId, errorMsg);
+            return false;
         }
     }
 

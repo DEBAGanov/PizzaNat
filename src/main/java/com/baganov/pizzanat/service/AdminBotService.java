@@ -1038,10 +1038,12 @@ public class AdminBotService {
 
     /**
      * Отправка сообщения конкретному администратору
+     * Использует parseMarkdown=false для отчетов чтобы избежать проблем с парсингом спецсимволов
      */
     public void sendMessageToAdmin(Long chatId, String message) {
         try {
-            telegramAdminNotificationService.sendMessage(chatId, message, true);
+            // Отключаем Markdown для простых текстовых сообщений (отчетов)
+            telegramAdminNotificationService.sendMessage(chatId, message, false);
             log.debug("Сообщение отправлено администратору: chatId={}", chatId);
         } catch (Exception e) {
             log.error("Ошибка отправки сообщения администратору chatId={}: {}", chatId, e.getMessage(), e);
@@ -1635,13 +1637,14 @@ public class AdminBotService {
     /**
      * Массовая рассылка сообщения всем авторизованным пользователям
      * с учетом лимитов Telegram API
+     * Поддерживает отправку текста и фото с подписью
      */
     @Async
     public void broadcastMessageToAllUsers(Long adminChatId, String messageText) {
         try {
             // Получаем всех пользователей с подтвержденным Telegram ID
             List<com.baganov.pizzanat.entity.User> users = userService.getAllUsersWithTelegramId();
-            
+
             if (users.isEmpty()) {
                 sendMessageToAdmin(adminChatId, "ℹ️ Нет пользователей для отправки сообщения");
                 return;
@@ -1649,39 +1652,56 @@ public class AdminBotService {
 
             // Создаем рассылку для отслеживания прогресса
             String broadcastId = rateLimitService.createBroadcast(users.size());
-            
-            // Отправляем сообщение как есть (без префикса) от пользовательского бота @DIMBOpizzaBot
-            String broadcastMessage = messageText;
 
-            log.info("📤 Начинаем массовую рассылку {} пользователям (ID: {})", users.size(), broadcastId);
-            
+            // Проверяем, является ли сообщение URL картинки
+            String photoUrl = extractPhotoUrl(messageText);
+            String broadcastMessage;
+            boolean isPhotoMessage;
+
+            if (photoUrl != null) {
+                // Это фото с подписью - убираем URL из текста
+                isPhotoMessage = true;
+                broadcastMessage = messageText.replace(photoUrl, "").trim();
+                log.info("📤 Начинаем массовую рассылку ФОТО {} пользователям (ID: {})", users.size(), broadcastId);
+            } else {
+                isPhotoMessage = false;
+                broadcastMessage = messageText;
+                log.info("📤 Начинаем массовую рассылку {} пользователям (ID: {})", users.size(), broadcastId);
+            }
+
             // Уведомляем администратора о начале рассылки
+            String messageType = isPhotoMessage ? "ФОТО от @DIMBOpizzaBot" : "Рассылка запущена от @DIMBOpizzaBot";
             sendMessageToAdmin(adminChatId, String.format(
-                "🚀 *Рассылка запущена от @DIMBOpizzaBot*\n\n" +
+                "🚀 *%s*\n\n" +
                 "👥 Пользователей: %d\n" +
                 "📝 Сообщение: \"%s\"\n\n" +
                 "⏳ Ожидаемое время: ~%d мин\n" +
                 "_Соблюдаем лимиты Telegram API (20 сообщений/сек)_",
-                users.size(), 
-                messageText.length() > 50 ? messageText.substring(0, 50) + "..." : messageText,
+                messageType,
+                users.size(),
+                broadcastMessage.length() > 50 ? broadcastMessage.substring(0, 50) + "..." : broadcastMessage,
                 estimateBroadcastTime(users.size())
             ));
 
             // Обрабатываем пользователей пакетами
             int batchSize = 10; // Размер пакета
             int totalBatches = (int) Math.ceil((double) users.size() / batchSize);
-            
+
             for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
                 int startIndex = batchIndex * batchSize;
                 int endIndex = Math.min(startIndex + batchSize, users.size());
                 List<com.baganov.pizzanat.entity.User> batch = users.subList(startIndex, endIndex);
-                
-                log.debug("📦 Обрабатываем пакет {}/{}: пользователи {}-{}", 
+
+                log.debug("📦 Обрабатываем пакет {}/{}: пользователи {}-{}",
                     batchIndex + 1, totalBatches, startIndex + 1, endIndex);
-                
+
                 // Обрабатываем пакет
-                processBatch(batch, broadcastMessage, broadcastId);
-                
+                if (isPhotoMessage) {
+                    processPhotoBatch(batch, photoUrl, broadcastMessage, broadcastId);
+                } else {
+                    processBatch(batch, broadcastMessage, broadcastId);
+                }
+
                 // Задержка между пакетами (кроме последнего)
                 if (batchIndex < totalBatches - 1) {
                     Thread.sleep(1000); // 1 секунда между пакетами
@@ -1721,6 +1741,7 @@ public class AdminBotService {
 
     /**
      * Обрабатывает пакет пользователей с учетом лимитов
+     * Использует возвращаемое значение sendPersonalMessage для корректного подсчета
      */
     private void processBatch(List<com.baganov.pizzanat.entity.User> batch, String message, String broadcastId) {
         for (com.baganov.pizzanat.entity.User user : batch) {
@@ -1731,28 +1752,113 @@ public class AdminBotService {
                     log.debug("⏳ Достигнут лимит, ожидаем {}мс", delay);
                     Thread.sleep(delay);
                 }
-                
-                // Отправляем сообщение
-                telegramUserNotificationService.sendPersonalMessage(user.getTelegramId(), message);
-                rateLimitService.registerMessageSent();
-                rateLimitService.updateBroadcastProgress(broadcastId, true);
-                
-                // Базовая задержка между сообщениями
-                Thread.sleep(rateLimitService.getRecommendedDelay());
-                
+
+                // Отправляем сообщение и получаем результат
+                boolean sent = telegramUserNotificationService.sendPersonalMessage(user.getTelegramId(), message);
+
+                if (sent) {
+                    rateLimitService.registerMessageSent();
+                    rateLimitService.updateBroadcastProgress(broadcastId, true);
+                    log.debug("✅ Сообщение отправлено пользователю {}", user.getTelegramId());
+                } else {
+                    // sendPersonalMessage вернул false - пользователь заблокировал бота или чат не найден
+                    rateLimitService.updateBroadcastProgress(broadcastId, false);
+                    log.debug("⚠️ Не удалось отправить пользователю {} (заблокировал бота или чат не найден)", user.getTelegramId());
+                }
+
+                // Безопасная задержка между сообщениями (50-100мс для соблюдения лимитов Telegram)
+                Thread.sleep(50 + (long) (Math.random() * 50));
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("⚠️ Рассылка прервана");
+                break;
             } catch (Exception e) {
                 log.warn("⚠️ Ошибка отправки сообщения пользователю {}: {}", user.getTelegramId(), e.getMessage());
                 rateLimitService.updateBroadcastProgress(broadcastId, false);
-                
+
                 // При ошибке увеличиваем задержку
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     break;
                 }
             }
         }
+    }
+
+    /**
+     * Обрабатывает пакет пользователей для отправки фото с подписью
+     */
+    private void processPhotoBatch(List<com.baganov.pizzanat.entity.User> batch, String photoUrl, String caption, String broadcastId) {
+        for (com.baganov.pizzanat.entity.User user : batch) {
+            try {
+                // Проверяем лимиты перед отправкой
+                if (!rateLimitService.canSendMessage()) {
+                    long delay = rateLimitService.getRecommendedDelay();
+                    log.debug("⏳ Достигнут лимит, ожидаем {}мс", delay);
+                    Thread.sleep(delay);
+                }
+
+                // Отправляем фото с подписью
+                boolean sent = telegramUserNotificationService.sendPersonalPhoto(user.getTelegramId(), photoUrl, caption);
+
+                if (sent) {
+                    rateLimitService.registerMessageSent();
+                    rateLimitService.updateBroadcastProgress(broadcastId, true);
+                    log.debug("✅ Фото отправлено пользователю {}", user.getTelegramId());
+                } else {
+                    // sendPersonalPhoto вернул false - пользователь заблокировал бота или чат не найден
+                    rateLimitService.updateBroadcastProgress(broadcastId, false);
+                    log.debug("⚠️ Не удалось отправить фото пользователю {} (заблокировал бота или чат не найден)", user.getTelegramId());
+                }
+
+                // Безопасная задержка между сообщениями (50-100мс для соблюдения лимитов Telegram)
+                Thread.sleep(50 + (long) (Math.random() * 50));
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("⚠️ Рассылка прервана");
+                break;
+            } catch (Exception e) {
+                log.warn("⚠️ Ошибка отправки фото пользователю {}: {}", user.getTelegramId(), e.getMessage());
+                rateLimitService.updateBroadcastProgress(broadcastId, false);
+
+                // При ошибке увеличиваем задержку
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Извлекает URL фото из текста сообщения
+     * @param message текст сообщения, может содержать URL картинки
+     * @return URL картинки или null если не найден
+     */
+    private String extractPhotoUrl(String message) {
+        if (message == null || message.isEmpty()) {
+            return null;
+        }
+
+        // Ищем URL в тексте
+        String[] words = message.split("\\s+");
+        for (String word : words) {
+            // Проверяем, является ли слово URL картинки
+            if (word.startsWith("http://") || word.startsWith("https://")) {
+                String lowerWord = word.toLowerCase();
+                if (lowerWord.endsWith(".jpg") || lowerWord.endsWith(".jpeg") ||
+                    lowerWord.endsWith(".png") || lowerWord.endsWith(".gif")) {
+                    return word;
+                }
+            }
+        }
+        return null;
     }
 
     /**
