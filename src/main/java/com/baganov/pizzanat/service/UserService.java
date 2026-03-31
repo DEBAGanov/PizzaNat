@@ -85,12 +85,12 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * Получение всех пользователей с подтвержденным Telegram ID
-     * для массовой рассылки сообщений
-     * 
-     * @return список пользователей с Telegram ID
+     * Получение всех Telegram пользователей (username начинается с "tg_")
+     * Используется для рассылки через Telegram бот @DIMBOpizzaBot
+     *
+     * @return список Telegram пользователей
      */
     public java.util.List<User> getAllUsersWithTelegramId() {
-        return userRepository.findByTelegramIdIsNotNullAndIsTelegramVerifiedTrue();
+        return userRepository.findByUsernameStartingWithAndIsTelegramVerifiedTrue("tg_");
     }
 }

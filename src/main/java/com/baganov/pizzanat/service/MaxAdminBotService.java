@@ -1091,15 +1091,18 @@ public class MaxAdminBotService {
     @Async
     public void broadcastMessageToAllMaxUsers(Long adminUserId, String messageText) {
         try {
-            // Получаем всех пользователей с telegram_id (хранящим MAX user ID)
-            List<User> users = userRepository.findByTelegramIdIsNotNullAndIsTelegramVerifiedTrue();
+            // Получаем только MAX пользователей (username начинается с "max_")
+            // Это важно! telegram_id хранит ID и от Telegram, и от MAX
+            // Фильтруем по префиксу username чтобы отправлять только через MAX API
+            List<User> users = userRepository.findByUsernameStartingWithAndIsTelegramVerifiedTrue("max_");
 
             if (users.isEmpty()) {
-                sendMessageToUser(adminUserId, "ℹ️ **Нет пользователей для отправки сообщения**");
+                sendMessageToUser(adminUserId, "ℹ️ **Нет пользователей MAX для отправки сообщения**\n\n" +
+                        "Пользователи должны сначала запустить бот MAX и нажать кнопку 'Начать'.");
                 return;
             }
 
-            log.info("📤 MAX: Начинаем массовую рассылку {} пользователям", users.size());
+            log.info("📤 MAX: Начинаем массовую рассылку {} пользователям MAX", users.size());
 
             // Уведомляем администратора о начале рассылки
             sendMessageToUser(adminUserId, String.format(

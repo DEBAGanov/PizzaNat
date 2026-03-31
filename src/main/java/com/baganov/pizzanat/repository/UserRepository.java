@@ -63,8 +63,16 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     /**
      * Получение всех пользователей с подтвержденным Telegram ID
-     * 
+     *
      * @return список пользователей с Telegram ID
      */
     java.util.List<User> findByTelegramIdIsNotNullAndIsTelegramVerifiedTrue();
+
+    /**
+     * Получение всех Telegram пользователей (username начинается с "tg_")
+     * Используется для рассылки через Telegram бот
+     *
+     * @return список Telegram пользователей
+     */
+    java.util.List<User> findByUsernameStartingWithAndIsTelegramVerifiedTrue(String usernamePrefix);
 }
