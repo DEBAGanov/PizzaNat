@@ -479,6 +479,72 @@ public class TelegramUserNotificationService {
     }
 
     /**
+     * Отправка сообщения с просьбой оставить отзыв при доставке заказа
+     *
+     * @param order заказ
+     */
+    public void sendReviewRequestNotification(Order order) {
+        if (!isNotificationEnabled() || !hasUserTelegramId(order)) {
+            return;
+        }
+
+        try {
+            String message = formatReviewRequestMessage(order);
+            List<List<Map<String, Object>>> buttons = createReviewButtons();
+
+            boolean sent = sendPersonalMessageWithButtons(order.getUser().getTelegramId(), message, buttons);
+
+            if (sent) {
+                log.info("Запрос на отзыв для заказа #{} отправлен пользователю {} (Telegram ID: {})",
+                        order.getId(), order.getUser().getUsername(), order.getUser().getTelegramId());
+            } else {
+                log.warn("Не удалось отправить запрос на отзыв пользователю {} для заказа #{}",
+                        order.getUser().getUsername(), order.getId());
+            }
+
+        } catch (Exception e) {
+            log.error("Ошибка отправки запроса на отзыв для заказа #{} пользователю {}: {}",
+                    order.getId(), order.getUser().getUsername(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Форматирование сообщения с просьбой оставить отзыв
+     */
+    private String formatReviewRequestMessage(Order order) {
+        return String.format(
+                "⭐ <b>Оставьте отзыв о заказе!</b>\n\n" +
+                        "✅ Заказ #%d успешно доставлен!\n" +
+                        "💰 Сумма: %s ₽\n\n" +
+                        "Нам очень важно ваше мнение! 🙏\n" +
+                        "Пожалуйста, оставьте отзыв на Яндекс Картах - это поможет нам стать лучше!",
+                order.getId(),
+                order.getTotalAmount());
+    }
+
+    /**
+     * Создает inline кнопки для запроса отзыва
+     * @return список строк с кнопками в формате Telegram API
+     */
+    private List<List<Map<String, Object>>> createReviewButtons() {
+        List<List<Map<String, Object>>> buttons = new ArrayList<>();
+
+        // Строка 1: ⭐ Оставить отзыв - открывает Яндекс Карты
+        Map<String, Object> reviewButton = new HashMap<>();
+        reviewButton.put("text", "⭐ Оставить отзыв на Яндекс Картах");
+        reviewButton.put("url", "https://yandex.ru/maps/org/dimbo/188302222909/reviews/?ll=48.351983%2C55.865857&z=15");
+        buttons.add(List.of(reviewButton));
+
+        // Строка 2: 🍕 Заказать еще - открывает Mini App
+        Map<String, Object> menuButton = new HashMap<>();
+        menuButton.put("text", "🍕 Заказать еще");
+        menuButton.put("web_app", Map.of("url", "https://api.dimbopizza.ru/miniapp/menu.html"));
+        buttons.add(List.of(menuButton));
+
+        return buttons;
+    }
+
+    /**
      * Создает стандартные inline кнопки для рассылки
      * Формат: List<List<Map>> где каждый внутренний List - это строка кнопок
      * Использует web_app для открытия Mini App вместо обычного URL

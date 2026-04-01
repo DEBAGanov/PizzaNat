@@ -46,6 +46,7 @@ public class OrderService {
     private final ScheduledNotificationService scheduledNotificationService;
     private final ApplicationEventPublisher eventPublisher;
     private final DeliveryZoneService deliveryZoneService;
+    private final MaxAdminBotService maxAdminBotService;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
@@ -365,37 +366,66 @@ public class OrderService {
     }
 
     /**
-     * Безопасная отправка Telegram уведомлений
+     * Безопасная отправка уведомлений пользователю о смене статуса заказа
+     * Поддерживает Telegram и MAX пользователей
      */
     private void sendTelegramNotificationSafely(Order order, String oldStatusName, String newStatusName) {
         try {
-            // Уведомление администраторов через AdminBotService (правильный способ)
-            // TelegramBotService отключен из-за неправильной конфигурации chat ID
-            // if (telegramBotService != null) {
-            // telegramBotService.sendOrderStatusUpdateNotification(order, oldStatusName,
-            // newStatusName);
-            // log.debug("Telegram уведомление администраторам об изменении статуса заказа
-            // #{} успешно отправлено",
-            // order.getId());
-            // } else {
-            // log.warn("TelegramBotService недоступен, уведомление администраторам не
-            // отправлено для заказа #{}",
-            // order.getId());
-            // }
-
             log.debug(
                     "Уведомления администраторам отправляются через AdminBotService автоматически при изменении статуса");
 
-            // Персональное уведомление пользователю (если у него есть Telegram ID)
-            if (telegramUserNotificationService != null) {
-                telegramUserNotificationService.sendPersonalOrderStatusUpdateNotification(order, oldStatusName,
-                        newStatusName);
-                log.debug("Персональное Telegram уведомление об изменении статуса заказа #{} успешно отправлено",
-                        order.getId());
+            User user = order.getUser();
+            if (user == null) {
+                log.debug("Заказ #{} не привязан к пользователю, персональное уведомление не отправляется", order.getId());
+                return;
+            }
+
+            String username = user.getUsername();
+            Long userMessengerId = user.getTelegramId();
+
+            if (userMessengerId == null) {
+                log.debug("У пользователя {} нет мессенджер ID, уведомление не отправляется", username);
+                return;
+            }
+
+            // Определяем тип пользователя по username и отправляем уведомление
+            if (username != null && username.startsWith("max_")) {
+                // MAX пользователь - отправляем через MAX бот
+                String statusMessage = formatMaxStatusUpdateMessage(order, oldStatusName, newStatusName);
+                boolean sent = maxAdminBotService.sendOrderStatusNotification(userMessengerId, statusMessage);
+                if (sent) {
+                    log.debug("MAX уведомление об изменении статуса заказа #{} отправлено пользователю {}",
+                            order.getId(), username);
+                } else {
+                    log.warn("Не удалось отправить MAX уведомление пользователю {} для заказа #{}", username, order.getId());
+                }
+
+                // Отправляем запрос на отзыв при доставке
+                if ("DELIVERED".equalsIgnoreCase(newStatusName)) {
+                    boolean reviewSent = maxAdminBotService.sendReviewRequestNotification(
+                            userMessengerId, order.getId(), order.getTotalAmount());
+                    if (reviewSent) {
+                        log.info("MAX запрос на отзыв для заказа #{} отправлен пользователю {}", order.getId(), username);
+                    }
+                }
+
+            } else if (username != null && username.startsWith("tg_")) {
+                // Telegram пользователь - отправляем через Telegram бот
+                if (telegramUserNotificationService != null) {
+                    telegramUserNotificationService.sendPersonalOrderStatusUpdateNotification(order, oldStatusName, newStatusName);
+                    log.debug("Telegram уведомление об изменении статуса заказа #{} отправлено пользователю {}",
+                            order.getId(), username);
+
+                    // Отправляем запрос на отзыв при доставке
+                    if ("DELIVERED".equalsIgnoreCase(newStatusName)) {
+                        telegramUserNotificationService.sendReviewRequestNotification(order);
+                        log.info("Telegram запрос на отзыв для заказа #{} отправлен пользователю {}", order.getId(), username);
+                    }
+                } else {
+                    log.warn("TelegramUserNotificationService недоступен, уведомление не отправлено для заказа #{}", order.getId());
+                }
             } else {
-                log.warn(
-                        "TelegramUserNotificationService недоступен, персональное уведомление не отправлено для заказа #{}",
-                        order.getId());
+                log.debug("Пользователь {} не является пользователем мессенджера (Telegram/MAX), уведомление не отправляется", username);
             }
 
             // Планирование реферального уведомления при доставке заказа
@@ -404,11 +434,67 @@ public class OrderService {
             }
 
         } catch (Exception e) {
-            log.error("Ошибка отправки Telegram уведомлений об изменении статуса заказа #{}: {}",
+            log.error("Ошибка отправки уведомлений об изменении статуса заказа #{}: {}",
                     order.getId(), e.getMessage());
-            // Не пробрасываем исключение, чтобы не нарушать основную логику обновления
-            // статуса
+            // Не пробрасываем исключение, чтобы не нарушать основную логику обновления статуса
         }
+    }
+
+    /**
+     * Форматирование сообщения о смене статуса для MAX пользователя
+     */
+    private String formatMaxStatusUpdateMessage(Order order, String oldStatusName, String newStatusName) {
+        StringBuilder message = new StringBuilder();
+
+        message.append("🔄 **Статус заказа изменен!**\n\n");
+        message.append("📋 **Заказ #").append(order.getId()).append("**\n");
+        message.append("💰 **Сумма:** ").append(order.getTotalAmount()).append(" ₽\n\n");
+
+        message.append("📋 **Статус изменен:**\n");
+        message.append("❌ Было: ").append(getMaxStatusDisplayName(oldStatusName)).append("\n");
+        message.append("✅ Стало: ").append(getMaxStatusDisplayName(newStatusName)).append("\n\n");
+
+        // Добавляем специальные сообщения для определенных статусов
+        String statusMessage = getMaxStatusSpecialMessage(newStatusName);
+        if (statusMessage != null) {
+            message.append(statusMessage);
+        }
+
+        return message.toString();
+    }
+
+    /**
+     * Получение отображаемого названия статуса для MAX
+     */
+    private String getMaxStatusDisplayName(String status) {
+        if (status == null) return "Неизвестно";
+        return switch (status.toUpperCase()) {
+            case "CREATED" -> "Создан";
+            case "CONFIRMED" -> "Подтвержден";
+            case "PREPARING" -> "Готовится";
+            case "READY" -> "Готов к выдаче";
+            case "DELIVERING" -> "Доставляется";
+            case "DELIVERED" -> "Доставлен";
+            case "CANCELLED" -> "Отменен";
+            case "PAID" -> "Оплачен";
+            default -> status;
+        };
+    }
+
+    /**
+     * Получение специального сообщения для статуса в MAX
+     */
+    private String getMaxStatusSpecialMessage(String status) {
+        if (status == null) return null;
+        return switch (status.toUpperCase()) {
+            case "CONFIRMED" -> "🎉 Отлично! Ваш заказ подтвержден и передан на кухню.";
+            case "PREPARING" -> "👨‍🍳 Наши повара готовят ваш заказ с особой заботой!";
+            case "READY" -> "🍕 Ваш заказ готов! Можете забирать или ожидайте курьера.";
+            case "DELIVERING" -> "🚗 Курьер уже в пути! Скоро будет у вас.";
+            case "DELIVERED" -> "✅ Заказ доставлен! Приятного аппетита! 🍽️\n\nБудем рады видеть вас снова! ❤️";
+            case "CANCELLED" -> "😔 К сожалению, заказ был отменен. Если у вас есть вопросы, обратитесь в поддержку.";
+            default -> null;
+        };
     }
 
     /**

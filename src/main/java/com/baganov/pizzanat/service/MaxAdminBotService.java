@@ -597,6 +597,19 @@ public class MaxAdminBotService {
     }
 
     /**
+     * Отправка уведомления пользователю о смене статуса заказа
+     * Без inline кнопок (простое уведомление)
+     *
+     * @param maxUserId ID пользователя MAX
+     * @param message   Текст сообщения
+     * @return true если сообщение отправлено успешно, false при ошибке
+     */
+    public boolean sendOrderStatusNotification(Long maxUserId, String message) {
+        // Отправляем без кнопок - просто уведомление
+        return sendMessageToUserWithButtonsAndToken(maxUserId, message, null, maxBotConfig.getUserBotToken());
+    }
+
+    /**
      * Внутренний метод отправки сообщения с указанным токеном
      *
      * @return true если сообщение отправлено успешно, false при ошибке
@@ -1421,5 +1434,76 @@ public class MaxAdminBotService {
         keyboardAttachment.put("payload", payload);
 
         return keyboardAttachment;
+    }
+
+    /**
+     * Отправка запроса на отзыв пользователю MAX при доставке заказа
+     *
+     * @param maxUserId ID пользователя MAX
+     * @param orderId   ID заказа
+     * @param totalAmount сумма заказа
+     * @return true если успешно, false при ошибке
+     */
+    public boolean sendReviewRequestNotification(Long maxUserId, Integer orderId, java.math.BigDecimal totalAmount) {
+        try {
+            String message = formatReviewRequestMessage(orderId, totalAmount);
+            List<Map<String, Object>> attachments = createReviewButtonsAttachment();
+
+            return sendMessageToUserWithButtonsAndToken(maxUserId, message, attachments, maxBotConfig.getUserBotToken());
+
+        } catch (Exception e) {
+            log.error("MAX: Ошибка отправки запроса на отзыв пользователю {}: {}", maxUserId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Форматирование сообщения с просьбой оставить отзыв
+     */
+    private String formatReviewRequestMessage(Integer orderId, java.math.BigDecimal totalAmount) {
+        return String.format(
+                "⭐ **Оставьте отзыв о заказе!**\n\n" +
+                        "✅ Заказ #%d успешно доставлен!\n" +
+                        "💰 Сумма: %s ₽\n\n" +
+                        "Нам очень важно ваше мнение! 🙏\n" +
+                        "Пожалуйста, оставьте отзыв на Яндекс Картах - это поможет нам стать лучше!",
+                orderId,
+                totalAmount);
+    }
+
+    /**
+     * Создает inline кнопки для запроса отзыва в формате MAX API
+     * @return attachments с inline кнопками
+     */
+    private List<Map<String, Object>> createReviewButtonsAttachment() {
+        List<Map<String, Object>> attachments = new ArrayList<>();
+
+        // Создаем inline keyboard attachment
+        Map<String, Object> keyboardAttachment = new HashMap<>();
+        keyboardAttachment.put("type", "inline_keyboard");
+
+        // Создаем кнопки
+        List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
+
+        // Строка 1: ⭐ Оставить отзыв - открывает Яндекс Карты
+        Map<String, Object> reviewButton = new HashMap<>();
+        reviewButton.put("type", "link");
+        reviewButton.put("text", "⭐ Оставить отзыв на Яндекс Картах");
+        reviewButton.put("url", "https://yandex.ru/maps/org/dimbo/188302222909/reviews/?ll=48.351983%2C55.865857&z=15");
+        buttonRows.add(List.of(reviewButton));
+
+        // Строка 2: 🍕 Заказать еще - открывает MAX Mini App
+        Map<String, Object> menuButton = new HashMap<>();
+        menuButton.put("type", "link");
+        menuButton.put("text", "🍕 Заказать еще");
+        menuButton.put("url", "https://api.dimbopizza.ru/max-miniapp/menu.html");
+        buttonRows.add(List.of(menuButton));
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("buttons", buttonRows);
+        keyboardAttachment.put("payload", payload);
+
+        attachments.add(keyboardAttachment);
+        return attachments;
     }
 }
