@@ -201,18 +201,80 @@ public class MaxAdminBotService {
 
             Long orderId = Long.parseLong(parts[2]);
 
-            // Подтверждаем администратору
-            String successMessage = String.format(
-                    "✅ **Запрос на отзыв отправлен**\n\n" +
-                            "📋 Заказ #%d\n" +
-                            "Отправлено: %s\n\n" +
-                            "📱 Уведомление отправлено пользователю",
-                    orderId,
-                    LocalDateTime.now().format(TIME_FORMATTER));
+            // Находим заказ
+            Optional<Order> orderOpt = orderService.findById(orderId);
+            if (orderOpt.isEmpty()) {
+                sendMessageToUser(maxUserId, "❌ Заказ не найден");
+                return;
+            }
 
-            sendMessageToUser(maxUserId, successMessage);
+            Order order = orderOpt.get();
+            User orderUser = order.getUser();
 
-            log.info("MAX: Запрос на отзыв для заказа #{} отправлен администратором userId={}", orderId, maxUserId);
+            if (orderUser == null) {
+                sendMessageToUser(maxUserId, "❌ Заказ не привязан к пользователю");
+                return;
+            }
+
+            Long userMessengerId = orderUser.getTelegramId();
+            String username = orderUser.getUsername();
+
+            if (userMessengerId == null) {
+                sendMessageToUser(maxUserId, String.format(
+                        "❌ **Невозможно отправить запрос на отзыв**\n\n" +
+                                "📋 Заказ #%d\n" +
+                                "👤 Пользователь: %s\n" +
+                                "⚠️ У пользователя нет мессенджер ID",
+                        orderId, username));
+                return;
+            }
+
+            // Отправляем уведомление пользователю в зависимости от типа
+            boolean sent = false;
+            if (username != null && username.startsWith("max_")) {
+                // MAX пользователь
+                sent = sendReviewRequestNotification(userMessengerId, order.getId(), order.getTotalAmount());
+                log.info("MAX: Запрос на отзыв отправлен MAX пользователю {} (ID: {})", username, userMessengerId);
+            } else if (username != null && username.startsWith("tg_")) {
+                // Telegram пользователь - нужно использовать Telegram сервис
+                // Это будет обработано через событие или напрямую
+                log.info("MAX: Запрос на отзыв для Telegram пользователя {} - требуется другая реализация", username);
+                sendMessageToUser(maxUserId, String.format(
+                        "ℹ️ **Пользователь Telegram**\n\n" +
+                                "📋 Заказ #%d\n" +
+                                "👤 Пользователь: %s\n" +
+                                "📱 Запросы на отзыв для Telegram пользователей отправляются автоматически при доставке",
+                        orderId, username));
+                return;
+            } else {
+                sendMessageToUser(maxUserId, String.format(
+                        "❌ **Пользователь не из мессенджера**\n\n" +
+                                "📋 Заказ #%d\n" +
+                                "👤 Пользователь: %s\n" +
+                                "⚠️ Пользователь заказал через веб-сайт или приложение",
+                        orderId, username != null ? username : "неизвестен"));
+                return;
+            }
+
+            if (sent) {
+                // Подтверждаем администратору
+                String successMessage = String.format(
+                        "✅ **Запрос на отзыв отправлен**\n\n" +
+                                "📋 Заказ #%d\n" +
+                                "👤 Пользователь: %s\n" +
+                                "📱 Уведомление отправлено пользователю",
+                        orderId, username);
+
+                sendMessageToUser(maxUserId, successMessage);
+                log.info("MAX: Запрос на отзыв для заказа #{} успешно отправлен пользователю {}", orderId, username);
+            } else {
+                sendMessageToUser(maxUserId, String.format(
+                        "❌ **Не удалось отправить запрос на отзыв**\n\n" +
+                                "📋 Заказ #%d\n" +
+                                "👤 Пользователь: %s\n" +
+                                "⚠️ Возможно пользователь заблокировал бота",
+                        orderId, username));
+            }
 
         } catch (Exception e) {
             log.error("MAX: Ошибка при отправке запроса на отзыв: {}", e.getMessage(), e);
