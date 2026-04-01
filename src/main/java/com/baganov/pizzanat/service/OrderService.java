@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 
 import com.baganov.pizzanat.event.NewOrderEvent;
 import com.baganov.pizzanat.service.DeliveryZoneService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 
 @Slf4j
 @Service
@@ -46,7 +48,11 @@ public class OrderService {
     private final ScheduledNotificationService scheduledNotificationService;
     private final ApplicationEventPublisher eventPublisher;
     private final DeliveryZoneService deliveryZoneService;
-    private final MaxAdminBotService maxAdminBotService;
+
+    // Используем @Lazy для разрыва циклической зависимости с MaxAdminBotService
+    @Autowired
+    @Lazy
+    private MaxAdminBotService maxAdminBotService;
 
     @Transactional
     @CacheEvict(value = { "userOrders", "orderDetails", "allOrders" }, allEntries = true)
