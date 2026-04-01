@@ -377,33 +377,37 @@ public class OrderService {
      */
     private void sendTelegramNotificationSafely(Order order, String oldStatusName, String newStatusName) {
         try {
-            log.debug(
-                    "Уведомления администраторам отправляются через AdminBotService автоматически при изменении статуса");
+            log.info("🔔 Отправка уведомления о смене статуса заказа #{}: {} -> {}",
+                    order.getId(), oldStatusName, newStatusName);
 
             User user = order.getUser();
             if (user == null) {
-                log.debug("Заказ #{} не привязан к пользователю, персональное уведомление не отправляется", order.getId());
+                log.info("🔔 Заказ #{} не привязан к пользователю, персональное уведомление не отправляется", order.getId());
                 return;
             }
 
             String username = user.getUsername();
             Long userMessengerId = user.getTelegramId();
 
+            log.info("🔔 Пользователь заказа #{}: username={}, telegramId={}",
+                    order.getId(), username, userMessengerId);
+
             if (userMessengerId == null) {
-                log.debug("У пользователя {} нет мессенджер ID, уведомление не отправляется", username);
+                log.info("🔔 У пользователя {} нет мессенджер ID, уведомление не отправляется", username);
                 return;
             }
 
             // Определяем тип пользователя по username и отправляем уведомление
             if (username != null && username.startsWith("max_")) {
                 // MAX пользователь - отправляем через MAX бот
+                log.info("🔔 Отправка MAX уведомления пользователю {} (ID: {})", username, userMessengerId);
                 String statusMessage = formatMaxStatusUpdateMessage(order, oldStatusName, newStatusName);
                 boolean sent = maxAdminBotService.sendOrderStatusNotification(userMessengerId, statusMessage);
                 if (sent) {
-                    log.debug("MAX уведомление об изменении статуса заказа #{} отправлено пользователю {}",
+                    log.info("✅ MAX уведомление об изменении статуса заказа #{} отправлено пользователю {}",
                             order.getId(), username);
                 } else {
-                    log.warn("Не удалось отправить MAX уведомление пользователю {} для заказа #{}", username, order.getId());
+                    log.warn("❌ Не удалось отправить MAX уведомление пользователю {} для заказа #{}", username, order.getId());
                 }
 
                 // Отправляем запрос на отзыв при доставке
@@ -417,9 +421,10 @@ public class OrderService {
 
             } else if (username != null && username.startsWith("tg_")) {
                 // Telegram пользователь - отправляем через Telegram бот
+                log.info("🔔 Отправка Telegram уведомления пользователю {}", username);
                 if (telegramUserNotificationService != null) {
                     telegramUserNotificationService.sendPersonalOrderStatusUpdateNotification(order, oldStatusName, newStatusName);
-                    log.debug("Telegram уведомление об изменении статуса заказа #{} отправлено пользователю {}",
+                    log.info("✅ Telegram уведомление об изменении статуса заказа #{} отправлено пользователю {}",
                             order.getId(), username);
 
                     // Отправляем запрос на отзыв при доставке
@@ -431,7 +436,7 @@ public class OrderService {
                     log.warn("TelegramUserNotificationService недоступен, уведомление не отправлено для заказа #{}", order.getId());
                 }
             } else {
-                log.debug("Пользователь {} не является пользователем мессенджера (Telegram/MAX), уведомление не отправляется", username);
+                log.info("🔔 Пользователь {} не является пользователем мессенджера (Telegram/MAX), уведомление не отправляется. Username не начинается с 'max_' или 'tg_'", username);
             }
 
             // Планирование реферального уведомления при доставке заказа
@@ -440,7 +445,7 @@ public class OrderService {
             }
 
         } catch (Exception e) {
-            log.error("Ошибка отправки уведомлений об изменении статуса заказа #{}: {}",
+            log.error("❌ Ошибка отправки уведомлений об изменении статуса заказа #{}: {}",
                     order.getId(), e.getMessage());
             // Не пробрасываем исключение, чтобы не нарушать основную логику обновления статуса
         }
