@@ -1355,6 +1355,7 @@ public class MaxAdminBotService {
 
     /**
      * Создает стандартные inline кнопки для рассылки в формате MAX API
+     * Использует тип "link" для открытия MAX Mini App
      * @return список attachments с inline кнопками
      */
     private List<Map<String, Object>> createBroadcastButtons() {
@@ -1367,14 +1368,15 @@ public class MaxAdminBotService {
         // Создаем кнопки
         List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
 
-        // Строка 1: 🍕 Открыть меню
+        // Строка 1: 🍕 Открыть меню - открывает MAX Mini App
         Map<String, Object> menuButton = new HashMap<>();
         menuButton.put("type", "link");
         menuButton.put("text", "🍕 Открыть меню");
-        menuButton.put("url", "https://max.ru/id121603899498_bot");
+        // URL для MAX Mini App
+        menuButton.put("url", "https://api.dimbopizza.ru/max-miniapp/menu.html");
         buttonRows.add(List.of(menuButton));
 
-        // Строка 2: 📞 Связь с поддержкой
+        // Строка 2: 📞 Связь с поддержкой - открывает чат с ботом
         Map<String, Object> supportButton = new HashMap<>();
         supportButton.put("type", "link");
         supportButton.put("text", "📞 Связь с поддержкой");
@@ -1400,18 +1402,18 @@ public class MaxAdminBotService {
         // Создаем кнопки
         List<List<Map<String, Object>>> buttonRows = new ArrayList<>();
 
-        // Строка 1: 🍕 Открыть меню
+        // Строка 1: 🍕 Открыть меню - открывает MAX Mini App
         Map<String, Object> menuButton = new HashMap<>();
         menuButton.put("type", "link");
         menuButton.put("text", "🍕 Открыть меню");
-        menuButton.put("url", "https://max.ru/id121603899498_bot");
+        menuButton.put("url", "https://api.dimbopizza.ru/max-miniapp/menu.html");
         buttonRows.add(List.of(menuButton));
 
-        // Строка 2: 📞 Связь с поддержкой
+        // Строка 2: 📞 Связь с поддержкой - открывает чат с ботом
         Map<String, Object> supportButton = new HashMap<>();
         supportButton.put("type", "link");
         supportButton.put("text", "📞 Связь с поддержкой");
-        supportButton.put("url", "https://max.ru/id121603899498_bot");
+        supportButton.put("url", "https://max.ru/u/f9LHodD0cOLR83c5F5U0c2SbgWoa7PRiBiEsz8WYMGec4cgJATw4If-f_Nc");
         buttonRows.add(List.of(supportButton));
 
         Map<String, Object> payload = new HashMap<>();

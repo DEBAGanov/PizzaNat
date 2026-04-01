@@ -481,21 +481,23 @@ public class TelegramUserNotificationService {
     /**
      * Создает стандартные inline кнопки для рассылки
      * Формат: List<List<Map>> где каждый внутренний List - это строка кнопок
+     * Использует web_app для открытия Mini App вместо обычного URL
      * @return список строк с кнопками в формате Telegram API
      */
     public static List<List<Map<String, Object>>> createBroadcastButtons() {
         List<List<Map<String, Object>>> buttons = new ArrayList<>();
 
-        // Строка 1: 🍕 Открыть меню
+        // Строка 1: 🍕 Открыть меню - открывает Telegram Mini App
         Map<String, Object> menuButton = new HashMap<>();
         menuButton.put("text", "🍕 Открыть меню");
-        menuButton.put("url", "https://t.me/DIMBOpizzaBot?start=menu");
+        // Используем web_app для открытия Mini App
+        menuButton.put("web_app", Map.of("url", "https://api.dimbopizza.ru/miniapp/menu.html"));
         buttons.add(List.of(menuButton));
 
-        // Строка 2: 📞 Связь с поддержкой
+        // Строка 2: 📞 Связь с поддержкой - открывает чат с ботом
         Map<String, Object> supportButton = new HashMap<>();
         supportButton.put("text", "📞 Связь с поддержкой");
-        supportButton.put("url", "https://t.me/DIMBOpizzaBot?start=support");
+        supportButton.put("url", "https://max.ru/u/f9LHodD0cOLR83c5F5U0c2SbgWoa7PRiBiEsz8WYMGec4cgJATw4If-f_Nc");
         buttons.add(List.of(supportButton));
 
         return buttons;
