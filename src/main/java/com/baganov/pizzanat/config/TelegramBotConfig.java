@@ -22,6 +22,9 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import jakarta.annotation.PostConstruct;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Configuration
@@ -48,41 +51,68 @@ public class TelegramBotConfig {
         return new TelegramBotsApi(DefaultBotSession.class);
     }
 
+    private static final int MAX_RETRIES = 10;
+    private static final long RETRY_DELAY_SECONDS = 30;
+    private volatile boolean mainBotRegistered = false;
+    private volatile boolean adminBotRegistered = false;
+
     @PostConstruct
-    public void registerBots() {
-        try {
-            // Проверяем, включены ли Telegram боты вообще
-            if (!isTelegramEnabled()) {
-                log.info("🚫 Telegram боты отключены в конфигурации");
-                return;
-            }
-
-            TelegramBotsApi botsApi = telegramBotsApi();
-
-            // Регистрируем основной бот если включен и доступен
-            if (isMainBotEnabled() && pizzaNatTelegramBot != null) {
-                botsApi.registerBot(pizzaNatTelegramBot);
-                log.info("✅ Основной Telegram бот успешно зарегистрирован: @{}",
-                        pizzaNatTelegramBot.getBotUsername());
-            } else {
-                log.info("🚫 Основной Telegram бот отключен в настройках (TELEGRAM_BOT_ENABLED=false)");
-            }
-
-            // Регистрируем админский бот если включен и доступен
-            if (isAdminBotEnabled() && pizzaNatAdminBot != null) {
-                botsApi.registerBot(pizzaNatAdminBot);
-                log.info("✅ Админский Telegram бот успешно зарегистрирован: @{}",
-                        pizzaNatAdminBot.getBotUsername());
-            } else {
-                log.info("🚫 Админский Telegram бот отключен в настройках (TELEGRAM_ADMIN_BOT_ENABLED=false)");
-            }
-
-        } catch (TelegramApiException e) {
-            log.error("❌ Ошибка при регистрации Telegram ботов: {}", e.getMessage(), e);
-            throw new RuntimeException("Не удалось зарегистрировать Telegram ботов", e);
-        } catch (Exception e) {
-            log.warn("⚠️ Telegram боты недоступны: {}", e.getMessage());
+    public void registerBotsAsync() {
+        if (!isTelegramEnabled()) {
+            log.info("🚫 Telegram боты отключены в конфигурации");
+            return;
         }
+
+        log.info("🔄 Запуск асинхронной регистрации Telegram ботов (поток daemon)");
+
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "telegram-bot-registration");
+            t.setDaemon(true);
+            return t;
+        });
+
+        scheduler.scheduleWithFixedDelay(() -> {
+            try {
+                TelegramBotsApi botsApi = telegramBotsApi();
+
+                if (isMainBotEnabled() && pizzaNatTelegramBot != null && !mainBotRegistered) {
+                    botsApi.registerBot(pizzaNatTelegramBot);
+                    mainBotRegistered = true;
+                    log.info("✅ Основной Telegram бот успешно зарегистрирован: @{}",
+                            pizzaNatTelegramBot.getBotUsername());
+                }
+
+                if (isAdminBotEnabled() && pizzaNatAdminBot != null && !adminBotRegistered) {
+                    botsApi.registerBot(pizzaNatAdminBot);
+                    adminBotRegistered = true;
+                    log.info("✅ Админский Telegram бот успешно зарегистрирован: @{}",
+                            pizzaNatAdminBot.getBotUsername());
+                }
+
+                // Все боты зарегистрированы — останавливаем retry
+                if (mainBotRegistered && adminBotRegistered) {
+                    scheduler.shutdown();
+                    log.info("✅ Все Telegram боты зарегистрированы, retry планировщик остановлен");
+                } else if (mainBotRegistered || adminBotRegistered) {
+                    // Частичная регистрация — если один готов, ждём второй
+                    log.info("⏳ Частичная регистрация: основной={}, админ={}", mainBotRegistered, adminBotRegistered);
+                }
+
+            } catch (TelegramApiException e) {
+                log.warn("⚠️ Telegram API недоступен, повторная попытка через {} сек: {}", RETRY_DELAY_SECONDS, e.getMessage());
+            } catch (Exception e) {
+                log.warn("⚠️ Ошибка регистрации Telegram ботов, повторная попытка через {} сек: {}", RETRY_DELAY_SECONDS, e.getMessage());
+            }
+        }, 0, RETRY_DELAY_SECONDS, TimeUnit.SECONDS);
+
+        // Ограничение максимального числа попыток
+        scheduler.schedule(() -> {
+            if (!scheduler.isShutdown()) {
+                log.error("❌ Превышено время ожидания ({} попыток по {} сек) подключения к Telegram API. Боты не запущены.",
+                        MAX_RETRIES, RETRY_DELAY_SECONDS);
+                scheduler.shutdown();
+            }
+        }, (long) MAX_RETRIES * RETRY_DELAY_SECONDS, TimeUnit.SECONDS);
     }
 
     /**
